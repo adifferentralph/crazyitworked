@@ -1,0 +1,15 @@
+.next/
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+.env
+.env.*
+!.env.example
+.vercel/
+.convex/
+*.tsbuildinfo
+
+# clerk configuration (can include secrets)
+/.clerk/
