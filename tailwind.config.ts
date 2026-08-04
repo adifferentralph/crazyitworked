@@ -1,9 +1,13 @@
-import type { Config } from "tailwindcss";
-import forms from "@tailwindcss/forms";
+﻿import type { Config } from "tailwindcss";
 
 const config: Config = {
   darkMode: ["class"],
-  content: ["./src/app/**/*.{ts,tsx}", "./src/components/**/*.{ts,tsx}", "./src/lib/**/*.{ts,tsx}"],
+  content: [
+    "./src/app/**/*.{ts,tsx}",
+    "./src/components/**/*.{ts,tsx}",
+    "./src/config/**/*.{ts,tsx}",
+    "./src/lib/**/*.{ts,tsx}",
+  ],
   theme: {
     extend: {
       colors: {
@@ -37,17 +41,12 @@ const config: Config = {
           foreground: "hsl(var(--card-foreground))",
         },
       },
-      borderRadius: {
-        lg: "0.5rem",
-        md: "0.375rem",
-        sm: "0.25rem",
-      },
       boxShadow: {
-        soft: "0 10px 30px -18px rgb(15 23 42 / 0.35)",
+        soft: "0 18px 50px -30px rgb(15 23 42 / 0.35)",
       },
     },
   },
-  plugins: [forms],
+  plugins: [],
 };
 
 export default config;

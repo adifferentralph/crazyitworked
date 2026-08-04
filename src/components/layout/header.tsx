@@ -1,66 +1,66 @@
-import Link from "next/link";
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
-import { Gauge, Heart, LayoutDashboard, Search, Store } from "lucide-react";
+﻿import Link from "next/link";
+import { ArrowUpRight, Menu } from "lucide-react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
-
-const navItems = [
-  { href: "/marketplace", label: "Marketplace" },
-  { href: "/wholesale", label: "Wholesale RFQ" },
-  { href: "/vendor", label: "Sell" },
-  { href: "/buyer", label: "Buyer" },
-] as const;
+import { siteConfig } from "@/config/site";
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
-      <div className="container-page flex min-h-16 items-center justify-between gap-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <span className="grid size-9 place-items-center rounded-md bg-primary text-primary-foreground">
-            <Gauge className="size-5" aria-hidden="true" />
-          </span>
-          <span>TorqueMart</span>
-        </Link>
+    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-background/90 backdrop-blur-xl">
+      <div className="container-page flex min-h-20 items-center justify-between gap-6">
+        <BrandLogo />
 
-        <nav className="hidden items-center gap-6 text-sm font-medium text-muted-foreground md:flex">
-          {navItems.map((item) => (
-            <Link key={item.href} href={item.href} className="transition hover:text-foreground">
+        <nav aria-label="Primary navigation" className="hidden items-center gap-7 lg:flex">
+          {siteConfig.navigation.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
               {item.label}
             </Link>
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="icon" aria-label="Search marketplace">
-            <Link href="/marketplace">
-              <Search className="size-5" aria-hidden="true" />
+        <div className="hidden items-center gap-2 sm:flex">
+          <Button asChild variant="ghost">
+            <Link href="#how-it-works">For suppliers</Link>
+          </Button>
+          <Button asChild>
+            <Link href="#search">
+              Find a part
+              <ArrowUpRight className="size-4" aria-hidden="true" />
             </Link>
           </Button>
-          <SignedIn>
-            <Button asChild variant="ghost" size="icon" aria-label="Saved parts">
-              <Link href="/buyer/wishlist">
-                <Heart className="size-5" aria-hidden="true" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="hidden sm:inline-flex">
-              <Link href="/vendor">
-                <Store className="size-4" aria-hidden="true" />
-                Vendor
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="icon" aria-label="Dashboard">
-              <Link href="/buyer">
-                <LayoutDashboard className="size-5" aria-hidden="true" />
-              </Link>
-            </Button>
-            <UserButton afterSignOutUrl="/" />
-          </SignedIn>
-          <SignedOut>
-            <SignInButton mode="modal">
-              <Button>Sign in</Button>
-            </SignInButton>
-          </SignedOut>
         </div>
+
+        <details className="group relative sm:hidden">
+          <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-xl border bg-white [&::-webkit-details-marker]:hidden">
+            <Menu className="size-5" aria-hidden="true" />
+            <span className="sr-only">Open navigation</span>
+          </summary>
+          <nav
+            aria-label="Mobile navigation"
+            className="absolute right-0 top-14 grid w-64 gap-1 rounded-2xl border bg-white p-3 shadow-xl"
+          >
+            {siteConfig.navigation.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted"
+              >
+                {item.label}
+              </Link>
+            ))}
+            <Link
+              href="#search"
+              className="mt-2 rounded-lg bg-primary px-3 py-2.5 text-center text-sm font-semibold text-primary-foreground"
+            >
+              Find a part
+            </Link>
+          </nav>
+        </details>
       </div>
     </header>
   );

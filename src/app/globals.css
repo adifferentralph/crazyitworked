@@ -1,25 +1,25 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: 44 36% 98%;
-  --foreground: 222 47% 11%;
+  --background: 36 33% 98%;
+  --foreground: 222 47% 10%;
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --primary: 166 78% 24%;
+  --card-foreground: 222 47% 10%;
+  --primary: 20 91% 48%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 214 32% 91%;
-  --secondary-foreground: 222 47% 11%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 35%;
-  --accent: 40 96% 56%;
-  --accent-foreground: 222 47% 11%;
+  --secondary: 222 40% 14%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 214 32% 94%;
+  --muted-foreground: 215 16% 40%;
+  --accent: 34 100% 91%;
+  --accent-foreground: 20 91% 28%;
   --destructive: 0 72% 47%;
   --destructive-foreground: 0 0% 100%;
-  --border: 214 32% 86%;
-  --input: 214 32% 86%;
-  --ring: 166 78% 24%;
+  --border: 214 26% 86%;
+  --input: 214 26% 82%;
+  --ring: 20 91% 48%;
 }
 
 * {
@@ -27,10 +27,11 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  background: hsl(var(--background));
 }
 
 body {
+  min-width: 320px;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family:
@@ -41,14 +42,32 @@ body {
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+  font-synthesis-weight: none;
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
-  background: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+:focus-visible {
+  outline-offset: 3px;
 }
 
 .container-page {
   margin-inline: auto;
   width: min(100% - 2rem, 1180px);
+}
+
+@media (min-width: 640px) {
+  .container-page {
+    width: min(100% - 3rem, 1180px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }

@@ -1,100 +1,34 @@
-# Production Deployment Guide
+﻿# Twenty-Two Parts Deployment
 
-## 1. Install
+This document covers the landing-page milestone only. Authentication deployment instructions will
+be added after Supabase project configuration is confirmed.
+
+## Local validation
 
 ```bash
 npm install
+npm run lint
 npm run typecheck
-npm run test
-```
-
-## 2. Clerk
-
-Create a Clerk application, enable email/password or social providers, then set:
-
-```bash
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
-CLERK_SECRET_KEY=
-CLERK_JWT_ISSUER_DOMAIN=
-```
-
-Configure the Clerk JWT template for Convex with application ID `convex`.
-
-## 3. Convex
-
-```bash
-npx convex dev
-npx convex deploy
-```
-
-Set `NEXT_PUBLIC_CONVEX_URL` from the deployed Convex dashboard. Configure Convex environment
-variables for Clerk and any webhook endpoints used by payment persistence.
-
-## 4. Cloudflare R2
-
-Create an R2 bucket and API token with object read/write scope:
-
-```bash
-R2_ACCOUNT_ID=
-R2_ACCESS_KEY_ID=
-R2_SECRET_ACCESS_KEY=
-R2_BUCKET=
-R2_PUBLIC_BASE_URL=
-```
-
-R2 uploads are signed through `/api/uploads/presign`.
-
-## 5. Algolia
-
-Create the products index and replicas:
-
-- `products`
-- `products_price_asc`
-- `products_price_desc`
-- `products_rating_desc`
-- `products_newest`
-
-Set searchable attributes for title, SKU, OEM numbers, aftermarket references, vendor, category,
-and location. Set facets for category, vendor, location, availability, and fitment fields.
-
-```bash
-ALGOLIA_APP_ID=
-ALGOLIA_SEARCH_API_KEY=
-ALGOLIA_ADMIN_API_KEY=
-ALGOLIA_PRODUCTS_INDEX=products
-```
-
-## 6. Stripe
-
-Create a Stripe account and set:
-
-```bash
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-```
-
-Point Stripe webhooks at `/api/payments/stripe/webhook`. Forward verified events to Convex by
-setting `CONVEX_PAYMENT_WEBHOOK_URL` or by calling the Convex `payments.recordStripeCheckoutCompleted`
-mutation from your webhook worker.
-
-## 7. Vercel
-
-Connect the repository to Vercel, set all environment variables, and deploy:
-
-```bash
+npm test
 npm run build
+npm run test:e2e
 ```
 
-Recommended Vercel settings:
+## Optional public URL
 
-- Framework preset: Next.js
-- Node.js runtime: 22 or newer
-- Build command: `npm run build`
-- Install command: `npm install`
+The application runs locally without environment variables. For deployed sitemap and robots URLs,
+set `NEXT_PUBLIC_APP_URL` to the canonical HTTPS origin.
 
-## 8. Operations
+Example:
 
-- Run Playwright against staging before promoting production.
-- Review Convex audit logs for admin actions.
-- Rotate R2 and payment credentials quarterly.
-- Monitor Algolia indexing lag for product moderation and inventory changes.
+```bash
+NEXT_PUBLIC_APP_URL=https://example.com
+```
+
+Do not commit `.env.local` or production credentials.
+
+## Deployment
+
+Use a Node.js host that supports Next.js 15. Run `npm run build` as the production build command
+and `npm start` as the start command. The deployment must pass lint, type checking, unit tests,
+the production build, and the browser smoke test before promotion.

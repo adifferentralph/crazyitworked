@@ -1,17 +1,25 @@
-import { FlatCompat } from "@eslint/eslintrc";
+﻿import { FlatCompat } from "@eslint/eslintrc";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
+const filename = fileURLToPath(import.meta.url);
+const directory = dirname(filename);
 const compat = new FlatCompat({
-  baseDirectory: __dirname,
+  baseDirectory: directory,
 });
 
-export default [
+const config = [
   {
-    ignores: [".next/**", "node_modules/**", "coverage/**", "playwright-report/**", ".convex/**"],
+    ignores: [
+      ".next/**",
+      "node_modules/**",
+      "coverage/**",
+      "playwright-report/**",
+      "test-results/**",
+      "next-env.d.ts",
+    ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 ];
+
+export default config;
