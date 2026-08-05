@@ -19,4 +19,9 @@ describe("public landing content", () => {
   it("keeps primary navigation on the one-page landing experience", () => {
     expect(siteConfig.navigation.every((item) => item.href.startsWith("#"))).toBe(true);
   });
+
+  it("separates buyer and supplier authentication entry points", () => {
+    expect(siteConfig.auth.buyers).toBe("/auth");
+    expect(siteConfig.auth.suppliers).toBe("/suppliers/auth");
+  });
 });

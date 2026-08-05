@@ -1,61 +1,63 @@
-﻿import Link from "next/link";
-import {
-  ArrowRight,
-  BadgeCheck,
-  CarFront,
-  CheckCircle2,
-  Hash,
-  Search,
-  ShieldCheck,
-  Wrench,
-} from "lucide-react";
+﻿import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, CheckCircle2, Search, Store } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import heroWorkshop from "@/components/brand/hero-workshop.webp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { siteConfig } from "@/config/site";
 
-const requestDetails = [
-  { icon: CarFront, label: "Vehicle", value: "Year · Make · Model" },
-  { icon: Hash, label: "Reference", value: "OEM or part number" },
-  { icon: Wrench, label: "Need", value: "Single part or bulk order" },
-] as const;
+const audiences = ["Retail buyers", "Workshops", "Fleet teams", "Parts suppliers"] as const;
 
 export function Hero() {
   return (
-    <section className="relative isolate overflow-hidden bg-slate-950 text-white">
-      <div
-        className="absolute inset-0 -z-20 opacity-30 [background-image:linear-gradient(rgba(255,255,255,.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.06)_1px,transparent_1px)] [background-size:64px_64px]"
+    <section className="relative isolate overflow-hidden bg-white">
+      <Image
+        src={heroWorkshop}
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="-z-20 object-cover object-[68%_center]"
         aria-hidden="true"
       />
-      <div
-        className="absolute -right-48 -top-40 -z-10 size-[560px] rounded-full bg-orange-500/25 blur-3xl"
-        aria-hidden="true"
-      />
-      <div
-        className="absolute -bottom-64 left-1/4 -z-10 size-[520px] rounded-full bg-blue-500/10 blur-3xl"
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 -z-10 bg-black/25" aria-hidden="true" />
 
-      <div className="container-page grid min-h-[720px] items-center gap-14 py-16 lg:grid-cols-[1.12fr_0.88fr] lg:py-24">
-        <div>
-          <Badge className="border border-orange-300/30 bg-orange-300/10 text-orange-200">
-            Automotive sourcing, re-engineered
-          </Badge>
-          <h1 className="mt-7 max-w-3xl text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.045em] sm:text-6xl lg:text-7xl">
-            Find the right part.
-            <span className="block text-orange-300">Keep everything moving.</span>
-          </h1>
-          <p className="mt-7 max-w-2xl text-pretty text-lg leading-8 text-slate-300">
-            Twenty-Two Parts brings drivers, workshops, fleets, and trusted suppliers into one
-            clearer way to identify and source automotive spare parts.
+      <div className="container-page flex min-h-[720px] items-center py-12 sm:py-16 lg:py-20">
+        <div className="w-full max-w-2xl border-l-4 border-primary bg-white p-6 shadow-2xl sm:p-10 lg:p-12">
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">
+            <span className="size-2 bg-primary" aria-hidden="true" />
+            Automotive sourcing, made clearer
           </p>
+          <h1 className="mt-6 max-w-xl text-balance font-display text-5xl font-semibold leading-[1.02] tracking-[-0.035em] text-foreground sm:text-6xl lg:text-7xl">
+            Source the exact part you need. <span className="text-primary">Keep moving.</span>
+          </h1>
+          <p className="mt-6 max-w-xl text-pretty text-lg leading-8 text-muted-foreground">
+            Twenty-Two Parts connects drivers, workshops, fleets, and trusted suppliers through a
+            simpler way to identify and source automotive spare parts.
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Button asChild size="lg" className="h-12 rounded-lg px-6">
+              <Link href={siteConfig.auth.buyers}>
+                Find a part
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="h-12 rounded-lg px-6">
+              <Link href={siteConfig.auth.suppliers}>
+                <Store className="size-4" aria-hidden="true" />
+                For suppliers
+              </Link>
+            </Button>
+          </div>
 
           <form
             id="search"
             role="search"
-            action="/#categories"
+            action={siteConfig.auth.buyers}
             method="get"
-            className="mt-9 rounded-2xl border border-white/10 bg-white p-2 shadow-2xl shadow-black/25"
+            className="mt-8 border border-stone-200 bg-[#fffaf5] p-2"
           >
             <label htmlFor="part-search" className="sr-only">
               Search by part name, OEM number, or vehicle
@@ -63,7 +65,7 @@ export function Hero() {
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative min-w-0 flex-1">
                 <Search
-                  className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400"
+                  className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-stone-500"
                   aria-hidden="true"
                 />
                 <Input
@@ -71,84 +73,27 @@ export function Hero() {
                   name="part"
                   type="search"
                   placeholder="Part name, OEM number, or vehicle"
-                  className="h-14 border-0 bg-transparent pl-12 text-base text-slate-950 placeholder:text-slate-500 focus-visible:ring-0"
+                  className="h-14 border-0 bg-white pl-12 text-base focus-visible:ring-1"
                 />
               </div>
-              <Button type="submit" size="lg" className="h-14 rounded-xl px-6">
+              <Button type="submit" size="lg" className="h-14 rounded-md px-6">
                 Explore parts
                 <ArrowRight className="size-4" aria-hidden="true" />
               </Button>
             </div>
           </form>
-          <p className="mt-3 text-sm text-slate-400">
-            Catalog search will open with the marketplace launch. Explore the categories below.
+          <p className="mt-3 text-sm text-muted-foreground">
+            Sign in or create an account to save vehicle details and start a precise part request.
           </p>
 
-          <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-300">
-            {["Retail buyers", "Workshops", "Fleet teams", "Suppliers"].map((audience) => (
+          <div className="mt-7 flex flex-wrap gap-x-5 gap-y-3 text-sm text-stone-700">
+            {audiences.map((audience) => (
               <span key={audience} className="inline-flex items-center gap-2">
-                <CheckCircle2 className="size-4 text-orange-300" aria-hidden="true" />
+                <CheckCircle2 className="size-4 text-primary" aria-hidden="true" />
                 {audience}
               </span>
             ))}
           </div>
-        </div>
-
-        <div className="relative mx-auto w-full max-w-lg lg:mx-0 lg:justify-self-end">
-          <div
-            className="absolute -inset-5 -z-10 rotate-3 rounded-[2rem] border border-white/10 bg-white/5"
-            aria-hidden="true"
-          />
-          <div className="overflow-hidden rounded-[1.75rem] border border-white/15 bg-white text-slate-950 shadow-2xl shadow-black/30">
-            <div className="flex items-center justify-between border-b bg-slate-50 px-6 py-5">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-                  Smart part request
-                </p>
-                <p className="mt-1 font-semibold">Build a precise match</p>
-              </div>
-              <span className="grid size-10 place-items-center rounded-full bg-emerald-100 text-emerald-700">
-                <BadgeCheck className="size-5" aria-hidden="true" />
-              </span>
-            </div>
-
-            <div className="grid gap-3 p-6">
-              {requestDetails.map((detail, index) => (
-                <div
-                  key={detail.label}
-                  className="flex items-center gap-4 rounded-2xl border border-slate-200 p-4"
-                >
-                  <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-slate-950 text-white">
-                    <detail.icon className="size-5" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {detail.label}
-                    </p>
-                    <p className="mt-1 truncate font-medium">{detail.value}</p>
-                  </div>
-                  <span className="text-xs font-semibold text-slate-400">0{index + 1}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="border-t bg-orange-50 px-6 py-5">
-              <div className="flex items-start gap-3">
-                <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-                <p className="text-sm leading-6 text-slate-700">
-                  Compatibility details and supplier context stay attached to every request.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <Link
-            href="#how-it-works"
-            className="mx-auto mt-6 flex w-fit items-center gap-2 text-sm font-semibold text-slate-300 hover:text-white lg:mx-0"
-          >
-            See how sourcing works
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
         </div>
       </div>
     </section>

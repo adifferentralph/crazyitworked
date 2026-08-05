@@ -10,4 +10,8 @@
     { href: "#features", label: "Features" },
     { href: "#faq", label: "FAQ" },
   ],
+  auth: {
+    buyers: "/auth",
+    suppliers: "/suppliers/auth",
+  },
 } as const;

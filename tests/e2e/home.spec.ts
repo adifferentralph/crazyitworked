@@ -9,7 +9,16 @@ test("landing page exposes the complete public story", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /start with the system/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: /from an uncertain request/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: /less like guesswork/i })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /clear answers/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /straight answers/i })).toBeVisible();
+
+  await expect(page.getByRole("link", { name: "Find a part" }).first()).toHaveAttribute(
+    "href",
+    "/auth",
+  );
+  await expect(page.getByRole("link", { name: "For suppliers" }).first()).toHaveAttribute(
+    "href",
+    "/suppliers/auth",
+  );
 });
 
 test("landing page has an accessible mobile navigation", async ({ page }) => {
@@ -20,4 +29,8 @@ test("landing page has an accessible mobile navigation", async ({ page }) => {
   const mobileNavigation = page.getByRole("navigation", { name: "Mobile navigation" });
   await expect(mobileNavigation).toBeVisible();
   await expect(mobileNavigation.getByRole("link", { name: "Categories" })).toBeVisible();
+  await expect(mobileNavigation.getByRole("link", { name: "Supplier access" })).toHaveAttribute(
+    "href",
+    "/suppliers/auth",
+  );
 });

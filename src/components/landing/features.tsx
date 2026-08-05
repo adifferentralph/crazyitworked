@@ -16,17 +16,17 @@ const features = [
   {
     icon: ShieldCheck,
     title: "Supplier confidence",
-    description: "Create a clearer path toward verified business and listing information.",
+    description: "See clear business and listing information before making a sourcing decision.",
   },
   {
     icon: Boxes,
     title: "Retail and bulk",
-    description: "Support one-off repairs, workshop demand, and recurring fleet requirements.",
+    description: "Handle one-off repairs, workshop demand, and recurring fleet requirements.",
   },
   {
     icon: MapPinned,
     title: "Local fulfillment context",
-    description: "Make location and delivery expectations part of the sourcing decision.",
+    description: "Keep location and delivery expectations part of the sourcing decision.",
   },
   {
     icon: Building2,
@@ -37,17 +37,17 @@ const features = [
 
 export function Features() {
   return (
-    <section id="features" className="scroll-mt-24 py-20 sm:py-24">
+    <section id="features" className="scroll-mt-24 bg-[#fffdf9] py-20 sm:py-24">
       <div className="container-page">
         <SectionHeading
           eyebrow="Purpose-built"
           title="A better foundation for every parts decision."
-          description="The first release focuses on helping people understand what Twenty-Two Parts will make simpler."
+          description="The marketplace keeps the details that matter organized from the first search to the final choice."
         />
 
         <div className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature) => (
-            <article key={feature.title} className="border-t border-slate-300 pt-5">
+            <article key={feature.title} className="border-t-2 border-stone-200 pt-5">
               <feature.icon className="size-6 text-primary" aria-hidden="true" />
               <h3 className="mt-5 text-lg font-semibold">{feature.title}</h3>
               <p className="mt-2 text-sm leading-7 text-muted-foreground">{feature.description}</p>
