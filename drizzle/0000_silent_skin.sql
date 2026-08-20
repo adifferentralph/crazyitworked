@@ -1,4 +1,4 @@
-﻿CREATE TYPE "public"."account_status" AS ENUM('ACTIVE', 'RESTRICTED', 'SUSPENDED');--> statement-breakpoint
+CREATE TYPE "public"."account_status" AS ENUM('ACTIVE', 'RESTRICTED', 'SUSPENDED');--> statement-breakpoint
 CREATE TYPE "public"."address_type" AS ENUM('SHIPPING', 'BILLING', 'PICKUP');--> statement-breakpoint
 CREATE TYPE "public"."admin_role_key" AS ENUM('SUPER_ADMIN', 'OPERATIONS_ADMIN', 'PRODUCT_MODERATOR', 'FINANCE_ADMIN', 'DISPUTE_OFFICER', 'SELLER_MANAGER', 'SUPPORT_AGENT', 'LOGISTICS_MANAGER', 'CONTENT_MODERATOR');--> statement-breakpoint
 CREATE TYPE "public"."seller_status" AS ENUM('PENDING_VERIFICATION', 'ACTIVE', 'RESTRICTED', 'SUSPENDED', 'REJECTED');--> statement-breakpoint

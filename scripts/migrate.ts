@@ -1,4 +1,4 @@
-﻿import { config } from "dotenv";
+import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
@@ -12,14 +12,22 @@ const environment = z
   })
   .parse(process.env);
 
-const client = postgres(environment.DATABASE_URL, {
-  max: 1,
-  prepare: false,
-});
+async function main() {
+  const client = postgres(environment.DATABASE_URL, {
+    max: 1,
+    prepare: false,
+  });
 
-try {
-  await migrate(drizzle({ client }), { migrationsFolder: "drizzle" });
-  console.log("Database migrations completed.");
-} finally {
-  await client.end();
+  try {
+    await migrate(drizzle({ client }), { migrationsFolder: "drizzle" });
+    console.log("Database migrations completed.");
+  } finally {
+    await client.end();
+  }
 }
+
+main().catch((error: unknown) => {
+  console.error("Database migration failed.");
+  console.error(error instanceof Error ? error.message : "Unknown migration error");
+  process.exitCode = 1;
+});

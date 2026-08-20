@@ -1,4 +1,4 @@
-﻿import { config } from "dotenv";
+import { config } from "dotenv";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -18,9 +18,6 @@ const environment = z
     DATABASE_URL: z.string().url().startsWith("postgresql://"),
   })
   .parse(process.env);
-
-const client = postgres(environment.DATABASE_URL, { max: 1, prepare: false });
-const db = drizzle({ client });
 
 type AdminRoleKey = (typeof adminRoleKeyEnum.enumValues)[number];
 
@@ -121,55 +118,66 @@ const roleDefinitions: ReadonlyArray<{
   },
 ];
 
-try {
-  await db.transaction(async (transaction) => {
-    for (const [code, description] of permissionDefinitions) {
-      await transaction
-        .insert(permissions)
-        .values({ code, description })
-        .onConflictDoUpdate({ target: permissions.code, set: { description } });
-    }
+async function main() {
+  const client = postgres(environment.DATABASE_URL, { max: 1, prepare: false });
+  const db = drizzle({ client });
 
-    for (const role of roleDefinitions) {
-      await transaction
-        .insert(adminRoles)
-        .values({ key: role.key, name: role.name, description: role.description })
-        .onConflictDoUpdate({
-          target: adminRoles.key,
-          set: { name: role.name, description: role.description },
-        });
-    }
-
-    const storedPermissions = await transaction.select().from(permissions);
-    const storedRoles = await transaction.select().from(adminRoles);
-
-    for (const role of roleDefinitions) {
-      const storedRole = storedRoles.find((item) => item.key === role.key);
-      if (!storedRole) throw new Error(`Seeded role not found: ${role.key}`);
-
-      await transaction
-        .delete(adminRolePermissions)
-        .where(eq(adminRolePermissions.roleId, storedRole.id));
-
-      const selectedPermissions =
-        role.permissions === "ALL"
-          ? storedPermissions
-          : storedPermissions.filter((permission) =>
-              role.permissions.includes(permission.code as never),
-            );
-
-      if (selectedPermissions.length > 0) {
-        await transaction.insert(adminRolePermissions).values(
-          selectedPermissions.map((permission) => ({
-            roleId: storedRole.id,
-            permissionId: permission.id,
-          })),
-        );
+  try {
+    await db.transaction(async (transaction) => {
+      for (const [code, description] of permissionDefinitions) {
+        await transaction
+          .insert(permissions)
+          .values({ code, description })
+          .onConflictDoUpdate({ target: permissions.code, set: { description } });
       }
-    }
-  });
 
-  console.log("Foundation roles and permissions seeded.");
-} finally {
-  await client.end();
+      for (const role of roleDefinitions) {
+        await transaction
+          .insert(adminRoles)
+          .values({ key: role.key, name: role.name, description: role.description })
+          .onConflictDoUpdate({
+            target: adminRoles.key,
+            set: { name: role.name, description: role.description },
+          });
+      }
+
+      const storedPermissions = await transaction.select().from(permissions);
+      const storedRoles = await transaction.select().from(adminRoles);
+
+      for (const role of roleDefinitions) {
+        const storedRole = storedRoles.find((item) => item.key === role.key);
+        if (!storedRole) throw new Error(`Seeded role not found: ${role.key}`);
+
+        await transaction
+          .delete(adminRolePermissions)
+          .where(eq(adminRolePermissions.roleId, storedRole.id));
+
+        const selectedPermissions =
+          role.permissions === "ALL"
+            ? storedPermissions
+            : storedPermissions.filter((permission) =>
+                role.permissions.includes(permission.code as never),
+              );
+
+        if (selectedPermissions.length > 0) {
+          await transaction.insert(adminRolePermissions).values(
+            selectedPermissions.map((permission) => ({
+              roleId: storedRole.id,
+              permissionId: permission.id,
+            })),
+          );
+        }
+      }
+    });
+
+    console.log("Foundation roles and permissions seeded.");
+  } finally {
+    await client.end();
+  }
 }
+
+main().catch((error: unknown) => {
+  console.error("Foundation seed failed.");
+  console.error(error instanceof Error ? error.message : "Unknown seed error");
+  process.exitCode = 1;
+});
