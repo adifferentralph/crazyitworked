@@ -1,31 +1,47 @@
-﻿# Twenty-Two Parts Architecture
+# Twenty-Two Parts Architecture
 
-Twenty-Two Parts is a focused Next.js App Router application. The current production scope is the
-public landing page. Supabase authentication will be added as the next isolated milestone after
-environment setup is confirmed.
+Twenty-Two Parts is a Next.js App Router marketplace. The current completed foundation covers the public landing experience, Supabase authentication entry points, application identities, role boundaries, and the initial PostgreSQL schema. Marketplace domains are added in isolated phases on top of these boundaries.
 
-## Active Layers
+## Runtime stack
 
-- `src/app`: root layout, landing route, metadata routes, global styling, and generated social image.
-- `src/components/landing`: focused sections composed by the homepage.
-- `src/components/layout`: shared public header and footer.
+- Next.js 15 App Router and React 19
+- TypeScript in strict mode
+- Tailwind CSS with shared UI primitives
+- Supabase Auth for credentials, email verification, OAuth, recovery, and sessions
+- Supabase PostgreSQL with row-level security
+- Drizzle ORM and Drizzle Kit for typed server access and migrations
+- Zod for server-side form and environment validation
+- Vitest and Playwright for unit and browser verification
+
+## Application layers
+
+- `src/app/(auth)`: login, account registration, recovery, reset, and verification pages plus server actions.
+- `src/app/(protected)`: authenticated buyer, supplier, and admin route boundaries.
+- `src/app/auth/callback`: PKCE code exchange for email and OAuth callbacks.
+- `src/components/auth`: shared, accessible auth and protected-account UI.
+- `src/components/landing`: public landing sections.
+- `src/components/layout`: shared header and footer.
 - `src/components/ui`: small reusable design-system primitives.
-- `src/components/brand`: the shared brand mark.
-- `src/config`: centralized site name, description, and navigation.
-- `src/lib/marketplace/taxonomy.ts`: landing-page category content.
-- `tests/unit` and `tests/e2e`: configuration/content tests and browser-level landing checks.
+- `src/config`: validated environment access and public site configuration.
+- `src/db`: Drizzle client and PostgreSQL schemas.
+- `src/lib/auth`: principal resolution, authorization, and redirect safety.
+- `src/lib/supabase`: browser, server, middleware, and generated-style database types.
+- `src/lib/validation`: trusted server-side input schemas.
+- `drizzle`: versioned SQL migrations and Drizzle metadata.
+- `scripts`: explicit migration and idempotent seed entry points.
 
-## Architectural Boundaries
+## Authentication and authorization
 
-The current application does not include marketplace catalog APIs, dashboards, chat, payments,
-uploads, RFQs, auctions, or vendor administration. Those domains must return as separately reviewed
-milestones rather than dormant production code.
+Supabase Auth owns passwords and session lifecycle; the application does not store passwords, reset tokens, or custom sessions. An `auth.users` trigger creates one `profiles` row and either a buyer or seller profile. Client metadata may request only `BUYER` or `SELLER`; it can never create an `ADMIN` profile.
 
-Authentication will use Supabase Auth. No custom password storage or authentication service will be
-introduced.
+Middleware refreshes signed cookies and redirects unauthenticated requests from `/account`, `/seller`, and `/admin`. Server Components then load the RLS-protected profile and enforce the application role. Browser metadata and URL paths are never treated as authority.
 
-## Security
+## Data security
 
-The application sends a restrictive baseline Content Security Policy, frame protection, MIME
-sniffing protection, a strict referrer policy, and a locked-down permissions policy. Authentication
-security and session refresh rules will be documented when the Supabase milestone begins.
+Every public-schema identity table has RLS enabled. The migration revokes default `anon` and `authenticated` table privileges, then grants only required columns and operations. Users can read only their own identity records. Self-service updates exclude role, account status, seller review status, slugs, timestamps, and email. Audit logs have no client policy or grant.
+
+The browser receives only the Supabase publishable key. `DATABASE_URL` is server-only and used by migration/seed scripts. No service-role key is required by this foundation.
+
+## Initial identity model
+
+The first migration creates profiles, buyer profiles, seller profiles, addresses, admin roles, permissions, admin role-permission assignments, admin profiles, and append-only audit-log storage. Supabase Auth remains the source of truth for authentication identities.

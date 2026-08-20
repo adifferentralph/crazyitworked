@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -23,7 +23,7 @@ export function Footer() {
           </p>
           <Link
             href={siteConfig.auth.buyers}
-            className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-white"
+            className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-accent"
           >
             Start with a part request
             <ArrowUpRight className="size-4" aria-hidden="true" />
@@ -35,7 +35,7 @@ export function Footer() {
           <ul className="mt-4 grid gap-3 text-sm">
             {siteConfig.navigation.map((item) => (
               <li key={item.href}>
-                <Link href={item.href} className="transition-colors hover:text-white">
+                <Link href={item.href} className="focus-visible:text-white">
                   {item.label}
                 </Link>
               </li>

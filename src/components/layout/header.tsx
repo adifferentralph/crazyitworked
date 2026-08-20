@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { ArrowUpRight, Menu, Store } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -16,7 +16,7 @@ export function Header() {
             <Link
               key={item.href}
               href={item.href}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="text-sm font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               {item.label}
             </Link>
@@ -51,7 +51,7 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted"
+                className="rounded-lg px-3 py-2.5 text-sm font-medium"
               >
                 {item.label}
               </Link>

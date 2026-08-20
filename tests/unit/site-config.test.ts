@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { siteConfig } from "@/config/site";
 import { categories } from "@/lib/marketplace/taxonomy";
@@ -21,7 +21,7 @@ describe("public landing content", () => {
   });
 
   it("separates buyer and supplier authentication entry points", () => {
-    expect(siteConfig.auth.buyers).toBe("/auth");
-    expect(siteConfig.auth.suppliers).toBe("/suppliers/auth");
+    expect(siteConfig.auth.buyers).toBe("/signup/buyer");
+    expect(siteConfig.auth.suppliers).toBe("/signup/seller");
   });
 });

@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import {
   Armchair,
   BatteryCharging,
@@ -44,10 +44,10 @@ export function Categories() {
               <Link
                 key={category.slug}
                 href={siteConfig.auth.buyers}
-                className="group border border-stone-200 bg-[#fffdf9] p-5 transition duration-200 hover:-translate-y-1 hover:border-primary hover:bg-white hover:shadow-lg"
+                className="border border-stone-200 bg-[#fffdf9] p-5"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <span className="grid size-11 place-items-center bg-black text-white transition-colors group-hover:bg-primary">
+                  <span className="grid size-11 place-items-center bg-black text-white">
                     <Icon className="size-5" aria-hidden="true" />
                   </span>
                   <span className="font-mono text-xs font-bold text-stone-400">0{index + 1}</span>

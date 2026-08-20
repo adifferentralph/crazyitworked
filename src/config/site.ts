@@ -1,4 +1,4 @@
-﻿export const siteConfig = {
+export const siteConfig = {
   name: "Twenty-Two Parts",
   shortName: "22 Parts",
   description:
@@ -11,7 +11,7 @@
     { href: "#faq", label: "FAQ" },
   ],
   auth: {
-    buyers: "/auth",
-    suppliers: "/suppliers/auth",
+    buyers: "/signup/buyer",
+    suppliers: "/signup/seller",
   },
 } as const;

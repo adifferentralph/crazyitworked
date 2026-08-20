@@ -1,4 +1,14 @@
-﻿import type { NextConfig } from "next";
+import type { NextConfig } from "next";
+
+const supabaseOrigin = (() => {
+  try {
+    return process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin
+      : null;
+  } catch {
+    return null;
+  }
+})();
 
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -10,7 +20,7 @@ const contentSecurityPolicy = [
   "object-src 'none'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "connect-src 'self' https://vitals.vercel-insights.com",
+  `connect-src 'self' https://vitals.vercel-insights.com${supabaseOrigin ? ` ${supabaseOrigin}` : ""}`,
 ].join("; ");
 
 const securityHeaders = [
