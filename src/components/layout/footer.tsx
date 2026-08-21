@@ -56,7 +56,12 @@ export function Footer() {
       <div className="border-t border-white/10">
         <div className="container-page flex flex-col gap-2 py-6 text-xs text-stone-500 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} Twenty-Two Parts. All rights reserved.</p>
-          <p>Parts sourcing made clear for buyers and suppliers.</p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Link className="text-stone-400 hover:text-white" href="/privacy-policy">
+              Privacy Policy
+            </Link>
+            <p>Parts sourcing made clear for buyers and suppliers.</p>
+          </div>
         </div>
       </div>
     </footer>

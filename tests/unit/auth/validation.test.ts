@@ -13,7 +13,7 @@ describe("auth validation", () => {
     const result = loginSchema.parse({
       email: "  DRIVER@Example.COM ",
       password: "correct horse battery staple",
-      website: "",
+      _gotcha: "",
     });
 
     expect(result.email).toBe("driver@example.com");
@@ -25,7 +25,7 @@ describe("auth validation", () => {
       email: "buyer@example.com",
       fullName: "Ada Driver",
       password: "strong-password",
-      website: "",
+      _gotcha: "",
     });
 
     expect(result.success).toBe(false);
@@ -45,14 +45,14 @@ describe("auth validation", () => {
       password: "strong-password",
       storeName: " ",
       terms: "on",
-      website: "",
+      _gotcha: "",
     });
 
     expect(result.success).toBe(false);
   });
 
   it("returns the same valid recovery shape for normalized email", () => {
-    expect(forgotPasswordSchema.parse({ email: " OWNER@example.com ", website: "" }).email).toBe(
+    expect(forgotPasswordSchema.parse({ email: " OWNER@example.com ", _gotcha: "" }).email).toBe(
       "owner@example.com",
     );
   });
@@ -61,7 +61,7 @@ describe("auth validation", () => {
     const result = resetPasswordSchema.safeParse({
       confirmPassword: "another-password",
       password: "strong-password",
-      website: "",
+      _gotcha: "",
     });
 
     expect(result.success).toBe(false);
@@ -69,6 +69,23 @@ describe("auth validation", () => {
       expect(result.error.flatten().fieldErrors.confirmPassword).toContain(
         "Passwords do not match.",
       );
+    }
+  });
+  it("rejects a populated bot trap without treating a normal website autofill name as a field", () => {
+    const result = buyerSignupSchema.safeParse({
+      _gotcha: "filled-by-a-bot",
+      confirmPassword: "strong-password",
+      email: "buyer@example.com",
+      fullName: "Ada Driver",
+      password: "strong-password",
+      terms: "on",
+      website: "https://example.com",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.flatten().fieldErrors._gotcha).toBeDefined();
+      expect("website" in result.error.flatten().fieldErrors).toBe(false);
     }
   });
 });

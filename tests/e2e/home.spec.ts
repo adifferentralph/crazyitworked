@@ -45,6 +45,16 @@ test("buyer, supplier, and login entry pages expose the correct forms", async ({
   ).toBeVisible();
   await expect(page.getByLabel("Full name")).toBeVisible();
   await expect(page.getByRole("button", { name: "Create buyer account" })).toBeVisible();
+  await expect(page.locator("main").getByRole("link", { name: "Privacy Policy" })).toHaveAttribute(
+    "href",
+    "/privacy-policy",
+  );
+
+  await page.getByRole("button", { name: "Create buyer account" }).click();
+  await expect(page.getByLabel("Full name")).toHaveAttribute("aria-invalid", "true", {
+    timeout: 30_000,
+  });
+  await expect(page.getByLabel("Full name")).toBeFocused();
 
   await page.goto("/signup/seller");
   await expect(
@@ -60,4 +70,10 @@ test("buyer, supplier, and login entry pages expose the correct forms", async ({
     "href",
     "/forgot-password",
   );
+});
+test("privacy policy is available from the public site", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto("/privacy-policy");
+  await expect(page.getByRole("heading", { name: "Privacy Policy", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /your privacy rights/i })).toBeVisible();
 });

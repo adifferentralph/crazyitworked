@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 
 import {
   buyerSignupAction,
@@ -48,6 +48,13 @@ export function AuthForm({
   const isSignup = variant === "buyer-signup" || variant === "seller-signup";
   const showGoogle = variant === "login" || variant === "buyer-signup";
   const submitLabel = submitLabels[variant];
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (state.status !== "error") return;
+
+    formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [state]);
 
   return (
     <div className="mt-7 max-w-lg">
@@ -76,16 +83,16 @@ export function AuthForm({
         </>
       ) : null}
 
-      <form action={formAction} className="grid gap-5" noValidate>
+      <form action={formAction} className="grid gap-5" noValidate ref={formRef}>
         {next ? <input type="hidden" name="next" value={next} /> : null}
         <div
           className="absolute -left-[10000px] top-auto size-px overflow-hidden"
           aria-hidden="true"
         >
-          <label htmlFor={`${variant}-website`}>Website</label>
+          <label htmlFor={`${variant}-gotcha`}>Leave this field blank</label>
           <input
-            id={`${variant}-website`}
-            name="website"
+            id={`${variant}-gotcha`}
+            name="_gotcha"
             type="text"
             tabIndex={-1}
             autoComplete="off"
@@ -95,6 +102,7 @@ export function AuthForm({
         {isSignup ? (
           <AuthField
             autoComplete="name"
+            defaultValue={state.values?.fullName}
             errors={state.fieldErrors?.fullName}
             label="Full name"
             name="fullName"
@@ -106,6 +114,7 @@ export function AuthForm({
         {variant === "seller-signup" ? (
           <AuthField
             autoComplete="organization"
+            defaultValue={state.values?.storeName}
             errors={state.fieldErrors?.storeName}
             label="Store or business name"
             name="storeName"
@@ -117,6 +126,7 @@ export function AuthForm({
         {variant !== "reset" ? (
           <AuthField
             autoComplete="email"
+            defaultValue={state.values?.email}
             errors={state.fieldErrors?.email}
             inputMode="email"
             label="Email address"
@@ -150,16 +160,37 @@ export function AuthForm({
 
         {isSignup ? (
           <div>
-            <label className="flex items-start gap-3 text-sm leading-6 text-stone-700">
+            <div className="flex items-start gap-3 text-sm leading-6 text-stone-700">
               <input
-                className="mt-1 size-4 rounded border-stone-300 accent-primary"
+                aria-describedby={state.fieldErrors?.terms?.[0] ? "terms-error" : undefined}
+                aria-invalid={Boolean(state.fieldErrors?.terms?.[0])}
+                className={`mt-1 size-4 rounded border-stone-300 accent-primary outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  state.fieldErrors?.terms?.[0] ? "ring-2 ring-primary ring-offset-2" : ""
+                }`}
+                defaultChecked={state.values?.terms === "on"}
+                id={`${variant}-terms`}
                 name="terms"
                 type="checkbox"
               />
-              <span>I agree to the Terms of Use and acknowledge the Privacy Policy.</span>
-            </label>
+              <span>
+                <label htmlFor={`${variant}-terms`}>
+                  I agree to the Terms of Use and acknowledge the{" "}
+                </label>
+                <Link
+                  className="font-semibold text-primary underline underline-offset-4"
+                  href="/privacy-policy"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </div>
             {state.fieldErrors?.terms?.[0] ? (
-              <p className="mt-2 text-sm text-primary">{state.fieldErrors.terms[0]}</p>
+              <p id="terms-error" className="mt-2 text-sm font-medium text-primary">
+                {state.fieldErrors.terms[0]}
+              </p>
             ) : null}
           </div>
         ) : null}

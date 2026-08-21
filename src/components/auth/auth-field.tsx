@@ -45,7 +45,7 @@ export function AuthField({
           className={cn(
             "h-12 w-full rounded-md border border-stone-300 bg-white px-3.5 text-base text-stone-950 outline-none placeholder:text-stone-400 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-500",
             isPassword && "pr-12",
-            hasError && "border-primary",
+            hasError && "border-primary bg-red-50 ring-2 ring-primary/20",
             className,
           )}
         />
@@ -70,7 +70,7 @@ export function AuthField({
         ) : null}
       </div>
       {hasError ? (
-        <p id={errorId} className="text-sm text-primary">
+        <p id={errorId} className="text-sm font-medium text-primary">
           {errors?.[0]}
         </p>
       ) : null}

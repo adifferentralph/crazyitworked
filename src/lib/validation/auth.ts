@@ -12,12 +12,14 @@ const password = z
   .min(8, "Password must contain at least 8 characters.")
   .max(72, "Password must contain no more than 72 characters.");
 
+export const authBotTrapField = "_gotcha" as const;
+
 const honeypot = z.string().max(0, "Unable to submit this form.").optional().default("");
 
 export const loginSchema = z.object({
   email,
   password: z.string({ required_error: "Enter your password." }).min(1, "Enter your password."),
-  website: honeypot,
+  [authBotTrapField]: honeypot,
 });
 
 const signupBase = z
@@ -31,7 +33,7 @@ const signupBase = z
       .max(100, "Full name is too long."),
     password,
     terms: z.string().optional(),
-    website: honeypot,
+    [authBotTrapField]: honeypot,
   })
   .superRefine(({ confirmPassword, password, terms }, context) => {
     if (terms !== "on") {
@@ -65,14 +67,14 @@ export const sellerSignupSchema = signupBase.and(
 
 export const forgotPasswordSchema = z.object({
   email,
-  website: honeypot,
+  [authBotTrapField]: honeypot,
 });
 
 export const resetPasswordSchema = z
   .object({
     confirmPassword: z.string({ required_error: "Confirm your new password." }),
     password,
-    website: honeypot,
+    [authBotTrapField]: honeypot,
   })
   .superRefine(({ confirmPassword, password }, context) => {
     if (confirmPassword !== password) {

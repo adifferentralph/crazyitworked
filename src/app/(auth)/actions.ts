@@ -10,6 +10,7 @@ import type { AuthActionState } from "@/lib/auth/types";
 import type { UserRole } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 import {
+  authBotTrapField,
   buyerSignupSchema,
   forgotPasswordSchema,
   getFormValues,
@@ -23,11 +24,32 @@ const configurationError: AuthActionState = {
   status: "error",
 };
 
-function validationError(error: z.ZodError): AuthActionState {
+function getSafeSubmittedValues(formData: FormData): AuthActionState["values"] {
+  const getText = (name: string) => {
+    const value = formData.get(name);
+    return typeof value === "string" ? value : undefined;
+  };
+
   return {
-    fieldErrors: error.flatten().fieldErrors,
-    message: "Check the highlighted fields and try again.",
+    email: getText("email"),
+    fullName: getText("fullName"),
+    storeName: getText("storeName"),
+    terms: formData.get("terms") === "on" ? "on" : undefined,
+  };
+}
+
+function validationError(error: z.ZodError, formData: FormData): AuthActionState {
+  const fieldErrors = error.flatten().fieldErrors;
+  const botTrapFailed = Boolean(fieldErrors[authBotTrapField]?.length);
+  delete fieldErrors[authBotTrapField];
+
+  return {
+    fieldErrors,
+    message: botTrapFailed
+      ? "We could not submit this form safely. Refresh the page and try again."
+      : "Check the highlighted fields and try again.",
     status: "error",
+    values: getSafeSubmittedValues(formData),
   };
 }
 
@@ -38,7 +60,7 @@ export async function loginAction(
   const parsed = loginSchema.safeParse(getFormValues(formData));
 
   if (!parsed.success) {
-    return validationError(parsed.error);
+    return validationError(parsed.error, formData);
   }
 
   if (!hasSupabaseEnvironment()) {
@@ -55,6 +77,7 @@ export async function loginAction(
     return {
       message: "The email or password is incorrect.",
       status: "error",
+      values: getSafeSubmittedValues(formData),
     };
   }
 
@@ -90,7 +113,7 @@ async function signup(
   const parsed = schema.safeParse(getFormValues(formData));
 
   if (!parsed.success) {
-    return validationError(parsed.error);
+    return validationError(parsed.error, formData);
   }
 
   if (!hasSupabaseEnvironment()) {
@@ -116,6 +139,7 @@ async function signup(
     return {
       message: "We could not create the account. Check your details or try again shortly.",
       status: "error",
+      values: getSafeSubmittedValues(formData),
     };
   }
 
@@ -141,7 +165,7 @@ export async function forgotPasswordAction(
   const parsed = forgotPasswordSchema.safeParse(getFormValues(formData));
 
   if (!parsed.success) {
-    return validationError(parsed.error);
+    return validationError(parsed.error, formData);
   }
 
   if (!hasSupabaseEnvironment()) {
@@ -166,7 +190,7 @@ export async function resetPasswordAction(
   const parsed = resetPasswordSchema.safeParse(getFormValues(formData));
 
   if (!parsed.success) {
-    return validationError(parsed.error);
+    return validationError(parsed.error, formData);
   }
 
   if (!hasSupabaseEnvironment()) {
