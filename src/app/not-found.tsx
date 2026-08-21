@@ -11,7 +11,7 @@ export default function NotFound() {
           This road does not lead to a part.
         </h1>
         <p className="mt-4 leading-7 text-muted-foreground">
-          The page may have moved, or the feature may belong to a later marketplace release.
+          The page may have moved, or this listing may no longer be available.
         </p>
         <Button asChild className="mt-7">
           <Link href="/">Return home</Link>

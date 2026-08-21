@@ -1,0 +1,3 @@
+export default function MarketplaceLoading() {
+  return <section className="min-h-[70vh] bg-white py-12 sm:py-16"><div className="container-page" aria-busy="true" aria-label="Loading marketplace"><div className="h-4 w-40 animate-pulse rounded bg-stone-200" /><div className="mt-4 h-12 max-w-2xl animate-pulse rounded bg-stone-200" /><div className="mt-10 h-14 animate-pulse rounded bg-stone-100" /><div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 6 }, (_, index) => <div className="h-96 animate-pulse rounded-lg border border-stone-200 bg-stone-100" key={index} />)}</div></div></section>;
+}
