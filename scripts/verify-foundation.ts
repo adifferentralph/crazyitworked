@@ -35,7 +35,7 @@ async function main() {
     const migrations = await sql<{ count: number }[]>`
       select count(*)::int as count from drizzle.__drizzle_migrations
     `;
-    assert(migrations[0]?.count === 1, "Expected exactly one applied Foundation migration.");
+    assert((migrations[0]?.count ?? 0) >= 1, "Expected the Foundation migration to be applied.");
 
     const tables = await sql<{ rowsecurity: boolean; tablename: string }[]>`
       select tablename, rowsecurity

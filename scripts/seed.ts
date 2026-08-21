@@ -4,6 +4,8 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { z } from "zod";
 
+import { seedMarketplace } from "./seed-marketplace";
+
 import {
   adminRolePermissions,
   adminRoles,
@@ -170,14 +172,16 @@ async function main() {
       }
     });
 
-    console.log("Foundation roles and permissions seeded.");
+    await seedMarketplace(client);
+
+    console.log("Foundation roles, marketplace categories, and vehicle fitments seeded.");
   } finally {
     await client.end();
   }
 }
 
 main().catch((error: unknown) => {
-  console.error("Foundation seed failed.");
+  console.error("Application seed failed.");
   console.error(error instanceof Error ? error.message : "Unknown seed error");
   process.exitCode = 1;
 });

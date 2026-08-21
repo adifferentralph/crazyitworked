@@ -18,7 +18,7 @@ const contentSecurityPolicy = [
   "font-src 'self' data:",
   "form-action 'self'",
   "frame-ancestors 'none'",
-  "img-src 'self' data: blob:",
+  `img-src 'self' data: blob:${supabaseOrigin ? ` ${supabaseOrigin}` : ""}`,
   "object-src 'none'",
   `script-src 'self' 'unsafe-inline'${developmentScriptPolicy}`,
   "style-src 'self' 'unsafe-inline'",
@@ -35,6 +35,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "45mb",
+    },
+  },
   poweredByHeader: false,
   async headers() {
     return [

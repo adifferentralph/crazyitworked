@@ -1,4 +1,4 @@
-﻿import { sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -93,6 +93,9 @@ export const sellerProfiles = pgTable(
     status: sellerStatusEnum("status").default("PENDING_VERIFICATION").notNull(),
     description: text("description"),
     businessRegistrationNumber: text("business_registration_number"),
+    contactPhone: text("contact_phone"),
+    websiteUrl: text("website_url"),
+    onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
     country: text("country").default("Nigeria").notNull(),
     state: text("state"),
     city: text("city"),
