@@ -18,15 +18,25 @@ const optionalText = (maximum: number) =>
 
 const checkbox = z.preprocess((value) => value === "on" || value === "true", z.boolean());
 
+const optionalRegistrationNumber = z
+  .string()
+  .trim()
+  .max(100, "Business registration number must be 100 characters or fewer.")
+  .refine(
+    (value) => !value || /^[A-Za-z0-9][A-Za-z0-9./ -]+$/.test(value),
+    "Enter a valid business registration number.",
+  )
+  .transform((value) => value || null);
+
 export const sellerOnboardingSchema = z.object({
-  businessRegistrationNumber: requiredText("Registration number", 2, 100),
+  businessRegistrationNumber: optionalRegistrationNumber,
   city: requiredText("City", 2, 100),
   contactPhone: z
     .string()
     .trim()
     .regex(/^\+?[0-9][0-9\s-]{7,18}$/, "Enter a valid business phone number."),
   country: z.literal("Nigeria"),
-  description: requiredText("Business description", 20, 1000),
+  description: optionalText(1000),
   state: requiredText("State", 2, 100),
   storeName: requiredText("Store name", 2, 120),
   websiteUrl: z

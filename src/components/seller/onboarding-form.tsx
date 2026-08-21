@@ -35,7 +35,7 @@ export function OnboardingForm({ defaults }: { defaults: OnboardingDefaults }) {
       <div className="grid gap-5 rounded-lg border border-stone-200 bg-white p-5 sm:grid-cols-2 sm:p-7">
         <div className="sm:col-span-2">
           <h2 className="text-2xl font-semibold text-stone-950">Business profile</h2>
-          <p className="mt-2 text-sm text-stone-600">This information helps the marketplace team verify your parts business.</p>
+          <p className="mt-2 text-sm text-stone-600">Start with your trading details. Formal business verification can be completed progressively.</p>
         </div>
         <div>
           <label className={labelClass} htmlFor="storeName">Store or business name</label>
@@ -43,8 +43,16 @@ export function OnboardingForm({ defaults }: { defaults: OnboardingDefaults }) {
           <FieldError errors={state.fieldErrors?.storeName} />
         </div>
         <div>
-          <label className={labelClass} htmlFor="businessRegistrationNumber">Registration number</label>
-          <Input defaultValue={defaults.businessRegistrationNumber ?? ""} id="businessRegistrationNumber" name="businessRegistrationNumber" placeholder="CAC or business registration number" />
+          <label className={labelClass} htmlFor="businessRegistrationNumber">
+            Business Registration Number <span className="font-normal text-stone-500">(optional)</span>
+          </label>
+          <Input
+            defaultValue={defaults.businessRegistrationNumber ?? ""}
+            id="businessRegistrationNumber"
+            name="businessRegistrationNumber"
+            placeholder="RC, BN, or other registration number"
+          />
+          <p className="mt-2 text-xs leading-5 text-stone-500">You can add this later to complete business verification.</p>
           <FieldError errors={state.fieldErrors?.businessRegistrationNumber} />
         </div>
         <div>
@@ -58,7 +66,7 @@ export function OnboardingForm({ defaults }: { defaults: OnboardingDefaults }) {
           <FieldError errors={state.fieldErrors?.websiteUrl} />
         </div>
         <div className="sm:col-span-2">
-          <label className={labelClass} htmlFor="description">About your business</label>
+          <label className={labelClass} htmlFor="description">About your business <span className="font-normal text-stone-500">(optional)</span></label>
           <textarea className={textareaClass} defaultValue={defaults.description ?? ""} id="description" name="description" placeholder="Tell buyers what you specialise in, how long you have traded, and how you source parts." />
           <FieldError errors={state.fieldErrors?.description} />
         </div>
@@ -87,7 +95,7 @@ export function OnboardingForm({ defaults }: { defaults: OnboardingDefaults }) {
 
       <SellerFormAlert state={state} />
       <div>
-        <SellerSubmitButton pendingLabel="Saving supplier profile…" type="submit">Save and submit for verification</SellerSubmitButton>
+        <SellerSubmitButton pendingLabel="Saving store profile…" type="submit">Save store profile</SellerSubmitButton>
       </div>
     </form>
   );

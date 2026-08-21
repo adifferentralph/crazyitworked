@@ -24,7 +24,7 @@ export function ProductCard({ product, vehicle }: { product: Product; vehicle?: 
           <p className="flex items-center gap-2"><PackageCheck className="size-4 text-primary" aria-hidden="true" />{product.seller?.store_name ?? "Marketplace supplier"}</p>
           <p className="flex items-center gap-2"><MapPin className="size-4 text-primary" aria-hidden="true" />{product.city}, {product.state}</p>
           <p className="flex items-center gap-2"><Star className="size-4 text-primary" aria-hidden="true" />No reviews yet</p>
-          {vehicle ? <p className="flex items-start gap-2 font-semibold text-emerald-700"><CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Fits your {vehicle.label}</p> : null}
+          {vehicle ? <p className="flex items-start gap-2 font-semibold text-emerald-700"><CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Seller lists {vehicle.label}</p> : null}
         </div>
         <div className="mt-auto flex items-center justify-between gap-3 pt-5">
           <span className={product.quantity > 0 ? "text-sm font-semibold text-emerald-700" : "text-sm font-semibold text-stone-500"}>{product.quantity > 0 ? `${product.quantity} in stock` : "Out of stock"}</span>

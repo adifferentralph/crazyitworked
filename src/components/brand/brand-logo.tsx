@@ -1,4 +1,4 @@
-﻿import Image from "next/image";
+import Image from "next/image";
 import Link from "next/link";
 
 import logo from "@/components/brand/logo.png";
@@ -7,16 +7,18 @@ import { cn } from "@/lib/utils";
 
 export function BrandLogo({
   className,
+  href = "/",
   inverse = false,
   priority = false,
 }: {
   className?: string;
+  href?: string;
   inverse?: boolean;
   priority?: boolean;
 }) {
   return (
     <Link
-      href="/"
+      href={href}
       className={cn(
         "inline-flex items-center gap-3 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4",
         inverse ? "text-white" : "text-foreground",

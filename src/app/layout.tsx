@@ -1,10 +1,8 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { DM_Sans, Playfair_Display, Space_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 
 import "@/app/globals.css";
-import { Footer } from "@/components/layout/footer";
-import { Header } from "@/components/layout/header";
 import { siteConfig } from "@/config/site";
 
 const displayFont = Playfair_Display({
@@ -70,9 +68,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         >
           Skip to content
         </a>
-        <Header />
-        <main id="main-content">{children}</main>
-        <Footer />
+        {children}
         <Analytics />
       </body>
     </html>

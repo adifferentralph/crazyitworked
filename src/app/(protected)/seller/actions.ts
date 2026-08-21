@@ -71,8 +71,8 @@ export async function completeSellerOnboardingAction(
   const { error: verificationError } = await supabase
     .from("seller_verifications")
     .update({
-      status: "SUBMITTED",
-      submitted_at: completedAt,
+      status: parsed.data.businessRegistrationNumber ? "SUBMITTED" : "DRAFT",
+      submitted_at: parsed.data.businessRegistrationNumber ? completedAt : null,
     })
     .eq("seller_id", principal.id);
 

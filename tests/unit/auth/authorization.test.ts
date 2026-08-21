@@ -16,7 +16,7 @@ describe("role authorization", () => {
   });
 
   it.each([
-    ["BUYER", "/account"],
+    ["BUYER", "/marketplace"],
     ["SELLER", "/seller/dashboard"],
     ["ADMIN", "/admin"],
   ] as const)("maps %s to its protected home", (role, expected) => {

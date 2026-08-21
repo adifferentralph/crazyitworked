@@ -139,9 +139,11 @@ test("live Supabase Auth, session, route, and RLS boundaries", async ({ page }, 
     `;
 
     await loginThroughUi(page, buyer);
-    await expect(page).toHaveURL(/\/account$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/marketplace$/, { timeout: 30_000 });
     await page.reload();
-    await expect(page.getByText("Buyer account", { exact: true })).toBeVisible();
+    await expect(page.getByRole("search").first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /cart with 0 items/i })).toBeVisible();
+    await expect(page.getByText("For suppliers", { exact: true })).toHaveCount(0);
 
     await page.goto("/seller/dashboard");
     await expect(page).toHaveURL(/\/forbidden$/, { timeout: 30_000 });
@@ -157,7 +159,7 @@ test("live Supabase Auth, session, route, and RLS boundaries", async ({ page }, 
     buyer.password = replacementPassword;
 
     await loginThroughUi(page, buyer);
-    await expect(page).toHaveURL(/\/account$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/marketplace$/, { timeout: 30_000 });
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/login$/, { timeout: 30_000 });
     await page.goto("/account");
@@ -227,7 +229,8 @@ test("live Supabase Auth, session, route, and RLS boundaries", async ({ page }, 
     await loginThroughUi(page, seller);
     await expect(page).toHaveURL(/\/seller\/dashboard$/, { timeout: 30_000 });
     await page.reload();
-    await expect(page.getByText("Supplier workspace", { exact: true })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Seller workspace" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Add Product" })).toBeVisible();
     await page.goto("/account");
     await expect(page).toHaveURL(/\/forbidden$/, { timeout: 30_000 });
     await page.goto("/admin");

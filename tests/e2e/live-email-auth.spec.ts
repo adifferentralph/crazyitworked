@@ -155,7 +155,7 @@ test("live confirmation and password recovery use Mailtrap links", async ({ page
 
     const confirmationLink = await waitForAuthLink(email, /confirm/i, signupStartedAt);
     await page.goto(confirmationLink);
-    await expect(page).toHaveURL(/\/account$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/marketplace$/, { timeout: 30_000 });
     await expect(page.getByText("Buyer account", { exact: true })).toBeVisible();
     await page.reload();
     await expect(page.getByText("Buyer account", { exact: true })).toBeVisible();
@@ -187,7 +187,7 @@ test("live confirmation and password recovery use Mailtrap links", async ({ page
     await page.getByLabel("Email address").fill(email);
     await page.getByLabel("Password", { exact: true }).fill(replacementPassword);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await expect(page).toHaveURL(/\/account$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/marketplace$/, { timeout: 30_000 });
   } finally {
     await sql`delete from auth.users where email = ${email}`;
     await sql.end();

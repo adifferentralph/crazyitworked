@@ -39,7 +39,7 @@ export default async function SellerDashboardPage() {
 
   return (
     <SellerShell
-      description="Manage your verified supplier identity, real product catalogue, and listing review status."
+      description="Manage your store, real product catalogue, inventory, and listing review status."
       title={seller?.store_name ?? "Supplier account"}
     >
       {!seller?.onboarding_completed_at ? (
@@ -49,7 +49,7 @@ export default async function SellerDashboardPage() {
             <div>
               <h2 className="font-semibold text-stone-950">Complete your supplier profile</h2>
               <p className="mt-1 text-sm text-stone-700">
-                Business and location details are required before you can add products.
+                Trading, contact, and location details are required before you can add products. Business registration is optional.
               </p>
             </div>
           </div>
@@ -101,7 +101,7 @@ export default async function SellerDashboardPage() {
           </div>
         </div>
         <div className="min-w-64 rounded-lg border border-stone-200 bg-white p-6">
-          <p className="text-sm font-semibold text-stone-500">Supplier verification</p>
+          <p className="text-sm font-semibold text-stone-500">Store review</p>
           <p className="mt-3 text-xl font-semibold capitalize text-stone-950">
             {(verification?.status ?? "DRAFT").replaceAll("_", " ").toLowerCase()}
           </p>

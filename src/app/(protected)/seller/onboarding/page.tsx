@@ -17,11 +17,19 @@ export default async function SellerOnboardingPage() {
   if (!seller) return null;
 
   return (
-    <SellerShell description="Complete your supplier identity once, then keep the profile current for marketplace trust and fulfilment." title="Store profile">
+    <SellerShell description="Keep your trading, contact, and fulfilment details current. Formal business registration can be added later." title="Store Settings">
       <div className="mb-7 flex flex-wrap items-center gap-3 rounded-lg border border-stone-200 bg-[#fffdf9] p-4">
         <BadgeCheck className="size-5 text-primary" aria-hidden="true" />
-        <span className="text-sm font-semibold text-stone-800">Verification status</span>
-        <Badge variant={verification?.status === "APPROVED" ? "default" : "outline"}>{(verification?.status ?? "DRAFT").replaceAll("_", " ").toLowerCase()}</Badge>
+        <span className="text-sm font-semibold text-stone-800">Store setup</span>
+        <Badge variant={verification?.status === "APPROVED" ? "default" : "outline"}>
+          {verification?.status === "APPROVED"
+            ? "business verified"
+            : verification?.status === "SUBMITTED"
+              ? "business review submitted"
+              : seller.onboarding_completed_at
+                ? "basic profile complete"
+                : "profile in progress"}
+        </Badge>
         {verification?.rejection_reason ? <p className="w-full text-sm text-stone-600">Review note: {verification.rejection_reason}</p> : null}
       </div>
       <OnboardingForm defaults={{

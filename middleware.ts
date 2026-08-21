@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { updateSession } from "@/lib/supabase/middleware";
 
-const protectedPrefixes = ["/account", "/seller", "/admin"] as const;
+const protectedPrefixes = ["/account", "/admin", "/cart", "/marketplace", "/seller"] as const;
 
 function copyResponseCookies(source: NextResponse, destination: NextResponse) {
   source.cookies.getAll().forEach((cookie) => destination.cookies.set(cookie));

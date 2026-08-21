@@ -13,5 +13,5 @@ export function getHomeForRole(role: UserRole) {
     return "/admin";
   }
 
-  return "/account";
+  return "/marketplace";
 }
