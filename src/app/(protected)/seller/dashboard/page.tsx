@@ -7,18 +7,20 @@ import {
   PackageCheck,
   Plus,
   Store,
+  Target,
 } from "lucide-react";
 
 import { SellerShell } from "@/components/seller/seller-shell";
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth/principal";
+import { getSellerFitmentPerformance } from "@/lib/fitment/data";
 import { getSellerProducts } from "@/lib/marketplace/seller-data";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SellerDashboardPage() {
   const principal = await requireRole(["SELLER"], "/seller/dashboard");
   const supabase = await createClient();
-  const [{ data: seller }, { data: verification }, products] = await Promise.all([
+  const [{ data: seller }, { data: verification }, products, fitmentPerformance] = await Promise.all([
     supabase
       .from("seller_profiles")
       .select("store_name, status, onboarding_completed_at")
@@ -75,6 +77,20 @@ export default async function SellerDashboardPage() {
           </div>
         ))}
       </dl>
+
+      <section className="mt-8 rounded-lg border border-stone-200 bg-white p-6">
+        <div className="flex items-start gap-3">
+          <Target className="mt-1 size-5 text-primary" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl font-semibold text-stone-950">Fitment accuracy</h2>
+            {fitmentPerformance?.evidence_status === "MEASURED" ? (
+              <><p className="mt-2 text-3xl font-semibold text-stone-950">{fitmentPerformance.accuracy_percent}%</p><p className="mt-1 text-sm text-stone-600">{fitmentPerformance.confirmed_count} confirmed fits across {fitmentPerformance.eligible_count} eligible buyer outcomes. Unconfirmed responses are excluded.</p></>
+            ) : (
+              <><p className="mt-2 font-semibold text-stone-800">Not enough verified outcomes</p><p className="mt-1 text-sm leading-6 text-stone-600">Accuracy appears after at least five eligible fit-or-problem outcomes. Current eligible sample: {fitmentPerformance?.eligible_count ?? 0}. Raw outcomes remain preserved.</p></>
+            )}
+          </div>
+        </div>
+      </section>
 
       <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_auto]">
         <div className="rounded-lg border border-stone-200 bg-[#fffdf9] p-6">

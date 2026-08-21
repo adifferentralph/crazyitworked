@@ -127,7 +127,7 @@ async function main() {
       select count(*)::int as count from public.admin_role_permissions
     `;
     assert(roleCount?.count === 9, "Expected nine seeded admin roles.");
-    assert(permissionCount?.count === 15, "Expected fifteen seeded permissions.");
+    assert(permissionCount?.count === 17, "Expected seventeen seeded permissions.");
     assert(assignmentCount?.count === 48, "Unexpected role-permission assignment count.");
 
     const functions = await sql<{ definition: string; proname: string }[]>`

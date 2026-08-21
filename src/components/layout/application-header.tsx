@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  Activity,
   Bell,
   Boxes,
   CarFront,
@@ -249,9 +250,14 @@ function AdminHeader({ principal }: { principal: Principal }) {
           <Link className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold hover:bg-white/10" href="/admin">
             <ShieldCheck aria-hidden="true" className="size-4 text-accent" />
             Operations
-          </Link>          <Link className="hidden items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold hover:bg-white/10 sm:flex" href="/admin/inventory-onboarding">
+          </Link>
+          <Link className="hidden items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold hover:bg-white/10 sm:flex" href="/admin/inventory-onboarding">
             <Boxes aria-hidden="true" className="size-4 text-accent" />
             Inventory
+          </Link>
+          <Link className="hidden items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold hover:bg-white/10 lg:flex" href="/admin/fitment-intelligence">
+            <Activity aria-hidden="true" className="size-4 text-accent" />
+            Fitment
           </Link>
           <span className="hidden text-sm text-stone-400 sm:inline">{principal.fullName}</span>
           <SignOutButton compact />

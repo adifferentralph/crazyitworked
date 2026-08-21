@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase/server";
 export type AdminPermission =
   | "admin.manage"
   | "assist_seller_inventory"
+  | "demand.read"
+  | "fitment.manage"
   | "audit.read"
   | "products.approve"
   | "products.edit"

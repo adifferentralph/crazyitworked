@@ -181,6 +181,8 @@ export async function searchMarketplaceProducts(search: MarketplaceSearch) {
       .from("product_fitments")
       .select("product_id")
       .eq("fitment_id", search.vehicle)
+      .eq("is_active", true)
+      .not("evidence_type", "in", "(DISPUTED,KNOWN_INCORRECT)")
       .limit(1000);
     allowedIds = intersect(allowedIds, (data ?? []).map((row) => row.product_id));
   }
@@ -250,7 +252,7 @@ export const getMarketplaceProduct = cache(async function getMarketplaceProduct(
     supabase.from("marketplace_sellers").select("*").eq("seller_id", product.seller_id).single(),
     supabase.from("product_categories").select("name").eq("id", product.category_id).single(),
     supabase.from("product_cross_references").select("reference_number").eq("product_id", product.id).order("reference_number"),
-    supabase.from("product_fitments").select("fitment_id").eq("product_id", product.id),
+    supabase.from("product_fitments").select("fitment_id, evidence_type, evidence_metadata").eq("product_id", product.id).eq("is_active", true).not("evidence_type", "in", "(DISPUTED,KNOWN_INCORRECT)"),
     getMarketplaceOptions(),
   ]);
   const paths = (imagesResult.data ?? []).map((image) => image.storage_path);
@@ -258,12 +260,20 @@ export const getMarketplaceProduct = cache(async function getMarketplaceProduct(
     ? await supabase.storage.from("product-media").createSignedUrls(paths, 3600)
     : { data: [] };
   const urls = new Map((signed ?? []).map((item, index) => [paths[index], item.signedUrl ?? null]));
-  const fitmentIds = new Set((fitmentsResult.data ?? []).map((row) => row.fitment_id));
+  const evidenceByFitment = new Map(
+    (fitmentsResult.data ?? []).map((row) => [row.fitment_id, {
+      evidenceMetadata: row.evidence_metadata,
+      evidenceType: row.evidence_type,
+    }]),
+  );
 
   return {
     categoryName: categoryResult.data?.name ?? "Automotive part",
     crossReferences: (crossReferencesResult.data ?? []).map((row) => row.reference_number),
-    fitments: options.vehicles.filter((vehicle) => fitmentIds.has(vehicle.id)),
+    fitments: options.vehicles.flatMap((vehicle) => {
+      const evidence = evidenceByFitment.get(vehicle.id);
+      return evidence ? [{ ...vehicle, ...evidence }] : [];
+    }),
     images: (imagesResult.data ?? []).map((image) => ({ ...image, signedUrl: urls.get(image.storage_path) ?? null })),
     product,
     seller: sellerResult.data,

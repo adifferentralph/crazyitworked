@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Boxes, LayoutDashboard } from "lucide-react";
+import { Activity, Boxes, LayoutDashboard } from "lucide-react";
 
 const navigation = [
   { href: "/admin", icon: LayoutDashboard, label: "Operations" },
   { href: "/admin/inventory-onboarding", icon: Boxes, label: "Inventory onboarding" },
+  { href: "/admin/fitment-intelligence", icon: Activity, label: "Fitment & demand" },
 ] as const;
 
 export function AdminShell({

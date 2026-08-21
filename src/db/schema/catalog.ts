@@ -19,6 +19,7 @@ import { authenticatedRole, authUid } from "drizzle-orm/supabase";
 
 import { profiles, sellerProfiles } from "@/db/schema/identity";
 import {
+  fitmentEvidenceTypeEnum,
   inventoryTransactionTypeEnum,
   mediaHistoryActionEnum,
   productConditionEnum,
@@ -486,15 +487,31 @@ export const productFitments = pgTable(
       .notNull()
       .references(() => vehicleFitments.id, { onDelete: "restrict" }),
     notes: text("notes"),
+    evidenceType: fitmentEvidenceTypeEnum("evidence_type").default("SELLER_CLAIMED").notNull(),
+    claimedByUserId: uuid("claimed_by_user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "restrict" }),
+    evidenceMetadata: jsonb("evidence_metadata").default(sql`'{}'::jsonb`).notNull(),
+    verifiedByUserId: uuid("verified_by_user_id").references(() => profiles.id, {
+      onDelete: "set null",
+    }),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     uniqueIndex("product_fitments_product_fitment_unique").on(table.productId, table.fitmentId),
     index("product_fitments_fitment_idx").on(table.fitmentId),
+    index("product_fitments_evidence_idx").on(table.evidenceType, table.isActive),
     pgPolicy("product_fitments_select_product", {
       for: "select",
       to: authenticatedRole,
-      using: sql`exists (select 1 from public.products where id = ${table.productId})`,
+      using: sql`exists (
+        select 1 from public.products
+        where id = ${table.productId}
+          and (seller_id = ${authUid} or (${table.isActive} and ${table.evidenceType} <> 'KNOWN_INCORRECT'))
+      )`,
     }),
     pgPolicy("product_fitments_write_own", {
       for: "all",

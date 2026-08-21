@@ -52,3 +52,8 @@ export const savedVehicleSchema = z.object({
 export const savedVehicleIdSchema = z.object({
   vehicleId: z.string().uuid("Choose a valid saved vehicle."),
 });
+export const fitmentOutcomeSchema = z.object({
+  snapshotId: z.string().uuid("Choose a valid fitment check."),
+  outcome: z.enum(["FIT_CONFIRMED", "FIT_PROBLEM_REPORTED", "UNCONFIRMED"]),
+  note: optionalText(1000),
+});

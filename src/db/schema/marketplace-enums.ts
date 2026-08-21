@@ -81,3 +81,48 @@ export const inventoryTransactionTypeEnum = pgEnum("inventory_transaction_type",
   "RETURN",
   "ADMIN_ADJUSTMENT",
 ]);
+export const fitmentEvidenceTypeEnum = pgEnum("fitment_evidence_type", [
+  "SELLER_CLAIMED",
+  "OEM_MATCHED",
+  "PLATFORM_VERIFIED",
+  "PURCHASE_VERIFIED",
+  "BUYER_CONFIRMED",
+  "DISPUTED",
+  "KNOWN_INCORRECT",
+]);
+export const fitmentOutcomeStatusEnum = pgEnum("fitment_outcome_status", [
+  "FIT_CONFIRMED",
+  "FIT_PROBLEM_REPORTED",
+  "WRONG_PART",
+  "UNCONFIRMED",
+  "NOT_APPLICABLE",
+]);
+
+export const fitmentEventTypeEnum = pgEnum("fitment_event_type", [
+  "SELLER_CLAIM_RECORDED",
+  "OEM_MATCHED",
+  "PLATFORM_VERIFIED",
+  "PURCHASE_COMPLETED",
+  "BUYER_CONFIRMED",
+  "FIT_PROBLEM_REPORTED",
+  "WRONG_PART_REPORTED",
+  "DISPUTE_OPENED",
+  "INCOMPATIBILITY_RETURN",
+  "ADMIN_CORRECTION",
+  "OEM_CORRECTION",
+  "LISTING_CORRECTION",
+  "REPEAT_PURCHASE_CONFIRMED",
+]);
+
+export const fitmentTransactionSourceEnum = pgEnum("fitment_transaction_source", [
+  "CATALOG_ORDER",
+  "RFQ_ACCEPTED_QUOTE",
+]);
+
+export const demandEventTypeEnum = pgEnum("demand_event_type", [
+  "ZERO_RESULT_SEARCH",
+  "ABANDONED_FILTERED_SEARCH",
+  "RFQ_CREATED",
+  "RFQ_ZERO_QUOTES",
+  "RFQ_NO_ACCEPTABLE_QUOTE",
+]);

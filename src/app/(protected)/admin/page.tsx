@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Boxes, ShieldCheck } from "lucide-react";
+import { Activity, Boxes, ShieldCheck } from "lucide-react";
 
 import { AdminShell } from "@/components/admin/admin-shell";
 import { hasAdminPermission } from "@/lib/auth/permissions";
@@ -7,7 +7,11 @@ import { requireRole } from "@/lib/auth/principal";
 
 export default async function AdminPage() {
   const principal = await requireRole(["ADMIN"], "/admin");
-  const canAssistInventory = await hasAdminPermission("assist_seller_inventory");
+  const [canAssistInventory, canManageFitment, canReadDemand] = await Promise.all([
+    hasAdminPermission("assist_seller_inventory"),
+    hasAdminPermission("fitment.manage"),
+    hasAdminPermission("demand.read"),
+  ]);
 
   return (
     <AdminShell
@@ -20,6 +24,13 @@ export default async function AdminPage() {
             <Boxes aria-hidden="true" className="size-6 text-primary" />
             <h2 className="mt-4 text-xl font-semibold text-stone-950 group-hover:text-primary">Seller inventory onboarding</h2>
             <p className="mt-2 text-sm leading-6 text-stone-600">Create seller-owned drafts, review CSV imports, and track seller confirmation.</p>
+          </Link>
+        ) : null}
+        {canManageFitment || canReadDemand ? (
+          <Link className="group rounded-lg border border-stone-200 bg-white p-6 hover:border-primary" href="/admin/fitment-intelligence">
+            <Activity aria-hidden="true" className="size-6 text-primary" />
+            <h2 className="mt-4 text-xl font-semibold text-stone-950 group-hover:text-primary">Fitment & demand intelligence</h2>
+            <p className="mt-2 text-sm leading-6 text-stone-600">Review evidence-backed compatibility and aggregated supply gaps within your assigned permission scope.</p>
           </Link>
         ) : null}
         <div className="rounded-lg border border-stone-200 bg-[#fffdf9] p-6">

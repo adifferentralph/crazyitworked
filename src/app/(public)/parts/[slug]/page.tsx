@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, Box, CarFront, Heart, MapPin, PackageCheck, ScanLine, ShieldCheck, ShoppingCart, Star, Truck } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Box, CarFront, CircleAlert, Heart, MapPin, PackageCheck, ScanLine, ShieldCheck, ShoppingCart, Star, Truck } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { addToCartAction, toggleSavedPartAction } from "@/app/(protected)/commerce-actions";
@@ -11,6 +11,21 @@ import { getCurrentPrincipal } from "@/lib/auth/principal";
 import { formatNgn } from "@/lib/marketplace/products";
 import { getMarketplaceProduct } from "@/lib/marketplace/public-catalog";
 import { createClient } from "@/lib/supabase/server";
+
+function getFitmentEvidence(evidence: string) {
+  switch (evidence) {
+    case "OEM_MATCHED":
+      return { label: "OEM-number evidence", detail: "The listed OEM number has been matched to this vehicle configuration.", strong: true };
+    case "PLATFORM_VERIFIED":
+      return { label: "Platform-reviewed compatibility", detail: "Marketplace operations reviewed the compatibility evidence.", strong: true };
+    case "PURCHASE_VERIFIED":
+      return { label: "Purchase-supported compatibility", detail: "Completed-purchase evidence supports this compatibility.", strong: true };
+    case "BUYER_CONFIRMED":
+      return { label: "Buyer-confirmed compatibility", detail: "An eligible buyer confirmed fit after fulfilment.", strong: true };
+    default:
+      return { label: "Seller-stated compatibility", detail: "This fitment was entered by the supplier and has not yet received independent marketplace evidence.", strong: false };
+  }
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -101,7 +116,25 @@ export default async function PartDetailPage({ params }: { params: Promise<{ slu
 
         <div className="mt-10 grid gap-6 lg:grid-cols-2">
           <section className="rounded-lg border border-stone-200 bg-white p-6"><div className="flex items-center gap-2"><Box className="size-5 text-primary" aria-hidden="true" /><h2 className="text-2xl font-semibold">Part description</h2></div><p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-stone-700">{product.description}</p>{crossReferences.length ? <div className="mt-5 border-t border-stone-200 pt-4"><p className="flex items-center gap-2 text-sm font-semibold"><ScanLine className="size-4 text-primary" aria-hidden="true" />Cross-reference numbers</p><p className="mt-2 font-mono text-sm text-stone-600">{crossReferences.join(" · ")}</p></div> : null}</section>
-          <section className="rounded-lg border border-stone-200 bg-[#fffdf9] p-6"><div className="flex items-center gap-2"><CarFront className="size-5 text-primary" aria-hidden="true" /><h2 className="text-2xl font-semibold">Seller-provided vehicle compatibility</h2></div>{fitments.length ? <ul className="mt-4 grid gap-3">{fitments.map((fitment) => <li className="flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900" key={fitment.id}><BadgeCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Seller lists compatibility with {fitment.label}</li>)}</ul> : <p className="mt-4 text-sm leading-6 text-stone-600">No vehicle compatibility has been attached to this listing. Match by exact part number and confirm with the supplier before ordering.</p>}</section>
+          <section className="rounded-lg border border-stone-200 bg-[#fffdf9] p-6">
+            <div className="flex items-center gap-2"><CarFront className="size-5 text-primary" aria-hidden="true" /><h2 className="text-2xl font-semibold">Vehicle compatibility evidence</h2></div>
+            {fitments.length ? (
+              <ul className="mt-4 grid gap-3">
+                {fitments.map((fitment) => {
+                  const evidence = getFitmentEvidence(fitment.evidenceType);
+                  const EvidenceIcon = evidence.strong ? BadgeCheck : CircleAlert;
+                  return (
+                    <li className="rounded-md border border-stone-200 bg-white p-4" key={fitment.id}>
+                      <div className="flex items-start gap-3">
+                        <EvidenceIcon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+                        <div><p className="text-sm font-semibold text-stone-950">{fitment.label}</p><p className="mt-1 text-xs font-semibold text-primary">{evidence.label}</p><p className="mt-1 text-xs leading-5 text-stone-600">{evidence.detail}</p></div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : <p className="mt-4 text-sm leading-6 text-stone-600">No vehicle compatibility has been attached to this listing. Match by exact part number and confirm with the supplier before ordering.</p>}
+          </section>
         </div>
 
         <section className="mt-6 rounded-lg border border-stone-200 bg-white p-6"><div className="flex items-center gap-2"><Star className="size-5 text-primary" aria-hidden="true" /><h2 className="text-2xl font-semibold">Buyer reviews</h2></div><p className="mt-3 text-sm text-stone-600">No verified-purchase reviews have been submitted for this part yet.</p></section>

@@ -76,6 +76,41 @@ export type InventoryTransactionType =
   | "SALE"
   | "RETURN"
   | "ADMIN_ADJUSTMENT";
+export type FitmentEvidenceType =
+  | "SELLER_CLAIMED"
+  | "OEM_MATCHED"
+  | "PLATFORM_VERIFIED"
+  | "PURCHASE_VERIFIED"
+  | "BUYER_CONFIRMED"
+  | "DISPUTED"
+  | "KNOWN_INCORRECT";
+export type FitmentOutcomeStatus =
+  | "FIT_CONFIRMED"
+  | "FIT_PROBLEM_REPORTED"
+  | "WRONG_PART"
+  | "UNCONFIRMED"
+  | "NOT_APPLICABLE";
+export type FitmentEventType =
+  | "SELLER_CLAIM_RECORDED"
+  | "OEM_MATCHED"
+  | "PLATFORM_VERIFIED"
+  | "PURCHASE_COMPLETED"
+  | "BUYER_CONFIRMED"
+  | "FIT_PROBLEM_REPORTED"
+  | "WRONG_PART_REPORTED"
+  | "DISPUTE_OPENED"
+  | "INCOMPATIBILITY_RETURN"
+  | "ADMIN_CORRECTION"
+  | "OEM_CORRECTION"
+  | "LISTING_CORRECTION"
+  | "REPEAT_PURCHASE_CONFIRMED";
+export type FitmentTransactionSource = "CATALOG_ORDER" | "RFQ_ACCEPTED_QUOTE";
+export type DemandEventType =
+  | "ZERO_RESULT_SEARCH"
+  | "ABANDONED_FILTERED_SEARCH"
+  | "RFQ_CREATED"
+  | "RFQ_ZERO_QUOTES"
+  | "RFQ_NO_ACCEPTABLE_QUOTE";
 
 type Table<Row, Insert = Partial<Row>, Update = Partial<Insert>> = {
   Row: Row;
@@ -582,9 +617,115 @@ seller_categories: Table<
         { product_id: string; reference_number: string }
       >;
       product_fitments: Table<
-        { created_at: string; fitment_id: string; notes: string | null; product_id: string },
-        { fitment_id: string; notes?: string | null; product_id: string }
+        {
+          claimed_by_user_id: string;
+          created_at: string;
+          evidence_metadata: Json;
+          evidence_type: FitmentEvidenceType;
+          fitment_id: string;
+          is_active: boolean;
+          notes: string | null;
+          product_id: string;
+          updated_at: string;
+          verified_at: string | null;
+          verified_by_user_id: string | null;
+        },
+        {
+          claimed_by_user_id?: string;
+          evidence_metadata?: Json;
+          evidence_type?: FitmentEvidenceType;
+          fitment_id: string;
+          is_active?: boolean;
+          notes?: string | null;
+          product_id: string;
+          verified_at?: string | null;
+          verified_by_user_id?: string | null;
+        },
+        {
+          evidence_metadata?: Json;
+          evidence_type?: FitmentEvidenceType;
+          is_active?: boolean;
+          notes?: string | null;
+          verified_at?: string | null;
+          verified_by_user_id?: string | null;
+        }
       >;
+      fitment_claim_history: Table<{
+        action: "INSERT" | "UPDATE" | "DELETE" | "BASELINE";
+        changed_by_user_id: string | null;
+        created_at: string;
+        fitment_id: string | null;
+        id: string;
+        metadata: Json;
+        new_active: boolean | null;
+        new_evidence: FitmentEvidenceType | null;
+        previous_active: boolean | null;
+        previous_evidence: FitmentEvidenceType | null;
+        product_id: string | null;
+        reason: string | null;
+        seller_id: string;
+        vehicle_snapshot: Json;
+      }>;
+      fitment_transaction_snapshots: Table<{
+        buyer_id: string;
+        category_id: string | null;
+        created_at: string;
+        eligible_at: string | null;
+        fitment_id: string | null;
+        fulfilled_at: string | null;
+        id: string;
+        product_id: string | null;
+        product_snapshot: Json;
+        seller_id: string;
+        source: FitmentTransactionSource;
+        source_reference_id: string;
+        vehicle_snapshot: Json;
+      }>;
+      fitment_outcomes: Table<{
+        buyer_id: string;
+        created_at: string;
+        id: string;
+        metadata: Json;
+        note: string | null;
+        outcome: FitmentOutcomeStatus;
+        snapshot_id: string;
+        submitted_at: string;
+      }>;
+      fitment_events: Table<{
+        buyer_id: string | null;
+        category_id: string | null;
+        created_at: string;
+        created_by_user_id: string | null;
+        event_type: FitmentEventType;
+        fitment_id: string | null;
+        id: string;
+        metadata: Json;
+        occurred_at: string;
+        product_id: string | null;
+        product_snapshot: Json;
+        seller_id: string | null;
+        snapshot_id: string | null;
+        vehicle_snapshot: Json;
+      }>;
+      demand_events: Table<{
+        anonymous_session_hash: string;
+        buyer_account_type: string;
+        buyer_id: string | null;
+        category_id: string | null;
+        event_token: string;
+        event_type: DemandEventType;
+        fitment_id: string | null;
+        id: string;
+        location: string | null;
+        metadata: Json;
+        occurred_at: string;
+        query: string | null;
+        request_id: string | null;
+        result_count: number | null;
+        vehicle_make: string | null;
+        vehicle_model: string | null;
+        vehicle_year: number | null;
+      }>;
       product_images: Table<
         {
           created_at: string;
@@ -680,6 +821,76 @@ seller_categories: Table<
       };
     };
     Functions: {
+      correct_product_fitment: {
+        Args: {
+          p_evidence: FitmentEvidenceType;
+          p_fitment_id: string;
+          p_is_active: boolean;
+          p_product_id: string;
+          p_reason: string;
+        };
+        Returns: undefined;
+      };
+      demand_no_supply_summary: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          buyer_account_type: string;
+          category_name: string | null;
+          demand_topic: string | null;
+          event_count: number;
+          event_type: DemandEventType;
+          last_seen_at: string;
+          location: string | null;
+          vehicle_make: string | null;
+          vehicle_model: string | null;
+          vehicle_year: number | null;
+        }[];
+      };
+      fitment_claims_for_review: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          evidence_type: FitmentEvidenceType;
+          fitment_id: string;
+          is_active: boolean;
+          problem_event_count: number;
+          product_id: string;
+          product_name: string;
+          seller_id: string;
+          store_name: string;
+          updated_at: string;
+          vehicle_label: string;
+        }[];
+      };
+      fitment_seller_performance: {
+        Args: { p_seller_id?: string | null };
+        Returns: {
+          accuracy_percent: number | null;
+          confirmed_count: number;
+          dispute_count: number;
+          eligible_count: number;
+          evidence_status: "NO_DATA" | "INSUFFICIENT_SAMPLE" | "MEASURED";
+          fit_problem_count: number;
+          return_count: number;
+          wrong_part_count: number;
+        }[];
+      };
+      record_demand_event: {
+        Args: {
+          p_category_id?: string | null;
+          p_event_token: string;
+          p_event_type: DemandEventType;
+          p_fitment_id?: string | null;
+          p_location?: string | null;
+          p_query?: string | null;
+          p_result_count?: number | null;
+          p_session_id: string;
+        };
+        Returns: undefined;
+      };
+      submit_fitment_outcome: {
+        Args: { p_note?: string | null; p_outcome: FitmentOutcomeStatus; p_snapshot_id: string };
+        Returns: undefined;
+      };
       accept_part_request_quote: {
         Args: { p_quote_id: string };
         Returns: string;
@@ -752,6 +963,11 @@ seller_categories: Table<
     };
     Enums: {
       account_status: AccountStatus;
+      demand_event_type: DemandEventType;
+      fitment_event_type: FitmentEventType;
+      fitment_evidence_type: FitmentEvidenceType;
+      fitment_outcome_status: FitmentOutcomeStatus;
+      fitment_transaction_source: FitmentTransactionSource;
       buyer_account_type: BuyerAccountType;
       inventory_import_row_status: InventoryImportRowStatus;
       inventory_import_status: InventoryImportStatus;

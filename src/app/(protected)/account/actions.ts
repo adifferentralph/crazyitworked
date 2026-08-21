@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/auth/principal";
 import { createClient } from "@/lib/supabase/server";
 import {
   buyerProfileSchema,
+  fitmentOutcomeSchema,
   savedVehicleIdSchema,
   savedVehicleSchema,
 } from "@/lib/validation/buyer";
@@ -135,4 +136,32 @@ export async function deleteSavedVehicleAction(formData: FormData) {
   }
   revalidatePath("/account/vehicles");
   revalidatePath("/marketplace");
+}
+export async function submitFitmentOutcomeAction(
+  _previousState: BuyerActionState,
+  formData: FormData,
+): Promise<BuyerActionState> {
+  await requireRole(["BUYER"], "/account/reviews");
+  const parsed = fitmentOutcomeSchema.safeParse({
+    note: formData.get("note"),
+    outcome: formData.get("outcome"),
+    snapshotId: formData.get("snapshotId"),
+  });
+  if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("submit_fitment_outcome", {
+    p_note: parsed.data.note,
+    p_outcome: parsed.data.outcome,
+    p_snapshot_id: parsed.data.snapshotId,
+  });
+  if (error) {
+    const duplicate = error.code === "23505";
+    return {
+      message: duplicate ? "Fitment feedback was already submitted for this purchase." : "We could not save that fitment feedback. Try again.",
+      status: "error",
+    };
+  }
+  revalidatePath("/account/reviews");
+  return { message: "Thank you. Your fitment feedback was saved.", status: "success" };
 }

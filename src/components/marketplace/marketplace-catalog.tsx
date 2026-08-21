@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { DemandSignalReporter } from "@/components/marketplace/demand-signal-reporter";
 import { MarketplaceFilters } from "@/components/marketplace/marketplace-filters";
 import { MarketplaceSearchForm } from "@/components/marketplace/marketplace-search-form";
 import { ProductCard } from "@/components/marketplace/product-card";
@@ -74,9 +75,18 @@ export async function MarketplaceCatalog({
       search.delivery,
   );
   const topCategories = options.categories.filter((category) => !category.parentId).slice(0, 12);
+  const demandSignal = activeSearch ? {
+    categoryId: search.category,
+    eventType: result.count === 0 ? "ZERO_RESULT_SEARCH" as const : "ABANDONED_FILTERED_SEARCH" as const,
+    fitmentId: search.vehicle,
+    location: search.location,
+    query: search.q,
+    resultCount: result.count,
+  } : null;
 
   return (
     <section className="min-h-[70vh] bg-white py-8 sm:py-10">
+      {demandSignal ? <DemandSignalReporter signal={demandSignal} /> : null}
       <div className="container-page">
         <header className="max-w-3xl">
           <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-primary">
