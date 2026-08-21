@@ -4,6 +4,7 @@ import { sellerOnboardingSchema } from "@/lib/validation/seller";
 
 const validProfile = {
   businessRegistrationNumber: "",
+  categoryIds: ["c4769a8e-469b-4fde-a0cd-c3f796269f27"],
   city: "Ikeja",
   contactPhone: "+234 801 234 5678",
   country: "Nigeria",

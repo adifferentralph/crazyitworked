@@ -57,6 +57,13 @@
       "when": 1787314737474,
       "tag": "0007_curved_shadowcat",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787316846827,
+      "tag": "0008_typical_peter_parker",
+      "breakpoints": true
     }
   ]
 }

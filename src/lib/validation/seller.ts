@@ -30,6 +30,7 @@ const optionalRegistrationNumber = z
 
 export const sellerOnboardingSchema = z.object({
   businessRegistrationNumber: optionalRegistrationNumber,
+  categoryIds: z.array(z.string().uuid()).min(1, "Choose at least one product category.").max(20),
   city: requiredText("City", 2, 100),
   contactPhone: z
     .string()
@@ -99,6 +100,7 @@ export const productFormSchema = z
 export function getSellerOnboardingValues(formData: FormData) {
   return {
     businessRegistrationNumber: formData.get("businessRegistrationNumber"),
+    categoryIds: formData.getAll("categoryIds"),
     city: formData.get("city"),
     contactPhone: formData.get("contactPhone"),
     country: formData.get("country"),

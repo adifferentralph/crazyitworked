@@ -4,14 +4,17 @@ import { OnboardingForm } from "@/components/seller/onboarding-form";
 import { SellerShell } from "@/components/seller/seller-shell";
 import { Badge } from "@/components/ui/badge";
 import { requireRole } from "@/lib/auth/principal";
+import { getProductFormOptions } from "@/lib/marketplace/seller-data";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SellerOnboardingPage() {
   const principal = await requireRole(["SELLER"], "/seller/onboarding");
   const supabase = await createClient();
-  const [{ data: seller }, { data: verification }] = await Promise.all([
+  const [{ data: seller }, { data: verification }, { data: sellerCategories }, options] = await Promise.all([
     supabase.from("seller_profiles").select("*").eq("user_id", principal.id).single(),
     supabase.from("seller_verifications").select("status, submitted_at, rejection_reason").eq("seller_id", principal.id).maybeSingle(),
+    supabase.from("seller_categories").select("category_id").eq("seller_id", principal.id),
+    getProductFormOptions(),
   ]);
 
   if (!seller) return null;
@@ -32,8 +35,9 @@ export default async function SellerOnboardingPage() {
         </Badge>
         {verification?.rejection_reason ? <p className="w-full text-sm text-stone-600">Review note: {verification.rejection_reason}</p> : null}
       </div>
-      <OnboardingForm defaults={{
+      <OnboardingForm categories={options.categories} defaults={{
         businessRegistrationNumber: seller.business_registration_number,
+        categoryIds: (sellerCategories ?? []).map((category) => category.category_id),
         city: seller.city,
         contactPhone: seller.contact_phone,
         description: seller.description,

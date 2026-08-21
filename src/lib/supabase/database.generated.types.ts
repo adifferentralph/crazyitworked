@@ -8,6 +8,22 @@ export type BuyerAccountType =
   | "GARAGE_WORKSHOP"
   | "FLEET_OPERATOR"
   | "CORPORATE_BUYER";
+export type PartRequestStatus =
+  | "DRAFT"
+  | "OPEN"
+  | "QUOTED"
+  | "ACCEPTED"
+  | "CLOSED"
+  | "CANCELLED"
+  | "EXPIRED";
+export type PartQuoteStatus =
+  | "SUBMITTED"
+  | "REVISED"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "WITHDRAWN"
+  | "EXPIRED";
+export type SellerRequestMatchStatus = "MATCHED" | "VIEWED" | "QUOTED" | "DECLINED";
 export type SellerStatus =
   | "PENDING_VERIFICATION"
   | "ACTIVE"
@@ -146,7 +162,158 @@ export type Database = {
         { buyer_id: string; id?: string; product_id: string; quantity?: number },
         { quantity?: number }
       >;
-      seller_profiles: Table<
+seller_categories: Table<
+        TimestampColumns & { category_id: string; is_primary: boolean; seller_id: string },
+        { category_id: string; is_primary?: boolean; seller_id: string },
+        { is_primary?: boolean }
+      >;
+      part_requests: Table<
+        TimestampColumns & {
+          budget_max_minor: number | null;
+          budget_min_minor: number | null;
+          buyer_id: string;
+          category_id: string | null;
+          closed_at: string | null;
+          condition_preferences: string[];
+          currency: "NGN";
+          delivery_city: string;
+          delivery_state: string;
+          description: string;
+          fitment_id: string | null;
+          id: string;
+          manufacturer_part_number: string | null;
+          oem_part_number: string | null;
+          part_name: string;
+          quantity: number;
+          saved_vehicle_id: string | null;
+          status: PartRequestStatus;
+          submitted_at: string | null;
+        },
+        {
+          budget_max_minor?: number | null;
+          budget_min_minor?: number | null;
+          buyer_id: string;
+          category_id?: string | null;
+          condition_preferences?: string[];
+          delivery_city: string;
+          delivery_state: string;
+          description: string;
+          fitment_id?: string | null;
+          id?: string;
+          manufacturer_part_number?: string | null;
+          oem_part_number?: string | null;
+          part_name: string;
+          quantity?: number;
+          saved_vehicle_id?: string | null;
+          status?: PartRequestStatus;
+          submitted_at?: string | null;
+        },
+        {
+          budget_max_minor?: number | null;
+          budget_min_minor?: number | null;
+          category_id?: string | null;
+          closed_at?: string | null;
+          condition_preferences?: string[];
+          delivery_city?: string;
+          delivery_state?: string;
+          description?: string;
+          fitment_id?: string | null;
+          manufacturer_part_number?: string | null;
+          oem_part_number?: string | null;
+          part_name?: string;
+          quantity?: number;
+          saved_vehicle_id?: string | null;
+          status?: PartRequestStatus;
+          submitted_at?: string | null;
+        }
+      >;
+      seller_request_matches: Table<
+        TimestampColumns & {
+          category_matched: boolean;
+          id: string;
+          location_matched: boolean;
+          matched_at: string;
+          request_id: string;
+          responded_at: string | null;
+          seller_id: string;
+          status: SellerRequestMatchStatus;
+          viewed_at: string | null;
+        },
+        {
+          category_matched?: boolean;
+          location_matched?: boolean;
+          request_id: string;
+          seller_id: string;
+        },
+        { responded_at?: string | null; status?: SellerRequestMatchStatus; viewed_at?: string | null }
+      >;
+      part_request_quotes: Table<
+        TimestampColumns & {
+          currency: "NGN";
+          delivery_fee_minor: number;
+          estimated_delivery_days: number | null;
+          id: string;
+          notes: string | null;
+          product_id: string | null;
+          quantity: number;
+          request_id: string;
+          seller_id: string;
+          status: PartQuoteStatus;
+          submitted_at: string;
+          unit_price_minor: number;
+          valid_until: string | null;
+        },
+        {
+          delivery_fee_minor?: number;
+          estimated_delivery_days?: number | null;
+          notes?: string | null;
+          product_id?: string | null;
+          quantity: number;
+          request_id: string;
+          seller_id: string;
+          unit_price_minor: number;
+          valid_until?: string | null;
+        },
+        {
+          delivery_fee_minor?: number;
+          estimated_delivery_days?: number | null;
+          notes?: string | null;
+          product_id?: string | null;
+          quantity?: number;
+          status?: PartQuoteStatus;
+          unit_price_minor?: number;
+          valid_until?: string | null;
+        }
+      >;
+      part_request_images: Table<
+        {
+          created_at: string;
+          id: string;
+          mime_type: string;
+          original_filename: string;
+          request_id: string;
+          size_bytes: number;
+          storage_bucket: string;
+          storage_path: string;
+          uploaded_by: string;
+        },
+        {
+          mime_type: string;
+          original_filename: string;
+          request_id: string;
+          size_bytes: number;
+          storage_path: string;
+          uploaded_by: string;
+        }
+      >;
+      part_request_events: Table<{
+        actor_user_id: string | null;
+        created_at: string;
+        event_type: string;
+        id: string;
+        metadata: Json;
+        request_id: string;
+      }>;      seller_profiles: Table<
         TimestampColumns & {
           business_registration_number: string | null;
           city: string | null;
@@ -411,7 +578,12 @@ export type Database = {
         Relationships: [];
       };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      accept_part_request_quote: {
+        Args: { p_quote_id: string };
+        Returns: string;
+      };
+    };
     Enums: {
       account_status: AccountStatus;
       buyer_account_type: BuyerAccountType;
@@ -419,7 +591,10 @@ export type Database = {
       product_condition: ProductCondition;
       product_image_source: ProductImageSource;
       product_image_type: ProductImageType;
+      part_quote_status: PartQuoteStatus;
+      part_request_status: PartRequestStatus;
       product_status: ProductStatus;
+      seller_request_match_status: SellerRequestMatchStatus;
       seller_status: SellerStatus;
       seller_verification_status: SellerVerificationStatus;
       user_role: UserRole;

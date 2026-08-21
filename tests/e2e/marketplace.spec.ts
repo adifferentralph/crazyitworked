@@ -20,3 +20,10 @@ test("unapproved or unknown product slugs are not public", async ({ page }) => {
   await page.goto("/parts/not-an-approved-marketplace-product");
   await expect(page.getByRole("heading", { name: /This road does not lead to a part/i })).toBeVisible();
 });
+
+test("requesting a part requires a buyer session and preserves the destination", async ({ page }) => {
+  await page.goto("/find-a-part");
+  await page.getByRole("link", { name: "Request a part" }).click();
+  await expect(page).toHaveURL(/\/login\?/);
+  expect(new URL(page.url()).searchParams.get("next")).toBe("/account/requests/new");
+});

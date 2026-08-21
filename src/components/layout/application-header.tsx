@@ -4,6 +4,7 @@ import {
   Boxes,
   CarFront,
   ClipboardList,
+  FileQuestion,
   Heart,
   LayoutDashboard,
   LogOut,
@@ -36,6 +37,7 @@ type NavigationItem = {
 const buyerAccountLinks: NavigationItem[] = [
   { href: "/account", icon: UserRound, label: "My Account" },
   { href: "/account/orders", icon: ClipboardList, label: "My Orders" },
+  { href: "/account/requests", icon: FileQuestion, label: "Part Requests" },
   { href: "/account/vehicles", icon: CarFront, label: "Saved Vehicles" },
   { href: "/account/saved-parts", icon: Heart, label: "Saved Parts" },
   { href: "/account/addresses", icon: MapPin, label: "Addresses" },
@@ -47,6 +49,7 @@ const sellerLinks: NavigationItem[] = [
   { href: "/seller/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/seller/products", icon: Package, label: "Products" },
   { href: "/seller/orders", icon: ClipboardList, label: "Orders" },
+  { href: "/seller/requests", icon: FileQuestion, label: "Requests" },
   { href: "/seller/inventory", icon: Boxes, label: "Inventory" },
   { href: "/seller/finance", icon: WalletCards, label: "Finance" },
   { href: "/seller/reviews", icon: Star, label: "Reviews" },
@@ -173,7 +176,7 @@ function BuyerHeader({ cartCount, principal }: { cartCount: number; principal: P
         items={[
           { href: "/marketplace", icon: Store, label: "Home" },
           { href: "/marketplace#categories", icon: Menu, label: "Categories" },
-          { href: "/account/orders", icon: ClipboardList, label: "Orders" },
+          { href: "/account/requests", icon: FileQuestion, label: "Requests" },
           { href: "/cart", icon: ShoppingCart, label: `Cart${cartCount ? ` ${cartCount}` : ""}` },
           { href: "/account", icon: UserRound, label: "Account" },
         ]}
@@ -227,9 +230,9 @@ function SellerHeader({ principal, storeName }: { principal: Principal; storeNam
       <MobileNavigation
         items={[
           { href: "/seller/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+          { href: "/seller/requests", icon: FileQuestion, label: "Requests" },
           { href: "/seller/products", icon: Package, label: "Products" },
           { href: "/seller/orders", icon: ClipboardList, label: "Orders" },
-          { href: "/seller/finance", icon: WalletCards, label: "Finance" },
           { href: "/seller/onboarding", icon: UserRound, label: "Account" },
         ]}
       />

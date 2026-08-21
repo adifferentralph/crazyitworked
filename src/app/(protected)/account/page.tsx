@@ -3,6 +3,7 @@ import {
   Bell,
   CarFront,
   ClipboardList,
+  FileQuestion,
   Heart,
   LockKeyhole,
   MapPin,
@@ -22,6 +23,7 @@ type AccountDestination = {
 
 const destinations: AccountDestination[] = [
   { href: "/account/orders", icon: ClipboardList, label: "Orders", description: "Track purchases and review order history." },
+  { href: "/account/requests", icon: FileQuestion, label: "Part Requests", description: "Send requests and compare matched supplier quotes." },
   { href: "/account/vehicles", icon: CarFront, label: "Saved Vehicles", description: "Keep the vehicles you source parts for." },
   { href: "/account/saved-parts", icon: Heart, label: "Saved Parts", description: "Return to parts you want to compare." },
   { href: "/account/addresses", icon: MapPin, label: "Addresses", description: "Manage delivery and pickup details." },

@@ -68,6 +68,23 @@ export async function completeSellerOnboardingAction(
     return databaseError("We could not save the supplier profile. Please try again.");
   }
 
+const { error: clearCategoriesError } = await supabase
+    .from("seller_categories")
+    .delete()
+    .eq("seller_id", principal.id);
+  if (clearCategoriesError) {
+    return databaseError("Your profile was saved, but product categories could not be updated.");
+  }
+  const { error: categoryError } = await supabase.from("seller_categories").insert(
+    parsed.data.categoryIds.map((categoryId, index) => ({
+      category_id: categoryId,
+      is_primary: index === 0,
+      seller_id: principal.id,
+    })),
+  );
+  if (categoryError) {
+    return databaseError("Your profile was saved, but product categories could not be updated.");
+  }
   const { error: verificationError } = await supabase
     .from("seller_verifications")
     .update({

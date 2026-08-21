@@ -93,6 +93,10 @@ export async function MarketplaceCatalog({
         <div className="mt-7 rounded-xl border border-stone-200 bg-stone-50 p-4 sm:p-6">
           <MarketplaceSearchForm actionPath={actionPath} defaultVehicleId={defaultVehicleId} options={options} search={search} />
         </div>
+        <div className="mt-3 flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div><p className="text-sm font-bold text-stone-950">Cannot find the exact listing?</p><p className="mt-1 text-xs text-stone-600">Send one structured request to matched verified suppliers.</p></div>
+          <Button asChild size="sm" variant="outline"><Link href={buyerName ? "/account/requests/new" : "/login?next=/account/requests/new"}>Request a part</Link></Button>
+        </div>
 
         {buyerName && topCategories.length ? (
           <section className="mt-9 scroll-mt-28" id="categories">

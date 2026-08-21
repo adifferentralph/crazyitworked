@@ -6,7 +6,7 @@ import { config as loadEnvironment } from "dotenv";
 import postgres from "postgres";
 import { z } from "zod";
 
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import type { Database } from "@/lib/supabase/database.types";
 
 loadEnvironment({ path: ".env.local" });
@@ -116,6 +116,21 @@ async function waitForAuthLink(email: string, subject: RegExp, notBefore: number
   throw new Error(`Timed out waiting for Mailtrap message matching ${subject}.`);
 }
 
+async function openAuthLink(page: Page, authLink: string) {
+  const response = await fetch(authLink, { redirect: "manual" });
+  expect([301, 302, 303, 307, 308]).toContain(response.status);
+  const location = response.headers.get("location");
+  expect(location, "Supabase verification should return an application callback").toBeTruthy();
+  const callback = new URL(location!);
+  const testOrigin = process.env.PLAYWRIGHT_BASE_URL;
+  if (testOrigin && ["localhost", "127.0.0.1"].includes(callback.hostname)) {
+    const replacement = new URL(testOrigin);
+    callback.protocol = replacement.protocol;
+    callback.hostname = replacement.hostname;
+    callback.port = replacement.port;
+  }
+  await page.goto(callback.toString());
+}
 test("live confirmation and password recovery use Mailtrap links", async ({ page }, testInfo) => {
   test.skip(
     process.env.RUN_LIVE_SUPABASE_TESTS !== "1" || testInfo.project.name !== "chromium",
@@ -154,11 +169,11 @@ test("live confirmation and password recovery use Mailtrap links", async ({ page
     expect(unconfirmedLogin.error?.code).toBe("email_not_confirmed");
 
     const confirmationLink = await waitForAuthLink(email, /confirm/i, signupStartedAt);
-    await page.goto(confirmationLink);
+    await openAuthLink(page, confirmationLink);
     await expect(page).toHaveURL(/\/marketplace$/, { timeout: 30_000 });
-    await expect(page.getByText("Buyer account", { exact: true })).toBeVisible();
+    await expect(page.getByRole("search").first()).toBeVisible();
     await page.reload();
-    await expect(page.getByText("Buyer account", { exact: true })).toBeVisible();
+    await expect(page.getByRole("search").first()).toBeVisible();
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/login$/, { timeout: 30_000 });
 
@@ -169,7 +184,7 @@ test("live confirmation and password recovery use Mailtrap links", async ({ page
     await expect(page.getByText(/If an account exists for that email/i)).toBeVisible({ timeout: 30_000 });
 
     const recoveryLink = await waitForAuthLink(email, /password|reset/i, recoveryStartedAt);
-    await page.goto(recoveryLink);
+    await openAuthLink(page, recoveryLink);
     await expect(page).toHaveURL(/\/reset-password$/, { timeout: 30_000 });
 
     const replacementPassword = `Ttp!${randomUUID()}Bb8`;

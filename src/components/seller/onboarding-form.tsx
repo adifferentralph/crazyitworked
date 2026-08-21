@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 
 type OnboardingDefaults = {
   businessRegistrationNumber: string | null;
+  categoryIds: string[];
   city: string | null;
   contactPhone: string | null;
   description: string | null;
@@ -27,7 +28,13 @@ function FieldError({ errors }: { errors?: string[] }) {
   return errors?.[0] ? <p className="mt-2 text-sm text-primary">{errors[0]}</p> : null;
 }
 
-export function OnboardingForm({ defaults }: { defaults: OnboardingDefaults }) {
+export function OnboardingForm({
+  categories,
+  defaults,
+}: {
+  categories: { id: string; label: string }[];
+  defaults: OnboardingDefaults;
+}) {
   const [state, formAction] = useActionState(completeSellerOnboardingAction, initialSellerActionState);
 
   return (
@@ -72,6 +79,21 @@ export function OnboardingForm({ defaults }: { defaults: OnboardingDefaults }) {
         </div>
       </div>
 
+<fieldset className="grid gap-5 rounded-lg border border-stone-200 bg-white p-5 sm:p-7">
+        <div>
+          <legend className="text-2xl font-semibold text-stone-950">Product categories</legend>
+          <p className="mt-2 text-sm text-stone-600">Choose the systems you stock. Verified suppliers are matched to relevant buyer requests using these categories.</p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {categories.map((category) => (
+            <label className="flex items-start gap-3 rounded-md border border-stone-200 bg-white p-3 text-sm font-medium text-stone-700" key={category.id}>
+              <input className="mt-0.5 size-4 accent-primary" defaultChecked={defaults.categoryIds.includes(category.id)} name="categoryIds" type="checkbox" value={category.id} />
+              {category.label}
+            </label>
+          ))}
+        </div>
+        <FieldError errors={state.fieldErrors?.categoryIds} />
+      </fieldset>
       <div className="grid gap-5 rounded-lg border border-stone-200 bg-white p-5 sm:grid-cols-2 sm:p-7">
         <div className="sm:col-span-2">
           <h2 className="text-2xl font-semibold text-stone-950">Operating location</h2>
