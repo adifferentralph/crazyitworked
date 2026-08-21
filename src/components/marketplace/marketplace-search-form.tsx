@@ -9,10 +9,12 @@ type Options = Awaited<ReturnType<typeof getMarketplaceOptions>>;
 
 export function MarketplaceSearchForm({
   actionPath,
+  defaultVehicleId,
   options,
   search,
 }: {
   actionPath: string;
+  defaultVehicleId?: string;
   options: Options;
   search: MarketplaceSearch;
 }) {
@@ -38,7 +40,7 @@ export function MarketplaceSearchForm({
           Search parts
         </Button>
       </div>
-      <VehicleSearch initialVehicle={search.vehicle} vehicles={options.vehicles} />
+      <VehicleSearch initialVehicle={search.vehicle ?? defaultVehicleId} vehicles={options.vehicles} />
     </form>
   );
 }

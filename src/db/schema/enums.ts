@@ -1,6 +1,13 @@
-﻿import { pgEnum } from "drizzle-orm/pg-core";
+import { pgEnum } from "drizzle-orm/pg-core";
 
 export const userRoleEnum = pgEnum("user_role", ["BUYER", "SELLER", "ADMIN"]);
+export const buyerAccountTypeEnum = pgEnum("buyer_account_type", [
+  "INDIVIDUAL",
+  "MECHANIC_TECHNICIAN",
+  "GARAGE_WORKSHOP",
+  "FLEET_OPERATOR",
+  "CORPORATE_BUYER",
+]);
 export const accountStatusEnum = pgEnum("account_status", ["ACTIVE", "RESTRICTED", "SUSPENDED"]);
 export const sellerStatusEnum = pgEnum("seller_status", [
   "PENDING_VERIFICATION",

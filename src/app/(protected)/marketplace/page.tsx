@@ -11,6 +11,7 @@ export default async function BuyerMarketplacePage({
   return (
     <MarketplaceCatalog
       actionPath="/marketplace"
+      buyerId={principal.id}
       buyerName={principal.fullName}
       searchParams={searchParams}
     />

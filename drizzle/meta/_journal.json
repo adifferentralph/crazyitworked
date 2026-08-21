@@ -1,55 +1,62 @@
 {
-    "version":  "7",
-    "dialect":  "postgresql",
-    "entries":  [
-                    {
-                        "idx":  0,
-                        "version":  "7",
-                        "when":  1787221269606,
-                        "tag":  "0000_silent_skin",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  1,
-                        "version":  "7",
-                        "when":  1787240192775,
-                        "tag":  "0001_tense_eternity",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  2,
-                        "version":  "7",
-                        "when":  1787243261634,
-                        "tag":  "0002_sweet_franklin_storm",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  3,
-                        "version":  "7",
-                        "when":  1787300952091,
-                        "tag":  "0003_ambiguous_colossus",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  4,
-                        "version":  "7",
-                        "when":  1787301100782,
-                        "tag":  "0004_small_thor_girl",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  5,
-                        "version":  "7",
-                        "when":  1787310000000,
-                        "tag":  "0005_storage_owner_read",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  6,
-                        "version":  "7",
-                        "when":  1787311000000,
-                        "tag":  "0006_storage_upload_ownership",
-                        "breakpoints":  true
-                    }
-                ]
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1787221269606,
+      "tag": "0000_silent_skin",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787240192775,
+      "tag": "0001_tense_eternity",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787243261634,
+      "tag": "0002_sweet_franklin_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787300952091,
+      "tag": "0003_ambiguous_colossus",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787301100782,
+      "tag": "0004_small_thor_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787310000000,
+      "tag": "0005_storage_owner_read",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787311000000,
+      "tag": "0006_storage_upload_ownership",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787314737474,
+      "tag": "0007_curved_shadowcat",
+      "breakpoints": true
+    }
+  ]
 }

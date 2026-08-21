@@ -5,8 +5,10 @@ export type AuthActionState = {
   message?: string;
   status: "idle" | "error" | "success";
   values?: {
+    accountType?: string;
     email?: string;
     fullName?: string;
+    organizationName?: string;
     storeName?: string;
     terms?: "on";
   };

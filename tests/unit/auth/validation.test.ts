@@ -37,6 +37,31 @@ describe("auth validation", () => {
     }
   });
 
+it("supports professional buyer types and requires organisation details where appropriate", () => {
+    const missingOrganisation = buyerSignupSchema.safeParse({
+      accountType: "FLEET_OPERATOR",
+      confirmPassword: "strong-password",
+      email: "fleet@example.com",
+      fullName: "Ada Fleet",
+      organizationName: "",
+      password: "strong-password",
+      terms: "on",
+      _gotcha: "",
+    });
+    expect(missingOrganisation.success).toBe(false);
+
+    const independentMechanic = buyerSignupSchema.safeParse({
+      accountType: "MECHANIC_TECHNICIAN",
+      confirmPassword: "strong-password",
+      email: "mechanic@example.com",
+      fullName: "Tomi Mechanic",
+      organizationName: "",
+      password: "strong-password",
+      terms: "on",
+      _gotcha: "",
+    });
+    expect(independentMechanic.success).toBe(true);
+  });
   it("requires a supplier business name", () => {
     const result = sellerSignupSchema.safeParse({
       confirmPassword: "strong-password",

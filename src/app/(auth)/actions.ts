@@ -33,6 +33,7 @@ function getSafeSubmittedValues(formData: FormData): AuthActionState["values"] {
   return {
     email: getText("email"),
     fullName: getText("fullName"),
+    organizationName: getText("organizationName"),
     storeName: getText("storeName"),
     terms: formData.get("terms") === "on" ? "on" : undefined,
   };
@@ -122,12 +123,17 @@ async function signup(
 
   const supabase = await createClient();
   const storeName = "storeName" in parsed.data ? parsed.data.storeName : undefined;
+  const accountType = "accountType" in parsed.data ? parsed.data.accountType : undefined;
+  const organizationName =
+    "organizationName" in parsed.data ? parsed.data.organizationName : undefined;
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
       data: {
         full_name: parsed.data.fullName,
+        ...(accountType ? { buyer_account_type: accountType } : {}),
+        ...(organizationName ? { organization_name: organizationName } : {}),
         requested_role: role,
         ...(storeName ? { store_name: storeName } : {}),
       },
@@ -217,7 +223,7 @@ export async function signInWithGoogleAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const next = getSafeRedirect(formData.get("next"), "/account");
+  const next = getSafeRedirect(formData.get("next"), "/marketplace");
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {

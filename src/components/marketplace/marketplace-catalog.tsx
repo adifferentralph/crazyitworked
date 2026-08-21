@@ -17,6 +17,7 @@ import { MarketplaceFilters } from "@/components/marketplace/marketplace-filters
 import { MarketplaceSearchForm } from "@/components/marketplace/marketplace-search-form";
 import { ProductCard } from "@/components/marketplace/product-card";
 import { Button } from "@/components/ui/button";
+import { getDefaultBuyerVehicleId } from "@/lib/marketplace/buyer-data";
 import {
   getMarketplaceOptions,
   parseMarketplaceSearch,
@@ -40,18 +41,21 @@ function getCategoryIcon(label: string) {
 
 export async function MarketplaceCatalog({
   actionPath,
+  buyerId,
   buyerName,
   searchParams,
 }: {
   actionPath: "/find-a-part" | "/marketplace";
+  buyerId?: string;
   buyerName?: string;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const raw = await searchParams;
   const search = parseMarketplaceSearch(raw);
-  const [options, result] = await Promise.all([
+  const [options, result, defaultVehicleId] = await Promise.all([
     getMarketplaceOptions(),
     searchMarketplaceProducts(search),
+    buyerId ? getDefaultBuyerVehicleId(buyerId) : undefined,
   ]);
   const selectedVehicle = options.vehicles.find((vehicle) => vehicle.id === search.vehicle);
   const pages = Math.max(1, Math.ceil(result.count / result.pageSize));
@@ -87,7 +91,7 @@ export async function MarketplaceCatalog({
         </header>
 
         <div className="mt-7 rounded-xl border border-stone-200 bg-stone-50 p-4 sm:p-6">
-          <MarketplaceSearchForm actionPath={actionPath} options={options} search={search} />
+          <MarketplaceSearchForm actionPath={actionPath} defaultVehicleId={defaultVehicleId} options={options} search={search} />
         </div>
 
         {buyerName && topCategories.length ? (
@@ -149,7 +153,7 @@ export async function MarketplaceCatalog({
             {result.products.length ? (
               <div className="mt-5 grid gap-4 min-[520px]:grid-cols-2 xl:grid-cols-3">
                 {result.products.map((product) => (
-                  <ProductCard key={product.id} product={product} vehicle={selectedVehicle} />
+                  <ProductCard canPurchase={Boolean(buyerName)} key={product.id} product={product} vehicle={selectedVehicle} />
                 ))}
               </div>
             ) : (

@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, Box, CarFront, MapPin, PackageCheck, ScanLine, Star, Truck } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Box, CarFront, Heart, MapPin, PackageCheck, ScanLine, ShieldCheck, ShoppingCart, Star, Truck } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import { addToCartAction, toggleSavedPartAction } from "@/app/(protected)/commerce-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getCurrentPrincipal } from "@/lib/auth/principal";
 import { formatNgn } from "@/lib/marketplace/products";
 import { getMarketplaceProduct } from "@/lib/marketplace/public-catalog";
+import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -25,11 +28,24 @@ export default async function PartDetailPage({ params }: { params: Promise<{ slu
   if (!detail) notFound();
   const { product, seller, images, fitments, crossReferences } = detail;
   const primary = images.find((image) => image.is_primary) ?? images[0];
+  const principal = await getCurrentPrincipal();
+  const canPurchase = principal?.role === "BUYER" && principal.status === "ACTIVE";
+  let isSaved = false;
+  if (canPurchase) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("saved_parts")
+      .select("product_id")
+      .eq("buyer_id", principal.id)
+      .eq("product_id", product.id)
+      .maybeSingle();
+    isSaved = Boolean(data);
+  }
 
   return (
     <section className="min-h-[70vh] bg-white py-10 sm:py-14">
       <div className="container-page">
-        <Button asChild size="sm" variant="ghost"><Link href="/find-a-part"><ArrowLeft className="size-4" aria-hidden="true" />Back to marketplace</Link></Button>
+        <Button asChild size="sm" variant="ghost"><Link href={canPurchase ? "/marketplace" : "/find-a-part"}><ArrowLeft className="size-4" aria-hidden="true" />Back to marketplace</Link></Button>
 
         <div className="mt-6 grid gap-10 lg:grid-cols-[1.15fr_0.85fr]">
           <div>
@@ -46,7 +62,7 @@ export default async function PartDetailPage({ params }: { params: Promise<{ slu
             <p className="mt-5 text-3xl font-semibold text-stone-950">{formatNgn(product.price_minor)}</p>
             <div className="mt-6 grid gap-3 rounded-lg border border-stone-200 bg-[#fffdf9] p-5 text-sm text-stone-700">
               <p className="flex items-center gap-2"><PackageCheck className="size-4 text-primary" aria-hidden="true" /><span className="font-semibold text-stone-950">{seller?.store_name ?? "Marketplace supplier"}</span></p>
-              <p className="flex items-center gap-2"><BadgeCheck className="size-4 text-primary" aria-hidden="true" />Verification: {(seller?.verification_status ?? "submitted").replaceAll("_", " ").toLowerCase()}</p>
+              <p className="flex items-center gap-2"><ShieldCheck className="size-4 text-primary" aria-hidden="true" />Business review: {(seller?.verification_status ?? "submitted").replaceAll("_", " ").toLowerCase()}</p>
               <p className="flex items-center gap-2"><Star className="size-4 text-primary" aria-hidden="true" />No reviews yet</p>
               <p className="flex items-center gap-2"><MapPin className="size-4 text-primary" aria-hidden="true" />{product.city}, {product.state}, Nigeria</p>
               <p className="flex items-center gap-2"><Truck className="size-4 text-primary" aria-hidden="true" />{[product.pickup_available ? "Pickup" : null, product.delivery_available ? "Delivery" : null].filter(Boolean).join(" and ")} available</p>
@@ -57,6 +73,29 @@ export default async function PartDetailPage({ params }: { params: Promise<{ slu
               <div className="flex justify-between gap-4"><dt className="text-stone-500">OEM number</dt><dd className="font-mono">{product.oem_part_number ?? "Not provided"}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-stone-500">Manufacturer number</dt><dd className="font-mono">{product.manufacturer_part_number ?? "Not provided"}</dd></div>
             </dl>
+            {canPurchase ? (
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <form action={addToCartAction}>
+                  <input name="productId" type="hidden" value={product.id} />
+                  <input name="quantity" type="hidden" value="1" />
+                  <Button className="w-full" disabled={product.quantity < 1} size="lg" type="submit">
+                    <ShoppingCart className="size-5" aria-hidden="true" />
+                    Add to cart
+                  </Button>
+                </form>
+                <form action={toggleSavedPartAction}>
+                  <input name="productId" type="hidden" value={product.id} />
+                  <Button className="w-full" size="lg" type="submit" variant="outline">
+                    <Heart className="size-5" fill={isSaved ? "currentColor" : "none"} aria-hidden="true" />
+                    {isSaved ? "Remove saved part" : "Save part"}
+                  </Button>
+                </form>
+              </div>
+            ) : principal ? null : (
+              <Button asChild className="mt-5 w-full" size="lg">
+                <Link href={`/login?next=${encodeURIComponent(`/parts/${product.slug}`)}`}>Sign in to buy</Link>
+              </Button>
+            )}
           </aside>
         </div>
 

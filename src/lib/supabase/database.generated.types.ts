@@ -2,6 +2,12 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type UserRole = "BUYER" | "SELLER" | "ADMIN";
 export type AccountStatus = "ACTIVE" | "RESTRICTED" | "SUSPENDED";
+export type BuyerAccountType =
+  | "INDIVIDUAL"
+  | "MECHANIC_TECHNICIAN"
+  | "GARAGE_WORKSHOP"
+  | "FLEET_OPERATOR"
+  | "CORPORATE_BUYER";
 export type SellerStatus =
   | "PENDING_VERIFICATION"
   | "ACTIVE"
@@ -85,9 +91,60 @@ export type Database = {
         { avatar_url?: string | null; full_name?: string; phone?: string | null }
       >;
       buyer_profiles: Table<
-        TimestampColumns & { preferred_market: string; user_id: string },
-        { preferred_market?: string; user_id: string },
-        { preferred_market?: string }
+        TimestampColumns & {
+          account_type: BuyerAccountType;
+          business_registration_number: string | null;
+          organization_name: string | null;
+          preferred_market: string;
+          user_id: string;
+        },
+        {
+          account_type?: BuyerAccountType;
+          business_registration_number?: string | null;
+          organization_name?: string | null;
+          preferred_market?: string;
+          user_id: string;
+        },
+        {
+          account_type?: BuyerAccountType;
+          business_registration_number?: string | null;
+          organization_name?: string | null;
+          preferred_market?: string;
+        }
+      >;
+      saved_vehicles: Table<
+        TimestampColumns & {
+          buyer_id: string;
+          fitment_id: string;
+          id: string;
+          is_default: boolean;
+          label: string | null;
+          registration_number: string | null;
+        },
+        {
+          buyer_id: string;
+          fitment_id: string;
+          id?: string;
+          is_default?: boolean;
+          label?: string | null;
+          registration_number?: string | null;
+        },
+        {
+          fitment_id?: string;
+          is_default?: boolean;
+          label?: string | null;
+          registration_number?: string | null;
+        }
+      >;
+      saved_parts: Table<
+        { buyer_id: string; created_at: string; product_id: string },
+        { buyer_id: string; product_id: string },
+        Record<string, never>
+      >;
+      cart_items: Table<
+        TimestampColumns & { buyer_id: string; id: string; product_id: string; quantity: number },
+        { buyer_id: string; id?: string; product_id: string; quantity?: number },
+        { quantity?: number }
       >;
       seller_profiles: Table<
         TimestampColumns & {
@@ -357,6 +414,7 @@ export type Database = {
     Functions: Record<string, never>;
     Enums: {
       account_status: AccountStatus;
+      buyer_account_type: BuyerAccountType;
       inventory_transaction_type: InventoryTransactionType;
       product_condition: ProductCondition;
       product_image_source: ProductImageSource;

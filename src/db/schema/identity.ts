@@ -17,6 +17,7 @@ import {
   accountStatusEnum,
   addressTypeEnum,
   adminRoleKeyEnum,
+  buyerAccountTypeEnum,
   sellerStatusEnum,
   userRoleEnum,
 } from "@/db/schema/enums";
@@ -65,6 +66,9 @@ export const buyerProfiles = pgTable(
       .primaryKey()
       .references(() => profiles.id, { onDelete: "cascade" }),
     preferredMarket: text("preferred_market").default("Nigeria").notNull(),
+    accountType: buyerAccountTypeEnum("account_type").default("INDIVIDUAL").notNull(),
+    organizationName: text("organization_name"),
+    businessRegistrationNumber: text("business_registration_number"),
     ...timestamps,
   },
   (table) => [

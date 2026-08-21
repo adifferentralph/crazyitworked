@@ -53,7 +53,37 @@ const signupBase = z
     }
   });
 
-export const buyerSignupSchema = signupBase;
+export const buyerSignupSchema = signupBase
+  .and(
+    z.object({
+      accountType: z
+        .enum([
+          "INDIVIDUAL",
+          "MECHANIC_TECHNICIAN",
+          "GARAGE_WORKSHOP",
+          "FLEET_OPERATOR",
+          "CORPORATE_BUYER",
+        ])
+        .default("INDIVIDUAL"),
+      organizationName: z
+        .string()
+        .trim()
+        .max(120, "Organisation name is too long.")
+        .optional(),
+    }),
+  )
+  .superRefine(({ accountType, organizationName }, context) => {
+    if (
+      ["GARAGE_WORKSHOP", "FLEET_OPERATOR", "CORPORATE_BUYER"].includes(accountType) &&
+      !organizationName
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter your business or organisation name.",
+        path: ["organizationName"],
+      });
+    }
+  });
 
 export const sellerSignupSchema = signupBase.and(
   z.object({

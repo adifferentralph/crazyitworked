@@ -111,6 +111,47 @@ export function AuthForm({
           />
         ) : null}
 
+{variant === "buyer-signup" ? (
+          <>
+            <div className="grid gap-2">
+              <label className="text-sm font-semibold text-stone-800" htmlFor="buyer-account-type">
+                How will you use Twenty-Two Parts?
+              </label>
+              <select
+                aria-describedby={state.fieldErrors?.accountType?.[0] ? "buyer-account-type-error" : undefined}
+                aria-invalid={Boolean(state.fieldErrors?.accountType?.[0])}
+                className={`h-12 w-full rounded-md border bg-white px-3.5 text-base text-stone-950 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 ${
+                  state.fieldErrors?.accountType?.[0]
+                    ? "border-primary bg-red-50 ring-2 ring-primary/20"
+                    : "border-stone-300"
+                }`}
+                defaultValue={state.values?.accountType ?? "INDIVIDUAL"}
+                id="buyer-account-type"
+                name="accountType"
+              >
+                <option value="INDIVIDUAL">Individual vehicle owner</option>
+                <option value="MECHANIC_TECHNICIAN">Mechanic or technician</option>
+                <option value="GARAGE_WORKSHOP">Garage or workshop</option>
+                <option value="FLEET_OPERATOR">Fleet operator</option>
+                <option value="CORPORATE_BUYER">Corporate buyer</option>
+              </select>
+              {state.fieldErrors?.accountType?.[0] ? (
+                <p className="text-sm font-medium text-primary" id="buyer-account-type-error">
+                  {state.fieldErrors.accountType[0]}
+                </p>
+              ) : null}
+            </div>
+            <AuthField
+              autoComplete="organization"
+              defaultValue={state.values?.organizationName}
+              errors={state.fieldErrors?.organizationName}
+              label="Business or organisation name (optional for individuals)"
+              name="organizationName"
+              placeholder="Your workshop, fleet, or company"
+              type="text"
+            />
+          </>
+        ) : null}
         {variant === "seller-signup" ? (
           <AuthField
             autoComplete="organization"
