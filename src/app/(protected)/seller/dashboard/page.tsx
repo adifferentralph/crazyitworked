@@ -20,19 +20,28 @@ import { createClient } from "@/lib/supabase/server";
 export default async function SellerDashboardPage() {
   const principal = await requireRole(["SELLER"], "/seller/dashboard");
   const supabase = await createClient();
-  const [{ data: seller }, { data: verification }, products, fitmentPerformance] = await Promise.all([
-    supabase
-      .from("seller_profiles")
-      .select("store_name, status, onboarding_completed_at")
-      .eq("user_id", principal.id)
-      .single(),
-    supabase
-      .from("seller_verifications")
-      .select("status")
-      .eq("seller_id", principal.id)
-      .maybeSingle(),
-    getSellerProducts(principal.id),
-  ]);
+  const [
+  { data: seller },
+  { data: verification },
+  products,
+  fitmentPerformance,
+] = await Promise.all([
+  supabase
+    .from("seller_profiles")
+    .select("store_name, status, onboarding_completed_at")
+    .eq("user_id", principal.id)
+    .single(),
+
+  supabase
+    .from("seller_verifications")
+    .select("status")
+    .eq("seller_id", principal.id)
+    .maybeSingle(),
+
+  getSellerProducts(principal.id),
+
+  getSellerFitmentPerformance(principal.id),
+]);
   const approved = products.filter((product) => product.status === "APPROVED").length;
   const pending = products.filter((product) => product.status === "PENDING_REVIEW").length;
   const needsAttention = products.filter((product) =>
