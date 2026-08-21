@@ -54,7 +54,20 @@ export type ProductImageType =
   | "PART_NUMBER"
   | "PACKAGING"
   | "OTHER";
-export type ProductImageSource = "SELLER_ORIGINAL" | "ADMIN_APPROVED" | "ADMIN_REPLACEMENT";
+export type ProductImageSource =
+  | "SELLER_ORIGINAL"
+  | "PLATFORM_ASSISTED_ORIGINAL"
+  | "BULK_IMPORT_ORIGINAL"
+  | "ADMIN_APPROVED"
+  | "ADMIN_REPLACEMENT";
+export type ProductCreationSource = "SELLER" | "PLATFORM_ASSISTED" | "BULK_IMPORT";
+export type InventoryImportStatus =
+  | "VALIDATING"
+  | "READY"
+  | "HAS_ERRORS"
+  | "IMPORTED"
+  | "CANCELLED";
+export type InventoryImportRowStatus = "VALID" | "INVALID" | "DUPLICATE" | "IMPORTED";
 export type InventoryTransactionType =
   | "INITIAL_STOCK"
   | "SELLER_ADJUSTMENT"
@@ -83,7 +96,81 @@ type CatalogRecord = TimestampColumns & {
 export type Database = {
   public: {
     Tables: {
-      profiles: Table<
+      inventory_imports: Table<
+        {
+          completed_at: string | null;
+          created_at: string;
+          created_by_user_id: string;
+          duplicate_rows: number;
+          file_name: string;
+          file_sha256: string;
+          id: string;
+          imported_rows: number;
+          invalid_rows: number;
+          metadata: Json;
+          seller_id: string;
+          status: InventoryImportStatus;
+          total_rows: number;
+          updated_at: string;
+          valid_rows: number;
+        },
+        {
+          completed_at?: string | null;
+          created_by_user_id: string;
+          duplicate_rows?: number;
+          file_name: string;
+          file_sha256: string;
+          id?: string;
+          imported_rows?: number;
+          invalid_rows?: number;
+          metadata?: Json;
+          seller_id: string;
+          status?: InventoryImportStatus;
+          total_rows?: number;
+          valid_rows?: number;
+        },
+        {
+          completed_at?: string | null;
+          duplicate_rows?: number;
+          imported_rows?: number;
+          invalid_rows?: number;
+          metadata?: Json;
+          status?: InventoryImportStatus;
+          total_rows?: number;
+          valid_rows?: number;
+        }
+      >;
+      inventory_import_rows: Table<
+        {
+          created_at: string;
+          id: string;
+          import_id: string;
+          imported_at: string | null;
+          normalized_data: Json;
+          product_id: string | null;
+          raw_data: Json;
+          row_number: number;
+          status: InventoryImportRowStatus;
+          validation_errors: string[];
+        },
+        {
+          id?: string;
+          import_id: string;
+          imported_at?: string | null;
+          normalized_data?: Json;
+          product_id?: string | null;
+          raw_data?: Json;
+          row_number: number;
+          status: InventoryImportRowStatus;
+          validation_errors?: string[];
+        },
+        {
+          imported_at?: string | null;
+          product_id?: string | null;
+          status?: InventoryImportRowStatus;
+          validation_errors?: string[];
+        }
+      >;      profiles: Table<
         TimestampColumns & {
           avatar_url: string | null;
           email: string;
@@ -409,15 +496,19 @@ seller_categories: Table<
       >;
       products: Table<
         TimestampColumns & {
+          assisted_onboarding: boolean;
           brand: string;
           category_id: string;
           city: string;
           condition: ProductCondition;
           country: string;
+          created_by_user_id: string;
+          creation_source: ProductCreationSource;
           currency: "NGN";
           delivery_available: boolean;
           description: string;
           id: string;
+          last_modified_by_user_id: string;
           manufacturer_part_number: string | null;
           name: string;
           oem_part_number: string | null;
@@ -426,6 +517,7 @@ seller_categories: Table<
           published_at: string | null;
           quantity: number;
           reserved_quantity: number;
+          seller_acknowledged_at: string | null;
           seller_id: string;
           sku: string;
           slug: string;
@@ -435,15 +527,19 @@ seller_categories: Table<
           version: number;
         },
         {
+          assisted_onboarding?: boolean;
           brand: string;
           category_id: string;
           city: string;
           condition: ProductCondition;
           country?: string;
+          created_by_user_id: string;
+          creation_source?: ProductCreationSource;
           currency?: "NGN";
           delivery_available: boolean;
           description: string;
           id?: string;
+          last_modified_by_user_id: string;
           manufacturer_part_number?: string | null;
           name: string;
           oem_part_number?: string | null;
@@ -451,6 +547,7 @@ seller_categories: Table<
           price_minor: number;
           quantity: number;
           reserved_quantity?: number;
+          seller_acknowledged_at?: string | null;
           seller_id: string;
           sku: string;
           slug: string;
@@ -458,25 +555,29 @@ seller_categories: Table<
           status?: ProductStatus;
         },
         {
+          assisted_onboarding?: boolean;
           brand?: string;
           category_id?: string;
           city?: string;
           condition?: ProductCondition;
           country?: "Nigeria";
+          created_by_user_id?: string;
+          creation_source?: ProductCreationSource;
           delivery_available?: boolean;
           description?: string;
+          last_modified_by_user_id?: string;
           manufacturer_part_number?: string | null;
           name?: string;
           oem_part_number?: string | null;
           pickup_available?: boolean;
           price_minor?: number;
           quantity?: number;
+          seller_acknowledged_at?: string | null;
           sku?: string;
           state?: string;
           status?: ProductStatus;
         }
-      >;
-      product_cross_references: Table<
+      >;      product_cross_references: Table<
         { created_at: string; id: string; product_id: string; reference_number: string },
         { product_id: string; reference_number: string }
       >;
@@ -583,12 +684,80 @@ seller_categories: Table<
         Args: { p_quote_id: string };
         Returns: string;
       };
+      confirm_assisted_product: {
+        Args: { p_product_id: string };
+        Returns: undefined;
+      };
+      create_assisted_product_draft: {
+        Args: {
+          p_brand: string;
+          p_category_id: string;
+          p_city: string;
+          p_condition: ProductCondition;
+          p_creation_source: ProductCreationSource;
+          p_cross_references: string[];
+          p_delivery_available: boolean;
+          p_description: string;
+          p_fitment_ids: string[];
+          p_manufacturer_part_number: string | null;
+          p_name: string;
+          p_oem_part_number: string | null;
+          p_pickup_available: boolean;
+          p_price_minor: number;
+          p_quantity: number;
+          p_seller_id: string;
+          p_sku: string;
+          p_slug: string;
+          p_state: string;
+        };
+        Returns: string;
+      };
+      inventory_onboarding_products: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          active_image_count: number;
+          creation_source: ProductCreationSource;
+          product_id: string;
+          product_name: string;
+          product_status: ProductStatus;
+          seller_acknowledged_at: string | null;
+          seller_id: string;
+          sku: string;
+          store_name: string;
+          updated_at: string;
+        }[];
+      };
+      inventory_onboarding_sellers: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          city: string | null;
+          seller_id: string;
+          seller_status: SellerStatus;
+          state: string | null;
+          store_name: string;
+        }[];
+      };
+      register_assisted_product_image: {
+        Args: {
+          p_is_actual_item: boolean;
+          p_mime_type: string;
+          p_original_filename: string;
+          p_product_id: string;
+          p_size_bytes: number;
+          p_storage_path: string;
+          p_type: ProductImageType;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       account_status: AccountStatus;
       buyer_account_type: BuyerAccountType;
+      inventory_import_row_status: InventoryImportRowStatus;
+      inventory_import_status: InventoryImportStatus;
       inventory_transaction_type: InventoryTransactionType;
       product_condition: ProductCondition;
+      product_creation_source: ProductCreationSource;
       product_image_source: ProductImageSource;
       product_image_type: ProductImageType;
       part_quote_status: PartQuoteStatus;

@@ -42,7 +42,13 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
 
   return (
     <SellerShell description="Update this private draft. Existing seller originals stay preserved when you add replacement images." title="Edit product">
-      <ProductForm categories={options.categories} defaults={defaults} fitments={options.fitments} mode="edit" />
+      <ProductForm
+        allowSubmitReview={product.creation_source === "SELLER" || Boolean(product.seller_acknowledged_at)}
+        categories={options.categories}
+        defaults={defaults}
+        fitments={options.fitments}
+        mode="edit"
+      />
     </SellerShell>
   );
 }

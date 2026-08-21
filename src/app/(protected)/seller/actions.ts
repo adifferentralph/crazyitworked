@@ -337,7 +337,10 @@ export async function createProductAction(
   const slug = `${slugifyProduct(parsed.data.name) || "part"}-${productId.slice(0, 8)}`;
   const { error: productError } = await supabase.from("products").insert({
     ...productValues(parsed.data),
+    created_by_user_id: principal.id,
+    creation_source: "SELLER",
     id: productId,
+    last_modified_by_user_id: principal.id,
     seller_id: principal.id,
     slug,
     status: "DRAFT",

@@ -38,8 +38,31 @@ export const productImageTypeEnum = pgEnum("product_image_type", [
 
 export const productImageSourceEnum = pgEnum("product_image_source", [
   "SELLER_ORIGINAL",
+  "PLATFORM_ASSISTED_ORIGINAL",
+  "BULK_IMPORT_ORIGINAL",
   "ADMIN_APPROVED",
   "ADMIN_REPLACEMENT",
+]);
+
+export const productCreationSourceEnum = pgEnum("product_creation_source", [
+  "SELLER",
+  "PLATFORM_ASSISTED",
+  "BULK_IMPORT",
+]);
+
+export const inventoryImportStatusEnum = pgEnum("inventory_import_status", [
+  "VALIDATING",
+  "READY",
+  "HAS_ERRORS",
+  "IMPORTED",
+  "CANCELLED",
+]);
+
+export const inventoryImportRowStatusEnum = pgEnum("inventory_import_row_status", [
+  "VALID",
+  "INVALID",
+  "DUPLICATE",
+  "IMPORTED",
 ]);
 
 export const mediaHistoryActionEnum = pgEnum("media_history_action", [

@@ -22,6 +22,7 @@ import {
   inventoryTransactionTypeEnum,
   mediaHistoryActionEnum,
   productConditionEnum,
+  productCreationSourceEnum,
   productImageSourceEnum,
   productImageTypeEnum,
   productStatusEnum,
@@ -358,6 +359,15 @@ export const products = pgTable(
     pickupAvailable: boolean("pickup_available").default(false).notNull(),
     deliveryAvailable: boolean("delivery_available").default(true).notNull(),
     status: productStatusEnum("status").default("DRAFT").notNull(),
+    creationSource: productCreationSourceEnum("creation_source").default("SELLER").notNull(),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "restrict" }),
+    lastModifiedByUserId: uuid("last_modified_by_user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "restrict" }),
+    assistedOnboarding: boolean("assisted_onboarding").default(false).notNull(),
+    sellerAcknowledgedAt: timestamp("seller_acknowledged_at", { withTimezone: true }),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     version: integer("version").default(1).notNull(),
@@ -390,6 +400,9 @@ export const products = pgTable(
       for: "insert",
       to: authenticatedRole,
       withCheck: sql`${authUid} = ${table.sellerId}
+        and ${table.creationSource} = 'SELLER'
+        and ${table.createdByUserId} = ${authUid}
+        and ${table.lastModifiedByUserId} = ${authUid}
         and ${table.status} = 'DRAFT'
         and ${table.submittedAt} is null
         and ${table.publishedAt} is null

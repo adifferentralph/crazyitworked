@@ -8,7 +8,10 @@ import {
   updateProductAction,
 } from "@/app/(protected)/seller/actions";
 import { SellerFormAlert } from "@/components/seller/seller-form-alert";
-import { initialSellerActionState } from "@/lib/marketplace/seller-action-state";
+import {
+  initialSellerActionState,
+  type SellerActionState,
+} from "@/lib/marketplace/seller-action-state";
 import { SellerSubmitButton } from "@/components/seller/seller-submit-button";
 import { Input } from "@/components/ui/input";
 import {
@@ -67,23 +70,41 @@ function FormSection({ children, description, icon: Icon, title }: { children: R
   );
 }
 
+type ProductFormAction = (
+  previousState: SellerActionState,
+  formData: FormData,
+) => Promise<SellerActionState>;
+
 export function ProductForm({
+  actionOverride,
+  allowSubmitReview = true,
   categories,
   defaults,
+  draftHrefPrefix = "/seller/products",
   fitments,
+  hiddenFields = [],
+  imageDescription = "Upload five clear, seller-original images. Accepted: JPEG, PNG, or WebP, up to 8 MB each. Original uploads are preserved.",
   mode,
+  showDraftRecoveryLink = true,
 }: {
+  actionOverride?: ProductFormAction;
+  allowSubmitReview?: boolean;
   categories: ProductCategoryOption[];
   defaults: ProductFormDefaults;
+  draftHrefPrefix?: string;
   fitments: VehicleFitmentOption[];
+  hiddenFields?: Array<{ name: string; value: string }>;
+  imageDescription?: string;
   mode: "create" | "edit";
+  showDraftRecoveryLink?: boolean;
 }) {
-  const action = mode === "create" ? createProductAction : updateProductAction;
+  const action = actionOverride ?? (mode === "create" ? createProductAction : updateProductAction);
   const [state, formAction] = useActionState(action, initialSellerActionState);
 
   return (
     <form action={formAction} className="grid gap-7" noValidate>
       {defaults.productId ? <input name="productId" type="hidden" value={defaults.productId} /> : null}
+      {hiddenFields.map((field) => <input key={field.name} name={field.name} type="hidden" value={field.value} />)}
 
       <FormSection description="Use a specific, buyer-friendly title and describe exactly what is being sold." icon={PackageCheck} title="Part details">
         <div className="sm:col-span-2">
@@ -191,7 +212,7 @@ export function ProductForm({
         </div>
       </FormSection>
 
-      <FormSection description="Upload five clear, seller-original images. Accepted: JPEG, PNG, or WebP, up to 8 MB each. Original uploads are preserved." icon={Camera} title="Product images">
+      <FormSection description={imageDescription} icon={Camera} title="Product images">
         {requiredProductImageSlots.map((slot) => {
           const current = defaults.imageTypes.includes(slot.type);
           return (
@@ -213,10 +234,10 @@ export function ProductForm({
       </FormSection>
 
       <SellerFormAlert state={state} />
-      {state.productId ? <p className="text-sm text-stone-600">The draft was created. You can continue from product <a className="font-semibold text-primary underline" href={`/seller/products/${state.productId}/edit`}>{state.productId.slice(0, 8)}</a>.</p> : null}
+      {state.productId && showDraftRecoveryLink ? <p className="text-sm text-stone-600">The draft was created. You can continue from product <a className="font-semibold text-primary underline" href={`${draftHrefPrefix}/${state.productId}`}>{state.productId.slice(0, 8)}</a>.</p> : null}
       <div className="flex flex-col-reverse gap-3 border-t border-stone-200 pt-6 sm:flex-row sm:justify-end">
         <SellerSubmitButton name="intent" pendingLabel="Saving draft…" type="submit" value="save-draft" variant="outline">Save draft</SellerSubmitButton>
-        <SellerSubmitButton name="intent" pendingLabel="Submitting for review…" type="submit" value="submit-review">Submit for review</SellerSubmitButton>
+        {allowSubmitReview ? <SellerSubmitButton name="intent" pendingLabel="Submitting for review…" type="submit" value="submit-review">Submit for review</SellerSubmitButton> : null}
       </div>
     </form>
   );

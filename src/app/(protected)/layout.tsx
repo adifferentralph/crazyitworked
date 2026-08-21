@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { ApplicationHeader } from "@/components/layout/application-header";
-import { requirePrincipal } from "@/lib/auth/principal";
+import { getCurrentPrincipal } from "@/lib/auth/principal";
 import { getBuyerCartCount } from "@/lib/marketplace/buyer-data";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,7 +11,11 @@ export const metadata: Metadata = {
 };
 
 export default async function ProtectedLayout({ children }: { children: ReactNode }) {
-  const principal = await requirePrincipal("/marketplace");
+  const principal = await getCurrentPrincipal();
+
+  if (!principal) {
+    return <main id="main-content">{children}</main>;
+  }
   let cartCount = 0;
   let storeName: string | null = null;
 

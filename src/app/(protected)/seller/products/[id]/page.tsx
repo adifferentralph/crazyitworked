@@ -3,17 +3,27 @@ import Link from "next/link";
 import { Box, Images, Pencil, Truck } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import { confirmAssistedProductAction } from "@/app/(protected)/assisted-inventory-actions";
 import { ProductStatusBadge } from "@/components/seller/product-status-badge";
+import { SellerSubmitButton } from "@/components/seller/seller-submit-button";
 import { SellerShell } from "@/components/seller/seller-shell";
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth/principal";
 import { formatNgn, productStatusLabels } from "@/lib/marketplace/products";
 import { getSellerProduct } from "@/lib/marketplace/seller-data";
 
-const notices: Record<string, string> = {
-  "changes-saved": "Product changes saved.",
-  "draft-created": "Draft product created.",
-  submitted: "Product submitted for marketplace review.",
+const notices: Record<string, { message: string; tone: "error" | "success" }> = {
+  "assisted-not-ready": {
+    message: "This assisted draft still needs all five required images before you can confirm it.",
+    tone: "error",
+  },
+  "assisted-submitted": {
+    message: "You confirmed the assisted listing and submitted it for marketplace review.",
+    tone: "success",
+  },
+  "changes-saved": { message: "Product changes saved.", tone: "success" },
+  "draft-created": { message: "Draft product created.", tone: "success" },
+  submitted: { message: "Product submitted for marketplace review.", tone: "success" },
 };
 
 export default async function SellerProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ message?: string }> }) {
@@ -25,10 +35,23 @@ export default async function SellerProductPage({ params, searchParams }: { para
   const { product, images, inventory, crossReferences } = detail;
   const editable = product.status === "DRAFT" || product.status === "NEEDS_CHANGES";
   const notice = query.message ? notices[query.message] : null;
+  const assistedAwaitingConfirmation = product.creation_source !== "SELLER"
+    && !product.seller_acknowledged_at
+    && editable;
 
   return (
     <SellerShell description={`Private supplier view · ${productStatusLabels[product.status]}`} title={product.name}>
-      {notice ? <div className="mb-6 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900" role="status">{notice}</div> : null}
+      {notice ? <div className={`mb-6 rounded-md border p-4 text-sm ${notice.tone === "error" ? "border-red-200 bg-red-50 text-red-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"}`} role={notice.tone === "error" ? "alert" : "status"}>{notice.message}</div> : null}
+      {assistedAwaitingConfirmation ? (
+        <section className="mb-6 rounded-lg border border-orange-200 bg-orange-50 p-5">
+          <h2 className="text-lg font-semibold text-stone-950">Review this assisted listing</h2>
+          <p className="mt-2 text-sm leading-6 text-stone-700">Platform staff prepared this seller-owned draft. Check the part details, fitment, price, stock, and five genuine images. You can edit anything before confirming.</p>
+          <form action={confirmAssistedProductAction} className="mt-4">
+            <input name="productId" type="hidden" value={product.id} />
+            <SellerSubmitButton pendingLabel="Confirming and submitting…">Confirm details and submit for review</SellerSubmitButton>
+          </form>
+        </section>
+      ) : null}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <ProductStatusBadge status={product.status} />
         {editable ? <Button asChild><Link href={`/seller/products/${product.id}/edit`}><Pencil className="size-4" aria-hidden="true" />Edit product</Link></Button> : null}
@@ -57,6 +80,7 @@ export default async function SellerProductPage({ params, searchParams }: { para
               <div className="flex justify-between gap-4"><dt className="text-stone-500">Condition</dt><dd>{product.condition.replaceAll("_", " ").toLowerCase()}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-stone-500">Brand</dt><dd>{product.brand}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-stone-500">Stock</dt><dd>{product.quantity}</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-stone-500">Created through</dt><dd>{product.creation_source === "SELLER" ? "Seller" : product.creation_source === "BULK_IMPORT" ? "Bulk import" : "Platform assistance"}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-stone-500">Location</dt><dd>{product.city}, {product.state}</dd></div>
             </dl>
           </div>

@@ -1,24 +1,33 @@
-import { ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { Boxes, ShieldCheck } from "lucide-react";
 
-import { AccountShell } from "@/components/auth/account-shell";
+import { AdminShell } from "@/components/admin/admin-shell";
+import { hasAdminPermission } from "@/lib/auth/permissions";
 import { requireRole } from "@/lib/auth/principal";
 
 export default async function AdminPage() {
   const principal = await requireRole(["ADMIN"], "/admin");
+  const canAssistInventory = await hasAdminPermission("assist_seller_inventory");
 
   return (
-    <AccountShell
-      description="This route confirms protected team access. Operational admin modules will be implemented in their dedicated phase."
-      eyebrow="Internal operations"
-      title={`Admin access for ${principal.fullName}`}
+    <AdminShell
+      description="Permission-scoped tools for running essential marketplace operations. Financial authority is separate from seller support access."
+      title={`Operations for ${principal.fullName}`}
     >
-      <div className="flex max-w-2xl gap-4 rounded-lg border border-stone-200 bg-[#fffdf9] p-5">
-        <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-        <p className="text-sm leading-6 text-stone-700">
-          Your identity has the ADMIN application role. Fine-grained permissions remain enforced by
-          the admin role and permission tables before operational tools are exposed.
-        </p>
+      <div className="grid gap-4 md:grid-cols-2">
+        {canAssistInventory ? (
+          <Link className="group rounded-lg border border-stone-200 bg-white p-6 hover:border-primary" href="/admin/inventory-onboarding">
+            <Boxes aria-hidden="true" className="size-6 text-primary" />
+            <h2 className="mt-4 text-xl font-semibold text-stone-950 group-hover:text-primary">Seller inventory onboarding</h2>
+            <p className="mt-2 text-sm leading-6 text-stone-600">Create seller-owned drafts, review CSV imports, and track seller confirmation.</p>
+          </Link>
+        ) : null}
+        <div className="rounded-lg border border-stone-200 bg-[#fffdf9] p-6">
+          <ShieldCheck aria-hidden="true" className="size-6 text-primary" />
+          <h2 className="mt-4 text-xl font-semibold text-stone-950">Permission boundaries active</h2>
+          <p className="mt-2 text-sm leading-6 text-stone-600">Your admin role exposes only the operational tools assigned to it. Seller passwords and unrelated financial controls are never available here.</p>
+        </div>
       </div>
-    </AccountShell>
+    </AdminShell>
   );
 }
