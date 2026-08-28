@@ -92,6 +92,20 @@
       "when": 1787325000000,
       "tag": "0012_demand_signal_dedupe",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787907600000,
+      "tag": "0013_fitment_delete_audit_owner",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1787908200000,
+      "tag": "0014_fitment_delete_audit_reference",
+      "breakpoints": true
     }
   ]
 }

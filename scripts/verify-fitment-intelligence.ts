@@ -97,6 +97,25 @@ async function submitOutcome(client: SupabaseClient<Database>, snapshotId: strin
 }
 
 async function run() {
+  const staleUsers = await sql<{ id: string }[]>`
+    select id from auth.users where email like 'fitment-%@example.com'
+  `;
+  if (staleUsers.length) {
+    const staleIds = staleUsers.map((user) => user.id);
+    const staleProducts = await sql<{ id: string }[]>`
+      select id from public.products
+      where seller_id in ${sql(staleIds)} or created_by_user_id in ${sql(staleIds)}
+    `;
+    const staleProductIds = staleProducts.map((product) => product.id);
+    if (staleProductIds.length) {
+      await sql`delete from public.inventory_transactions where product_id in ${sql(staleProductIds)}`;
+      await sql`delete from public.product_modification_history where product_id in ${sql(staleProductIds)}`;
+      await sql`delete from public.products where id in ${sql(staleProductIds)}`;
+    }
+    await sql`delete from public.fitment_claim_history where seller_id in ${sql(staleIds)}`;
+    await sql`delete from auth.users where id in ${sql(staleIds)}`;
+    console.log(`Removed ${staleIds.length} stale fitment-verifier identities from the failed run.`);
+  }
   console.log("Creating SMTP-independent fitment verification identities...");
   const buyerAccount = await createPasswordUser("BUYER", "buyer");
   const otherBuyerAccount = await createPasswordUser("BUYER", "other-buyer");
@@ -139,6 +158,7 @@ async function run() {
     delivery_available: true,
     description: "Live fitment verification product with evidence and ownership isolation.",
     last_modified_by_user_id: sellerAccount.id,
+    id: productId,
     name: "Live fitment verification part",
     oem_part_number: "TTP-FIT-001",
     pickup_available: true,
@@ -275,12 +295,16 @@ run().catch((error) => {
     }
     if (quoteId) await sql`delete from public.part_request_quotes where id = ${quoteId}::uuid`;
     if (requestId) await sql`delete from public.part_requests where id = ${requestId}::uuid`;
-    if (productId) {
-      await sql`delete from public.inventory_transactions where product_id = ${productId}::uuid`;
-      await sql`delete from public.product_modification_history where product_id = ${productId}::uuid`;
-      await sql`delete from public.products where id = ${productId}::uuid`;
-      await sql`delete from public.fitment_claim_history where product_id = ${productId}::uuid or seller_id in ${sql(userIds)}`;
+    const verifierProducts = userIds.length
+      ? await sql<{ id: string }[]>`select id from public.products where seller_id in ${sql(userIds)} or created_by_user_id in ${sql(userIds)}`
+      : [];
+    const verifierProductIds = verifierProducts.map((product) => product.id);
+    if (verifierProductIds.length) {
+      await sql`delete from public.inventory_transactions where product_id in ${sql(verifierProductIds)}`;
+      await sql`delete from public.product_modification_history where product_id in ${sql(verifierProductIds)}`;
+      await sql`delete from public.products where id in ${sql(verifierProductIds)}`;
     }
+    if (userIds.length) await sql`delete from public.fitment_claim_history where seller_id in ${sql(userIds)}`;
     if (userIds.length) await sql`delete from auth.users where id in ${sql(userIds)}`;
   } finally {
     await sql.end();
