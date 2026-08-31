@@ -1,8 +1,11 @@
 import { Bell } from "lucide-react";
 
 import { AccountSectionPage } from "@/components/account/account-section-page";
+import { requireRole } from "@/lib/auth/principal";
 
-export default function AccountFeaturePage() {
+export default async function AccountNotificationsPage() {
+  await requireRole(["BUYER"], "/account/notifications");
+
   return (
     <AccountSectionPage
       description="See important marketplace, quote, and order updates."

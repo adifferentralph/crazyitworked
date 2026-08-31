@@ -136,7 +136,7 @@ test("live confirmation and password recovery use Mailtrap links", async ({ page
     process.env.RUN_LIVE_SUPABASE_TESTS !== "1" || testInfo.project.name !== "chromium",
     "Live Supabase email verification runs explicitly and only once.",
   );
-  test.setTimeout(300_000);
+  test.setTimeout(600_000);
 
   const suffix = `${Date.now().toString(36)}${randomUUID().slice(0, 5)}`;
   const email = `foundation-email-${suffix}@gmail.com`;
@@ -152,7 +152,7 @@ test("live confirmation and password recovery use Mailtrap links", async ({ page
     await page.getByLabel("Confirm password", { exact: true }).fill(password);
     await page.getByLabel(/I agree to the Terms of Use/i).check();
     await page.getByRole("button", { name: "Create buyer account" }).click();
-    await expect(page).toHaveURL(/\/verify-email\?email=/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/verify-email\?email=/, { timeout: 120_000 });
 
     const publicClient = createClient<Database>(
       environment.NEXT_PUBLIC_SUPABASE_URL,
@@ -170,22 +170,22 @@ test("live confirmation and password recovery use Mailtrap links", async ({ page
 
     const confirmationLink = await waitForAuthLink(email, /confirm/i, signupStartedAt);
     await openAuthLink(page, confirmationLink);
-    await expect(page).toHaveURL(/\/marketplace$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/marketplace$/, { timeout: 120_000 });
     await expect(page.getByRole("search").first()).toBeVisible();
     await page.reload();
     await expect(page.getByRole("search").first()).toBeVisible();
     await page.getByRole("button", { name: "Sign out" }).click();
-    await expect(page).toHaveURL(/\/login$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/login$/, { timeout: 120_000 });
 
     const recoveryStartedAt = Date.now();
     await page.goto("/forgot-password");
     await page.getByLabel("Email address").fill(email);
     await page.getByRole("button", { name: "Send reset link" }).click();
-    await expect(page.getByText(/If an account exists for that email/i)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/If an account exists for that email/i)).toBeVisible({ timeout: 120_000 });
 
     const recoveryLink = await waitForAuthLink(email, /password|reset/i, recoveryStartedAt);
     await openAuthLink(page, recoveryLink);
-    await expect(page).toHaveURL(/\/reset-password$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/reset-password$/, { timeout: 120_000 });
 
     const replacementPassword = `Ttp!${randomUUID()}Bb8`;
     const newPasswordInput = page.getByLabel("New password", { exact: true });
@@ -197,12 +197,12 @@ test("live confirmation and password recovery use Mailtrap links", async ({ page
       .getByLabel("Confirm new password", { exact: true })
       .fill(replacementPassword);
     await page.getByRole("button", { name: "Set new password" }).click();
-    await expect(page).toHaveURL(/\/login\?message=password-updated$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/login\?message=password-updated$/, { timeout: 120_000 });
 
     await page.getByLabel("Email address").fill(email);
     await page.getByLabel("Password", { exact: true }).fill(replacementPassword);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await expect(page).toHaveURL(/\/marketplace$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/marketplace$/, { timeout: 120_000 });
   } finally {
     await sql`delete from auth.users where email = ${email}`;
     await sql.end();

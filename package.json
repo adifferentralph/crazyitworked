@@ -21,7 +21,8 @@
     "db:verify:phase3": "tsx scripts/verify-phase3.ts",
     "db:verify:rfq": "tsx scripts/verify-rfq.ts",
     "db:verify:assisted": "tsx scripts/verify-assisted-inventory.ts",
-    "db:verify:fitment": "tsx scripts/verify-fitment-intelligence.ts"
+    "db:verify:fitment": "tsx scripts/verify-fitment-intelligence.ts",
+    "db:verify:auth": "tsx scripts/verify-auth-oauth.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.1",

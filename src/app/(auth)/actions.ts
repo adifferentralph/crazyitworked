@@ -1,10 +1,18 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { z } from "zod";
 
 import { getAppUrl, hasSupabaseEnvironment } from "@/config/env";
-import { getHomeForRole } from "@/lib/auth/authorization";
+import {
+  getHomeForRole,
+  getPostAuthDestination,
+} from "@/lib/auth/authorization";
+import {
+  getOAuthSignupIntent,
+  type OAuthProvider,
+} from "@/lib/auth/oauth-role";
 import { getSafeRedirect } from "@/lib/auth/redirect";
 import type { AuthActionState } from "@/lib/auth/types";
 import type { UserRole } from "@/lib/supabase/database.types";
@@ -31,6 +39,7 @@ function getSafeSubmittedValues(formData: FormData): AuthActionState["values"] {
   };
 
   return {
+    accountType: getText("accountType"),
     email: getText("email"),
     fullName: getText("fullName"),
     organizationName: getText("organizationName"),
@@ -69,12 +78,13 @@ export async function loginAction(
   }
 
   const supabase = await createClient();
-  const { error: signInError } = await supabase.auth.signInWithPassword({
-    email: parsed.data.email,
-    password: parsed.data.password,
-  });
+  const { data: signInData, error: signInError } =
+    await supabase.auth.signInWithPassword({
+      email: parsed.data.email,
+      password: parsed.data.password,
+    });
 
-  if (signInError) {
+  if (signInError || !signInData.user) {
     return {
       message: "The email or password is incorrect.",
       status: "error",
@@ -85,10 +95,11 @@ export async function loginAction(
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("role, status")
+    .eq("id", signInData.user.id)
     .single();
 
   if (profileError || !profile) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     return {
       message: "Your account profile could not be loaded. Contact support if this continues.",
       status: "error",
@@ -96,14 +107,14 @@ export async function loginAction(
   }
 
   if (profile.status !== "ACTIVE") {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     return {
       message: "This account cannot sign in right now. Contact support for assistance.",
       status: "error",
     };
   }
 
-  redirect(getSafeRedirect(formData.get("next"), getHomeForRole(profile.role)));
+  redirect(getPostAuthDestination(profile.role, formData.get("next")));
 }
 
 async function signup(
@@ -156,11 +167,17 @@ async function signup(
   redirect(`/verify-email?email=${encodeURIComponent(parsed.data.email)}`);
 }
 
-export async function buyerSignupAction(_previousState: AuthActionState, formData: FormData) {
+export async function buyerSignupAction(
+  _previousState: AuthActionState,
+  formData: FormData,
+) {
   return signup(formData, "BUYER");
 }
 
-export async function sellerSignupAction(_previousState: AuthActionState, formData: FormData) {
+export async function sellerSignupAction(
+  _previousState: AuthActionState,
+  formData: FormData,
+) {
   return signup(formData, "SELLER");
 }
 
@@ -204,7 +221,9 @@ export async function resetPasswordAction(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.password,
+  });
 
   if (error) {
     return {
@@ -213,36 +232,53 @@ export async function resetPasswordAction(
     };
   }
 
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: "local" });
   redirect("/login?message=password-updated");
 }
 
-export async function signInWithGoogleAction(formData: FormData) {
+async function signInWithOAuth(provider: OAuthProvider, formData: FormData) {
   if (!hasSupabaseEnvironment()) {
     redirect("/login?error=configuration");
   }
 
   const supabase = await createClient();
   const next = getSafeRedirect(formData.get("next"), "/marketplace");
+  const intent = getOAuthSignupIntent(formData.get("intent"));
+  const callbackParameters = new URLSearchParams({
+    intent,
+    next,
+  });
   const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
+    provider,
     options: {
-      redirectTo: `${getAppUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
+      redirectTo: `${getAppUrl()}/auth/callback?${callbackParameters.toString()}`,
+      ...(provider === "google"
+        ? { queryParams: { prompt: "select_account" } }
+        : {}),
     },
   });
 
   if (error || !data.url) {
-    redirect("/login?error=oauth");
+    redirect(`/login?error=oauth&provider=${provider}`);
   }
 
   redirect(data.url);
 }
 
+export async function signInWithGoogleAction(formData: FormData) {
+  return signInWithOAuth("google", formData);
+}
+
+export async function signInWithAppleAction(formData: FormData) {
+  return signInWithOAuth("apple", formData);
+}
+
 export async function signOutAction() {
   if (hasSupabaseEnvironment()) {
     const supabase = await createClient();
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
   }
 
+  revalidatePath("/", "layout");
   redirect("/login");
 }

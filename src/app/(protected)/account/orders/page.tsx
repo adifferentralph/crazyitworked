@@ -1,8 +1,11 @@
 import { ClipboardList } from "lucide-react";
 
 import { AccountSectionPage } from "@/components/account/account-section-page";
+import { requireRole } from "@/lib/auth/principal";
 
-export default function AccountFeaturePage() {
+export default async function AccountOrdersPage() {
+  await requireRole(["BUYER"], "/account/orders");
+
   return (
     <AccountSectionPage
       action="Browse parts"

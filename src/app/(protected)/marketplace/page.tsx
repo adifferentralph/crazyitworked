@@ -1,18 +1,22 @@
 import { MarketplaceCatalog } from "@/components/marketplace/marketplace-catalog";
-import { requireRole } from "@/lib/auth/principal";
+import { getCurrentPrincipal } from "@/lib/auth/principal";
 
-export default async function BuyerMarketplacePage({
+export default async function MarketplacePage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const principal = await requireRole(["BUYER"], "/marketplace");
+  const principal = await getCurrentPrincipal();
+  const buyer =
+    principal?.status === "ACTIVE" && principal.role === "BUYER"
+      ? principal
+      : null;
 
   return (
     <MarketplaceCatalog
       actionPath="/marketplace"
-      buyerId={principal.id}
-      buyerName={principal.fullName}
+      buyerId={buyer?.id}
+      buyerName={buyer?.fullName}
       searchParams={searchParams}
     />
   );

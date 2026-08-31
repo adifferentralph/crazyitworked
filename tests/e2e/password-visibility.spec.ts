@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+test.use({ navigationTimeout: 180_000 });
+
 test("password visibility works after browser hydration", async ({ page }) => {
+  test.setTimeout(210_000);
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
 

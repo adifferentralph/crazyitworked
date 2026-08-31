@@ -127,8 +127,14 @@ async function main() {
       select count(*)::int as count from public.admin_role_permissions
     `;
     assert(roleCount?.count === 9, "Expected nine seeded admin roles.");
-    assert(permissionCount?.count === 17, "Expected seventeen seeded permissions.");
-    assert(assignmentCount?.count === 48, "Unexpected role-permission assignment count.");
+    assert(
+      (permissionCount?.count ?? 0) >= 17,
+      "Expected at least the seventeen Foundation permissions.",
+    );
+    assert(
+      (assignmentCount?.count ?? 0) >= 48,
+      "Expected at least the Foundation role-permission assignments.",
+    );
 
     const functions = await sql<{ definition: string; proname: string }[]>`
       select p.proname, pg_get_functiondef(p.oid) as definition

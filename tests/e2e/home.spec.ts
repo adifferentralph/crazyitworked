@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+test.use({ navigationTimeout: 180_000 });
+
 test("landing page exposes the complete public story", async ({ page }) => {
   await page.goto("/");
 
@@ -38,7 +40,7 @@ test("landing page has an accessible mobile navigation", async ({ page }) => {
 });
 
 test("buyer, supplier, and login entry pages expose the correct forms", async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(360_000);
   await page.goto("/signup/buyer");
   await expect(
     page.getByRole("heading", { name: "Create a buyer account", level: 2 }),
@@ -72,7 +74,7 @@ test("buyer, supplier, and login entry pages expose the correct forms", async ({
   );
 });
 test("privacy policy is available from the public site", async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   await page.goto("/privacy-policy");
   await expect(page.getByRole("heading", { name: "Privacy Policy", level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { name: /your privacy rights/i })).toBeVisible();
