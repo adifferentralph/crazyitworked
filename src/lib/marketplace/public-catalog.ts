@@ -2,25 +2,11 @@ import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import type { ProductCondition } from "@/lib/supabase/database.types";
+import type { MarketplaceSearch, MarketplaceVehicleOption } from "@/lib/marketplace/search-options";
+export type { MarketplaceSearch, MarketplaceVehicleOption } from "@/lib/marketplace/search-options";
+export { publicProductConditions } from "@/lib/marketplace/search-options";
 
-const pageSize = 24;
-
-export type MarketplaceSearch = {
-  availability?: "in-stock";
-  brand?: string;
-  category?: string;
-  condition?: ProductCondition;
-  delivery?: "true";
-  location?: string;
-  maxPrice?: number;
-  minPrice?: number;
-  page: number;
-  pickup?: "true";
-  q?: string;
-  seller?: string;
-  sort: "newest" | "price-asc" | "price-desc" | "relevance";
-  vehicle?: string;
-};
+const defaultPageSize = 24;
 
 type RawSearchParams = Record<string, string | string[] | undefined>;
 
@@ -69,22 +55,7 @@ export function parseMarketplaceSearch(params: RawSearchParams): MarketplaceSear
   };
 }
 
-export type MarketplaceVehicleOption = {
-  engine: string | null;
-  engineId: string | null;
-  id: string;
-  label: string;
-  make: string;
-  makeId: string;
-  model: string;
-  modelId: string;
-  trim: string | null;
-  trimId: string | null;
-  year: number;
-  yearId: string;
-};
-
-export async function getMarketplaceOptions() {
+export const getMarketplaceOptions = cache(async function getMarketplaceOptions() {
   const supabase = await createClient();
   const [
     categoriesResult,
@@ -97,7 +68,7 @@ export async function getMarketplaceOptions() {
     trimsResult,
     enginesResult,
   ] = await Promise.all([
-    supabase.from("product_categories").select("id, name, parent_id, position").eq("is_active", true).order("position"),
+    supabase.from("product_categories").select("id, name, parent_id, position, slug").eq("is_active", true).order("position"),
     supabase.from("products").select("brand, state, seller_id").eq("status", "APPROVED").limit(1000),
     supabase.from("marketplace_sellers").select("seller_id, store_name").order("store_name"),
     supabase.from("vehicle_fitments").select("id, make_id, model_id, year_id, trim_id, engine_id"),
@@ -116,6 +87,7 @@ export async function getMarketplaceOptions() {
       ? `${names.get(category.parent_id) ?? "Category"} / ${category.name}`
       : category.name,
     parentId: category.parent_id,
+    slug: category.slug,
   })).sort((a, b) => a.label.localeCompare(b.label));
 
   const makes = new Map((makesResult.data ?? []).map((row) => [row.id, row.name]));
@@ -153,7 +125,7 @@ export async function getMarketplaceOptions() {
     sellers: sellersResult.data ?? [],
     vehicles,
   };
-}
+});
 
 function intersect(left: string[] | null, right: string[]) {
   if (left === null) return right;
@@ -161,7 +133,14 @@ function intersect(left: string[] | null, right: string[]) {
   return left.filter((id) => rightSet.has(id));
 }
 
-export async function searchMarketplaceProducts(search: MarketplaceSearch) {
+export async function searchMarketplaceProducts(
+  search: MarketplaceSearch,
+  { pageSize = defaultPageSize }: { pageSize?: number } = {},
+) {
+  const resultPageSize = Math.min(
+    Math.max(Math.trunc(pageSize), 1),
+    defaultPageSize,
+  );
   const supabase = await createClient();
   let allowedIds: string[] | null = null;
 
@@ -187,7 +166,7 @@ export async function searchMarketplaceProducts(search: MarketplaceSearch) {
     allowedIds = intersect(allowedIds, (data ?? []).map((row) => row.product_id));
   }
 
-  if (allowedIds?.length === 0) return { count: 0, pageSize, products: [] };
+  if (allowedIds?.length === 0) return { count: 0, pageSize: resultPageSize, products: [] };
 
   let query = supabase.from("products").select("*", { count: "exact" }).eq("status", "APPROVED");
   if (allowedIds) query = query.in("id", allowedIds);
@@ -209,9 +188,9 @@ export async function searchMarketplaceProducts(search: MarketplaceSearch) {
   else if (search.sort === "price-desc") query = query.order("price_minor", { ascending: false });
   else query = query.order("created_at", { ascending: false });
 
-  const start = (search.page - 1) * pageSize;
-  const { data: products, count, error } = await query.range(start, start + pageSize - 1);
-  if (error || !products?.length) return { count: count ?? 0, pageSize, products: [] };
+  const start = (search.page - 1) * resultPageSize;
+  const { data: products, count, error } = await query.range(start, start + resultPageSize - 1);
+  if (error || !products?.length) return { count: count ?? 0, pageSize: resultPageSize, products: [] };
 
   const productIds = products.map((product) => product.id);
   const sellerIds = [...new Set(products.map((product) => product.seller_id))];
@@ -232,7 +211,7 @@ export async function searchMarketplaceProducts(search: MarketplaceSearch) {
 
   return {
     count: count ?? products.length,
-    pageSize,
+    pageSize: resultPageSize,
     products: products.map((product) => ({
       ...product,
       categoryName: categoryById.get(product.category_id) ?? "Automotive part",
@@ -280,4 +259,3 @@ export const getMarketplaceProduct = cache(async function getMarketplaceProduct(
   };
 });
 
-export const publicProductConditions: readonly ProductCondition[] = ["NEW", "USED", "REFURBISHED", "RECONDITIONED", "OEM_TAKE_OFF", "AFTERMARKET"];

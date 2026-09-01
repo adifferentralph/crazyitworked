@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { MarketplaceCatalog } from "@/components/marketplace/marketplace-catalog";
+import { getCurrentPrincipal } from "@/lib/auth/principal";
 
 export const metadata: Metadata = {
   description:
@@ -8,10 +9,22 @@ export const metadata: Metadata = {
   title: "Find an automotive part",
 };
 
-export default function FindAPartPage({
+export default async function FindAPartPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  return <MarketplaceCatalog actionPath="/find-a-part" searchParams={searchParams} />;
+  const principal = await getCurrentPrincipal();
+  const buyerName =
+    principal?.status === "ACTIVE" && principal.role === "BUYER"
+      ? principal.fullName
+      : undefined;
+
+  return (
+    <MarketplaceCatalog
+      actionPath="/find-a-part"
+      buyerName={buyerName}
+      searchParams={searchParams}
+    />
+  );
 }

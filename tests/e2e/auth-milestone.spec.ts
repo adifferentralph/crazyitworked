@@ -13,7 +13,7 @@ test("marketplace browsing is public while private buyer routes preserve return 
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /Find the right part for your vehicle/i,
+      name: /Find the exact part\. Faster\./i,
     }),
   ).toBeVisible();
 

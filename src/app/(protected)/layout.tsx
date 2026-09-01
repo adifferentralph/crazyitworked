@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ApplicationHeader } from "@/components/layout/application-header";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
+import { MobileMarketplaceNavigation } from "@/components/marketplace/mobile-marketplace-navigation";
 import { getCurrentPrincipal } from "@/lib/auth/principal";
 import { getBuyerCartCount } from "@/lib/marketplace/buyer-data";
 import { createClient } from "@/lib/supabase/server";
@@ -19,15 +20,17 @@ export default async function ProtectedLayout({
 }) {
   const principal = await getCurrentPrincipal();
 
-  // The marketplace route in this group is intentionally public. Middleware
-  // redirects anonymous users before private account, seller, admin, and cart
-  // pages render.
+  // The marketplace alias in this route group is public. Middleware redirects
+  // anonymous users before private account, seller, admin, and cart pages render.
   if (!principal) {
     return (
       <>
         <Header />
-        <main id="main-content">{children}</main>
-        <Footer />
+        <div className="pb-20 lg:pb-0">
+          <main id="main-content">{children}</main>
+          <Footer />
+        </div>
+        <MobileMarketplaceNavigation />
       </>
     );
   }

@@ -2,40 +2,61 @@ import { expect, test } from "@playwright/test";
 
 test.use({ navigationTimeout: 180_000 });
 
-test("landing page exposes the complete public story", async ({ page }) => {
+test("marketplace home exposes real discovery paths", async ({ page }) => {
   await page.goto("/");
 
   await expect(
-    page.getByRole("heading", { name: /source the exact part you need/i, level: 1 }),
+    page.getByRole("heading", { name: "Find the exact part. Faster.", level: 1 }),
   ).toBeVisible();
   await expect(page.getByRole("search")).toBeVisible();
-  await expect(page.getByLabel(/search by part name/i)).toBeVisible();
-  await expect(page.getByRole("heading", { name: /start with the system/i })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /from an uncertain request/i })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /less like guesswork/i })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /straight answers/i })).toBeVisible();
+  await expect(
+    page.getByLabel(/search part name, OEM number, vehicle, or seller/i),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Shop by category" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Cannot find the exact part?" }),
+  ).toBeVisible();
 
   await expect(page.getByRole("link", { name: "Find a part" }).first()).toHaveAttribute(
     "href",
-    "/signup/buyer",
+    "/find-a-part",
   );
-  await expect(page.getByRole("link", { name: "For suppliers" }).first()).toHaveAttribute(
+  await expect(page.locator('a[href="/signup/seller"]').first()).toHaveAttribute(
     "href",
     "/signup/seller",
+  );
+  await expect(page.getByRole("link", { name: "Request a part" })).toHaveAttribute(
+    "href",
+    "/login?next=/account/requests/new",
   );
 });
 
-test("landing page has an accessible mobile navigation", async ({ page }) => {
+test("marketplace home has accessible route-aware mobile navigation", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
-  await page.locator("header summary").click();
-  const mobileNavigation = page.getByRole("navigation", { name: "Mobile navigation" });
-  await expect(mobileNavigation).toBeVisible();
-  await expect(mobileNavigation.getByRole("link", { name: "Categories" })).toBeVisible();
-  await expect(mobileNavigation.getByRole("link", { name: "Supplier access" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: /Twenty-Two Parts/i }).first()).toBeVisible();
+  const navigation = page.getByRole("navigation", {
+    name: "Mobile marketplace navigation",
+  });
+  await expect(navigation).toBeVisible();
+  await expect(navigation.getByRole("link", { name: "Home" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(navigation.getByRole("link", { name: "Categories" })).toHaveAttribute(
     "href",
-    "/signup/seller",
+    "/categories",
+  );
+  await expect(navigation.getByRole("link", { name: "Requests" })).toHaveAttribute(
+    "href",
+    "/login?next=/account/requests",
+  );
+  await expect(navigation.getByRole("link", { name: "Cart" })).toHaveAttribute(
+    "href",
+    "/login?next=/cart",
   );
 });
 
@@ -73,6 +94,7 @@ test("buyer, supplier, and login entry pages expose the correct forms", async ({
     "/forgot-password",
   );
 });
+
 test("privacy policy is available from the public site", async ({ page }) => {
   test.setTimeout(180_000);
   await page.goto("/privacy-policy");

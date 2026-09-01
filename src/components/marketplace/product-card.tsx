@@ -23,7 +23,7 @@ export function ProductCard({
   vehicle?: MarketplaceVehicleOption;
 }) {
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-lg border border-stone-200 bg-white">
+    <article data-marketplace-product className="flex h-full flex-col overflow-hidden rounded-lg border border-stone-200 bg-white">
       <Link className="relative aspect-[4/3] bg-stone-100 focus-visible:ring-2 focus-visible:ring-primary" href={`/parts/${product.slug}`}>
         {product.primaryImageUrl ? (
           <Image alt={`${product.name} sold by ${product.seller?.store_name ?? "a marketplace supplier"}`} className="object-cover" fill sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 25vw" src={product.primaryImageUrl} unoptimized />
@@ -42,7 +42,7 @@ export function ProductCard({
           {vehicle ? <p className="flex items-start gap-2 font-semibold text-emerald-700"><CircleCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />Seller lists {vehicle.label}</p> : null}
         </div>
         <p className={product.quantity > 0 ? "mt-3 text-xs font-semibold text-emerald-700" : "mt-3 text-xs font-semibold text-stone-500"}>{product.quantity > 0 ? `${product.quantity} in stock` : "Out of stock"}</p>
-        <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
+        <div className={canPurchase ? "mt-auto grid gap-2 pt-4 sm:grid-cols-2" : "mt-auto grid pt-4"}>
           <Button asChild size="sm" variant="outline"><Link href={`/parts/${product.slug}`}>View part</Link></Button>
           {canPurchase ? (
             <form action={addToCartAction}>
@@ -50,7 +50,7 @@ export function ProductCard({
               <input name="quantity" type="hidden" value="1" />
               <Button className="w-full" disabled={product.quantity < 1} size="sm" type="submit"><ShoppingCart className="size-4" aria-hidden="true" />Add</Button>
             </form>
-          ) : <span />}
+          ) : null}
         </div>
       </div>
     </article>

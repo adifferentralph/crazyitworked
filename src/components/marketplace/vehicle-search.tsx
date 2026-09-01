@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { CarFront, CircleCheck } from "lucide-react";
 
-import type { MarketplaceVehicleOption } from "@/lib/marketplace/public-catalog";
+import type { MarketplaceVehicleOption } from "@/lib/marketplace/search-options";
 
 const selectClass = "h-11 w-full rounded-md border border-stone-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 

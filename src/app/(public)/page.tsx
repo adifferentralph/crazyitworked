@@ -1,21 +1,13 @@
-﻿import { Categories } from "@/components/landing/categories";
-import { FAQ } from "@/components/landing/faq";
-import { Features } from "@/components/landing/features";
-import { Hero } from "@/components/landing/hero";
-import { HowItWorks } from "@/components/landing/how-it-works";
-import { Testimonials } from "@/components/landing/testimonials";
-import { WhyUs } from "@/components/landing/why-us";
+import type { Metadata } from "next";
+
+import { MarketplaceHome } from "@/components/marketplace/marketplace-home";
+
+export const metadata: Metadata = {
+  description:
+    "Search approved automotive parts, find listings for your vehicle, browse categories, and request a part from suppliers.",
+  title: "Automotive parts marketplace",
+};
 
 export default function HomePage() {
-  return (
-    <>
-      <Hero />
-      <Categories />
-      <HowItWorks />
-      <WhyUs />
-      <Features />
-      <Testimonials />
-      <FAQ />
-    </>
-  );
+  return <MarketplaceHome />;
 }

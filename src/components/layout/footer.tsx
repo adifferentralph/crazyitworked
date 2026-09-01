@@ -22,7 +22,7 @@ export function Footer() {
             business buyers across African automotive markets.
           </p>
           <Link
-            href={siteConfig.auth.buyers}
+            href="/login?next=/account/requests/new"
             className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-accent"
           >
             Start with a part request

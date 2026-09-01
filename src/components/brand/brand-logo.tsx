@@ -7,35 +7,46 @@ import { cn } from "@/lib/utils";
 
 export function BrandLogo({
   className,
+  compact = false,
   href = "/",
   inverse = false,
   priority = false,
 }: {
   className?: string;
+  compact?: boolean;
   href?: string;
   inverse?: boolean;
   priority?: boolean;
 }) {
   return (
     <Link
-      href={href}
+      aria-label="Twenty-Two Parts home"
       className={cn(
-        "inline-flex items-center gap-3 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4",
+        "inline-flex items-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4",
+        compact ? "gap-2" : "gap-3",
         inverse ? "text-white" : "text-foreground",
         className,
       )}
-      aria-label="Twenty-Two Parts home"
+      href={href}
     >
       <Image
-        src={inverse ? logoForBlackSurface : logo}
         alt=""
-        className="size-12 object-contain"
-        sizes="48px"
-        priority={priority}
         aria-hidden="true"
+        className={cn("object-contain", compact ? "size-9" : "size-12")}
+        priority={priority}
+        sizes={compact ? "36px" : "48px"}
+        src={inverse ? logoForBlackSurface : logo}
       />
-      <span className="font-display text-lg font-semibold tracking-tight">
-        Twenty-Two <span className={inverse ? "text-accent" : "text-primary"}>Parts</span>
+      <span
+        className={cn(
+          "font-display font-semibold tracking-tight",
+          compact ? "text-sm leading-tight min-[375px]:text-base" : "text-lg",
+        )}
+      >
+        Twenty-Two{" "}
+        <span className={inverse ? "text-accent" : "text-primary"}>
+          Parts
+        </span>
       </span>
     </Link>
   );

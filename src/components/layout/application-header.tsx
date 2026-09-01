@@ -26,6 +26,7 @@ import {
 
 import { signOutAction } from "@/app/(auth)/actions";
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { MobileMarketplaceNavigation } from "@/components/marketplace/mobile-marketplace-navigation";
 import type { Principal } from "@/lib/auth/types";
 import { cn } from "@/lib/utils";
 
@@ -60,7 +61,7 @@ const sellerLinks: NavigationItem[] = [
 
 function HeaderSearch({ id }: { id: string }) {
   return (
-    <form action="/marketplace" className="relative min-w-0 flex-1" role="search">
+    <form action="/find-a-part" className="relative min-w-0 flex-1" role="search">
       <label className="sr-only" htmlFor={id}>
         Search part name, OEM number, vehicle, or seller
       </label>
@@ -99,7 +100,7 @@ function SignOutButton({ compact = false }: { compact?: boolean }) {
 function BuyerAccountMenu({ firstName }: { firstName: string }) {
   return (
     <details className="group relative">
-      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-2 py-2 text-sm font-semibold text-stone-800 outline-none hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-primary [&::-webkit-details-marker]:hidden">
+      <summary aria-label="Open account menu" className="flex cursor-pointer list-none items-center gap-2 rounded-md px-2 py-2 text-sm font-semibold text-stone-800 outline-none hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-primary [&::-webkit-details-marker]:hidden">
         <UserRound aria-hidden="true" className="size-5" />
         <span className="hidden xl:block">
           <span className="block text-[11px] font-medium leading-none text-stone-500">Hi, {firstName}</span>
@@ -136,10 +137,10 @@ function BuyerHeader({ cartCount, principal }: { cartCount: number; principal: P
       <header className="sticky top-0 z-40 border-b border-stone-200 bg-white">
         <div className="container-page">
           <div className="flex min-h-16 items-center gap-3 lg:gap-5">
-            <BrandLogo className="shrink-0 [&_span]:hidden sm:[&_span]:inline" href="/marketplace" priority />
+            <BrandLogo className="shrink-0" compact href="/" priority />
             <Link
               className="hidden shrink-0 items-center gap-2 rounded-md px-2 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-primary xl:flex"
-              href="/marketplace#categories"
+              href="/categories"
             >
               <Menu aria-hidden="true" className="size-4" />
               Categories
@@ -173,15 +174,7 @@ function BuyerHeader({ cartCount, principal }: { cartCount: number; principal: P
           </div>
         </div>
       </header>
-      <MobileNavigation
-        items={[
-          { href: "/marketplace", icon: Store, label: "Home" },
-          { href: "/marketplace#categories", icon: Menu, label: "Categories" },
-          { href: "/account/requests", icon: FileQuestion, label: "Requests" },
-          { href: "/cart", icon: ShoppingCart, label: `Cart${cartCount ? ` ${cartCount}` : ""}` },
-          { href: "/account", icon: UserRound, label: "Account" },
-        ]}
-      />
+      <MobileMarketplaceNavigation authenticated cartCount={cartCount} />
     </>
   );
 }
@@ -228,7 +221,7 @@ function SellerHeader({ principal, storeName }: { principal: Principal; storeNam
           </div>
         </div>
       </header>
-      <MobileNavigation
+      <MobileWorkspaceNavigation
         items={[
           { href: "/seller/dashboard", icon: LayoutDashboard, label: "Dashboard" },
           { href: "/seller/requests", icon: FileQuestion, label: "Requests" },
@@ -267,7 +260,7 @@ function AdminHeader({ principal }: { principal: Principal }) {
   );
 }
 
-function MobileNavigation({ items }: { items: NavigationItem[] }) {
+function MobileWorkspaceNavigation({ items }: { items: NavigationItem[] }) {
   return (
     <nav
       aria-label="Mobile application navigation"
