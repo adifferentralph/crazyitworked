@@ -25,9 +25,7 @@ const monoFont = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-  process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3000"
-),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL?.trim() || siteConfig.url),
   title: {
     default: "Twenty-Two Parts | Find the right automotive part",
     template: "%s | Twenty-Two Parts",

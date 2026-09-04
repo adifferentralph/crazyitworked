@@ -1,7 +1,15 @@
 ﻿import { z } from "zod";
 
+import { siteConfig } from "@/config/site";
+
+const developmentAppUrl = "http://localhost:3000";
+
+function getDefaultAppUrl() {
+  return process.env.NODE_ENV === "production" ? siteConfig.url : developmentAppUrl;
+}
+
 const publicEnvironmentSchema = z.object({
-  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+  NEXT_PUBLIC_APP_URL: z.string().url().default(getDefaultAppUrl()),
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(20),
 });
@@ -31,6 +39,6 @@ export function getDatabaseEnvironment() {
 }
 
 export function getAppUrl() {
-  const value = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const value = process.env.NEXT_PUBLIC_APP_URL ?? getDefaultAppUrl();
   return new URL(value).origin;
 }

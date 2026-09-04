@@ -11,27 +11,29 @@ import type { Database } from "@/lib/supabase/database.types";
 
 loadEnvironment({ path: ".env.local" });
 
-const environment = z
-  .object({
-    DATABASE_URL: z.string().url().startsWith("postgresql://"),
-    MAILTRAP_ACCOUNT_ID: z.string().regex(/^\d+$/),
-    MAILTRAP_API_TOKEN: z.string().min(20),
-    MAILTRAP_INBOX_ID: z.string().regex(/^\d+$/),
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(20),
-    NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  })
-  .parse(process.env);
+const environmentSchema = z.object({
+  BREVO_API_KEY: z.string().min(20),
+  DATABASE_URL: z.string().url().startsWith("postgresql://"),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(20),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+});
 
-type MailtrapMessage = {
-  created_at: string;
-  html_path: string;
-  id: number;
+type BrevoMessage = {
+  date: string;
+  email: string;
   subject: string;
-  to_email: string | string[];
+  uuid: string;
 };
 
-const mailtrapBaseUrl =
-  `https://mailtrap.io/api/accounts/${environment.MAILTRAP_ACCOUNT_ID}/inboxes/${environment.MAILTRAP_INBOX_ID}`;
+type BrevoMessageList = {
+  transactionalEmails?: BrevoMessage[];
+};
+
+type BrevoMessageDetail = {
+  body?: string;
+};
+
+const brevoBaseUrl = "https://api.brevo.com/v3";
 
 function decodeHtmlAttribute(value: string) {
   return value
@@ -42,54 +44,51 @@ function decodeHtmlAttribute(value: string) {
     .replaceAll("&#61;", "=");
 }
 
-function includesRecipient(message: MailtrapMessage, email: string) {
-  const recipients = Array.isArray(message.to_email) ? message.to_email : [message.to_email];
-  return recipients.some((recipient) => recipient.toLowerCase() === email.toLowerCase());
-}
+async function waitForAuthLink(
+  email: string,
+  subject: RegExp,
+  notBefore: number,
+  brevoApiKey: string,
+) {
+  const headers = {
+    accept: "application/json",
+    "api-key": brevoApiKey,
+  };
+  const query = new URLSearchParams({
+    email,
+    limit: "20",
+    sort: "desc",
+  });
 
-async function waitForAuthLink(email: string, subject: RegExp, notBefore: number) {
-  const headers = { "Api-Token": environment.MAILTRAP_API_TOKEN };
-
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    const listResponse = await fetch(`${mailtrapBaseUrl}/messages?page=1`, {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    const listResponse = await fetch(`${brevoBaseUrl}/smtp/emails?${query.toString()}`, {
       headers,
     });
     if (!listResponse.ok) {
-      throw new Error(
-        `Mailtrap message listing failed with HTTP ${listResponse.status}.`,
-      );
+      throw new Error(`Brevo transactional email listing failed with HTTP ${listResponse.status}.`);
     }
 
-    const messages = (await listResponse.json()) as MailtrapMessage[];
-    const message = messages.find(
+    const result = (await listResponse.json()) as BrevoMessageList;
+    const message = (result.transactionalEmails ?? []).find(
       (candidate) =>
-        includesRecipient(candidate, email) &&
+        candidate.email.toLowerCase() === email.toLowerCase() &&
         subject.test(candidate.subject) &&
-        Date.parse(candidate.created_at) >= notBefore - 5_000,
+        Date.parse(candidate.date) >= notBefore - 5_000,
     );
 
     if (message) {
       const detailResponse = await fetch(
-        `${mailtrapBaseUrl}/messages/${message.id}`,
+        `${brevoBaseUrl}/smtp/emails/${encodeURIComponent(message.uuid)}`,
         { headers },
       );
       if (!detailResponse.ok) {
         throw new Error(
-          `Mailtrap message read failed with HTTP ${detailResponse.status}.`,
+          `Brevo transactional email read failed with HTTP ${detailResponse.status}.`,
         );
       }
 
-      const detail = (await detailResponse.json()) as MailtrapMessage;
-      const bodyResponse = await fetch(new URL(detail.html_path, "https://mailtrap.io"), {
-        headers,
-      });
-      if (!bodyResponse.ok) {
-        throw new Error(
-          `Mailtrap message body read failed with HTTP ${bodyResponse.status}.`,
-        );
-      }
-
-      const html = await bodyResponse.text();
+      const detail = (await detailResponse.json()) as BrevoMessageDetail;
+      const html = detail.body ?? "";
       const links = [...html.matchAll(/href=(?:"([^"]+)"|'([^']+)')/gi)].map((match) =>
         decodeHtmlAttribute(match[1] ?? match[2] ?? ""),
       );
@@ -102,18 +101,16 @@ async function waitForAuthLink(email: string, subject: RegExp, notBefore: number
       });
 
       if (!authLink) {
-        throw new Error(
-          `Mailtrap message "${message.subject}" has no Supabase Auth link.`,
-        );
+        throw new Error(`Brevo message "${message.subject}" has no Supabase Auth link.`);
       }
 
       return authLink;
     }
 
-    await delay(500);
+    await delay(1_000);
   }
 
-  throw new Error(`Timed out waiting for Mailtrap message matching ${subject}.`);
+  throw new Error(`Timed out waiting for a Brevo message matching ${subject}.`);
 }
 
 async function openAuthLink(page: Page, authLink: string) {
@@ -131,12 +128,13 @@ async function openAuthLink(page: Page, authLink: string) {
   }
   await page.goto(callback.toString());
 }
-test("live confirmation and password recovery use Mailtrap links", async ({ page }, testInfo) => {
+test("live confirmation and password recovery use Brevo links", async ({ page }, testInfo) => {
   test.skip(
     process.env.RUN_LIVE_SUPABASE_TESTS !== "1" || testInfo.project.name !== "chromium",
     "Live Supabase email verification runs explicitly and only once.",
   );
   test.setTimeout(600_000);
+  const environment = environmentSchema.parse(process.env);
 
   const suffix = `${Date.now().toString(36)}${randomUUID().slice(0, 5)}`;
   const email = `foundation-email-${suffix}@gmail.com`;
@@ -168,7 +166,12 @@ test("live confirmation and password recovery use Mailtrap links", async ({ page
     const unconfirmedLogin = await publicClient.auth.signInWithPassword({ email, password });
     expect(unconfirmedLogin.error?.code).toBe("email_not_confirmed");
 
-    const confirmationLink = await waitForAuthLink(email, /confirm/i, signupStartedAt);
+    const confirmationLink = await waitForAuthLink(
+      email,
+      /confirm/i,
+      signupStartedAt,
+      environment.BREVO_API_KEY,
+    );
     await openAuthLink(page, confirmationLink);
     await expect(page).toHaveURL(/\/marketplace$/, { timeout: 120_000 });
     await expect(page.getByRole("search").first()).toBeVisible();
@@ -181,9 +184,16 @@ test("live confirmation and password recovery use Mailtrap links", async ({ page
     await page.goto("/forgot-password");
     await page.getByLabel("Email address").fill(email);
     await page.getByRole("button", { name: "Send reset link" }).click();
-    await expect(page.getByText(/If an account exists for that email/i)).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByText(/If an account exists for that email/i)).toBeVisible({
+      timeout: 120_000,
+    });
 
-    const recoveryLink = await waitForAuthLink(email, /password|reset/i, recoveryStartedAt);
+    const recoveryLink = await waitForAuthLink(
+      email,
+      /password|reset/i,
+      recoveryStartedAt,
+      environment.BREVO_API_KEY,
+    );
     await openAuthLink(page, recoveryLink);
     await expect(page).toHaveURL(/\/reset-password$/, { timeout: 120_000 });
 
@@ -193,9 +203,7 @@ test("live confirmation and password recovery use Mailtrap links", async ({ page
     await expect(newPasswordInput).toHaveAttribute("type", "password");
     await page.getByRole("button", { name: "Show new password" }).click();
     await expect(newPasswordInput).toHaveAttribute("type", "text");
-    await page
-      .getByLabel("Confirm new password", { exact: true })
-      .fill(replacementPassword);
+    await page.getByLabel("Confirm new password", { exact: true }).fill(replacementPassword);
     await page.getByRole("button", { name: "Set new password" }).click();
     await expect(page).toHaveURL(/\/login\?message=password-updated$/, { timeout: 120_000 });
 
