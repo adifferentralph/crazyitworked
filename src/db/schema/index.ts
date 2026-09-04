@@ -4,6 +4,7 @@ export * from "@/db/schema/identity";
 export * from "@/db/schema/marketplace-enums";
 export * from "@/db/schema/catalog";
 export * from "@/db/schema/buyer-commerce";
+export * from "@/db/schema/commerce";
 export * from "@/db/schema/rfq-enums";
 export * from "@/db/schema/rfq";
 export * from "@/db/schema/fitment-intelligence";
