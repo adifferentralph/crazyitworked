@@ -20,12 +20,7 @@ import { Button } from "@/components/ui/button";
 import type { SocialProviderAvailability } from "@/lib/auth/providers";
 import { initialAuthActionState } from "@/lib/auth/types";
 
-type AuthVariant =
-  | "login"
-  | "buyer-signup"
-  | "seller-signup"
-  | "forgot"
-  | "reset";
+type AuthVariant = "login" | "buyer-signup" | "seller-signup" | "forgot" | "reset";
 
 const actions = {
   "buyer-signup": buyerSignupAction,
@@ -65,12 +60,8 @@ export function AuthForm({
   providers?: SocialProviderAvailability;
   variant: AuthVariant;
 }) {
-  const [state, formAction] = useActionState(
-    actions[variant],
-    initialAuthActionState,
-  );
-  const isSignup =
-    variant === "buyer-signup" || variant === "seller-signup";
+  const [state, formAction] = useActionState(actions[variant], initialAuthActionState);
+  const isSignup = variant === "buyer-signup" || variant === "seller-signup";
   const showSocial = variant === "login" || isSignup;
   const submitLabel = submitLabels[variant];
   const formRef = useRef<HTMLFormElement>(null);
@@ -91,13 +82,12 @@ export function AuthForm({
       provider: "apple",
     },
   ] as const;
+  const enabledSocialOptions = socialOptions.filter((option) => option.enabled);
 
   useEffect(() => {
     if (state.status !== "error") return;
 
-    formRef.current
-      ?.querySelector<HTMLElement>('[aria-invalid="true"]')
-      ?.focus();
+    formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
   }, [state]);
 
   return (
@@ -111,41 +101,24 @@ export function AuthForm({
         </div>
       ) : null}
 
-      {showSocial ? (
+      {showSocial && enabledSocialOptions.length > 0 ? (
         <>
-          <div className="grid gap-2 min-[390px]:grid-cols-2">
-            {socialOptions.map(
-              ({ action, enabled, icon: Icon, label, provider }) => (
-                <form action={action} key={provider}>
-                  {next ? (
-                    <input type="hidden" name="next" value={next} />
-                  ) : null}
-                  <input type="hidden" name="intent" value={oauthIntent} />
-                  <Button
-                    aria-describedby={
-                      enabled ? undefined : "social-provider-status"
-                    }
-                    className="h-11 w-full px-3"
-                    disabled={!enabled}
-                    type="submit"
-                    variant="outline"
-                  >
-                    <Icon aria-hidden="true" className="size-4" />
-                    {label}
-                  </Button>
-                </form>
-              ),
-            )}
+          <div
+            className={
+              enabledSocialOptions.length > 1 ? "grid gap-2 min-[390px]:grid-cols-2" : "grid gap-2"
+            }
+          >
+            {enabledSocialOptions.map(({ action, icon: Icon, label, provider }) => (
+              <form action={action} key={provider}>
+                {next ? <input type="hidden" name="next" value={next} /> : null}
+                <input type="hidden" name="intent" value={oauthIntent} />
+                <Button className="h-11 w-full px-3" type="submit" variant="outline">
+                  <Icon aria-hidden="true" className="size-4" />
+                  {label}
+                </Button>
+              </form>
+            ))}
           </div>
-          {!providers.google || !providers.apple ? (
-            <p
-              className="mt-2 text-xs leading-5 text-stone-500"
-              id="social-provider-status"
-            >
-              Unavailable providers stay disabled until their secure connection
-              is configured.
-            </p>
-          ) : null}
           <div className="my-4 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500 sm:my-5">
             <span className="h-px flex-1 bg-stone-200" />
             or use email
@@ -154,12 +127,7 @@ export function AuthForm({
         </>
       ) : null}
 
-      <form
-        action={formAction}
-        className="grid gap-4 sm:gap-5"
-        noValidate
-        ref={formRef}
-      >
+      <form action={formAction} className="grid gap-4 sm:gap-5" noValidate ref={formRef}>
         {next ? <input type="hidden" name="next" value={next} /> : null}
         <div
           className="absolute -left-[10000px] top-auto size-px overflow-hidden"
@@ -190,51 +158,31 @@ export function AuthForm({
         {variant === "buyer-signup" ? (
           <>
             <div className="grid gap-2">
-              <label
-                className="text-sm font-semibold text-stone-800"
-                htmlFor="buyer-account-type"
-              >
+              <label className="text-sm font-semibold text-stone-800" htmlFor="buyer-account-type">
                 How will you use Twenty-Two Parts?
               </label>
               <select
                 aria-describedby={
-                  state.fieldErrors?.accountType?.[0]
-                    ? "buyer-account-type-error"
-                    : undefined
+                  state.fieldErrors?.accountType?.[0] ? "buyer-account-type-error" : undefined
                 }
-                aria-invalid={Boolean(
-                  state.fieldErrors?.accountType?.[0],
-                )}
+                aria-invalid={Boolean(state.fieldErrors?.accountType?.[0])}
                 className={`h-12 w-full rounded-md border bg-white px-3.5 text-base text-stone-950 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 ${
                   state.fieldErrors?.accountType?.[0]
                     ? "border-primary bg-red-50 ring-2 ring-primary/20"
                     : "border-stone-300"
                 }`}
-                defaultValue={
-                  state.values?.accountType ?? "INDIVIDUAL"
-                }
+                defaultValue={state.values?.accountType ?? "INDIVIDUAL"}
                 id="buyer-account-type"
                 name="accountType"
               >
-                <option value="INDIVIDUAL">
-                  Individual vehicle owner
-                </option>
-                <option value="MECHANIC_TECHNICIAN">
-                  Mechanic or technician
-                </option>
-                <option value="GARAGE_WORKSHOP">
-                  Garage or workshop
-                </option>
+                <option value="INDIVIDUAL">Individual vehicle owner</option>
+                <option value="MECHANIC_TECHNICIAN">Mechanic or technician</option>
+                <option value="GARAGE_WORKSHOP">Garage or workshop</option>
                 <option value="FLEET_OPERATOR">Fleet operator</option>
-                <option value="CORPORATE_BUYER">
-                  Corporate buyer
-                </option>
+                <option value="CORPORATE_BUYER">Corporate buyer</option>
               </select>
               {state.fieldErrors?.accountType?.[0] ? (
-                <p
-                  className="text-sm font-medium text-primary"
-                  id="buyer-account-type-error"
-                >
+                <p className="text-sm font-medium text-primary" id="buyer-account-type-error">
                   {state.fieldErrors.accountType[0]}
                 </p>
               ) : null}
@@ -278,11 +226,7 @@ export function AuthForm({
 
         {variant === "login" || isSignup || variant === "reset" ? (
           <AuthField
-            autoComplete={
-              variant === "login"
-                ? "current-password"
-                : "new-password"
-            }
+            autoComplete={variant === "login" ? "current-password" : "new-password"}
             errors={state.fieldErrors?.password}
             label={variant === "reset" ? "New password" : "Password"}
             minLength={variant === "login" ? undefined : 8}
@@ -295,11 +239,7 @@ export function AuthForm({
           <AuthField
             autoComplete="new-password"
             errors={state.fieldErrors?.confirmPassword}
-            label={
-              variant === "reset"
-                ? "Confirm new password"
-                : "Confirm password"
-            }
+            label={variant === "reset" ? "Confirm new password" : "Confirm password"}
             minLength={8}
             name="confirmPassword"
             type="password"
@@ -311,15 +251,11 @@ export function AuthForm({
             <div className="flex items-start gap-3 text-sm leading-6 text-stone-700">
               <input
                 aria-describedby={
-                  state.fieldErrors?.terms?.[0]
-                    ? `${variant}-terms-error`
-                    : undefined
+                  state.fieldErrors?.terms?.[0] ? `${variant}-terms-error` : undefined
                 }
                 aria-invalid={Boolean(state.fieldErrors?.terms?.[0])}
                 className={`mt-1 size-4 rounded border-stone-300 accent-primary outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  state.fieldErrors?.terms?.[0]
-                    ? "ring-2 ring-primary ring-offset-2"
-                    : ""
+                  state.fieldErrors?.terms?.[0] ? "ring-2 ring-primary ring-offset-2" : ""
                 }`}
                 defaultChecked={state.values?.terms === "on"}
                 id={`${variant}-terms`}
@@ -342,10 +278,7 @@ export function AuthForm({
               </span>
             </div>
             {state.fieldErrors?.terms?.[0] ? (
-              <p
-                className="mt-2 text-sm font-medium text-primary"
-                id={`${variant}-terms-error`}
-              >
+              <p className="mt-2 text-sm font-medium text-primary" id={`${variant}-terms-error`}>
                 {state.fieldErrors.terms[0]}
               </p>
             ) : null}
@@ -364,10 +297,7 @@ export function AuthForm({
         ) : null}
 
         <AuthAlert state={state} />
-        <AuthSubmitButton
-          label={submitLabel.idle}
-          pendingLabel={submitLabel.pending}
-        />
+        <AuthSubmitButton label={submitLabel.idle} pendingLabel={submitLabel.pending} />
       </form>
 
       <AuthFooter variant={variant} />

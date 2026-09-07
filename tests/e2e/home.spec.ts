@@ -9,15 +9,9 @@ test("marketplace home exposes real discovery paths", async ({ page }) => {
     page.getByRole("heading", { name: "Find the exact part. Faster.", level: 1 }),
   ).toBeVisible();
   await expect(page.getByRole("search")).toBeVisible();
-  await expect(
-    page.getByLabel(/search part name, OEM number, vehicle, or seller/i),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Shop by category" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Cannot find the exact part?" }),
-  ).toBeVisible();
+  await expect(page.getByLabel(/search part name, OEM number, vehicle, or seller/i)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Shop by category" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cannot find the exact part?" })).toBeVisible();
 
   await expect(page.getByRole("link", { name: "Find a part" }).first()).toHaveAttribute(
     "href",
@@ -88,7 +82,6 @@ test("buyer, supplier, and login entry pages expose the correct forms", async ({
 
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Sign in", level: 2 })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Forgot password?" })).toHaveAttribute(
     "href",
     "/forgot-password",

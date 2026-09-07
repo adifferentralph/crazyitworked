@@ -21,6 +21,7 @@ import {
   verifyKoraCharge,
   verifyKoraWebhookSignature,
 } from "@/lib/commerce/kora";
+import { notifyOrderPaid } from "@/lib/notifications/push";
 
 const CHECKOUT_LIFETIME_MS = 30 * 60 * 1000;
 const MAX_EXPIRED_ORDERS_PER_SWEEP = 50;
@@ -215,9 +216,7 @@ async function prepareCheckout(identity: BuyerIdentity): Promise<CheckoutRecord>
 
     if (
       cart.some(
-        (item) =>
-          item.quantity < 1 ||
-          item.stockQuantity - item.reservedQuantity < item.quantity,
+        (item) => item.quantity < 1 || item.stockQuantity - item.reservedQuantity < item.quantity,
       )
     ) {
       throw new CheckoutError(
@@ -264,10 +263,7 @@ async function prepareCheckout(identity: BuyerIdentity): Promise<CheckoutRecord>
     const orderId = randomUUID();
     const paymentId = randomUUID();
     const orderNumber = buildReference();
-    const totalMinor = cart.reduce(
-      (sum, item) => sum + item.priceMinor * item.quantity,
-      0,
-    );
+    const totalMinor = cart.reduce((sum, item) => sum + item.priceMinor * item.quantity, 0);
     const expiresAt = new Date(Date.now() + CHECKOUT_LIFETIME_MS);
 
     if (!Number.isSafeInteger(totalMinor) || totalMinor <= 0) {
@@ -375,10 +371,7 @@ async function prepareCheckout(identity: BuyerIdentity): Promise<CheckoutRecord>
 
 export async function createKoraCheckout(identity: BuyerIdentity) {
   if (!hasKoraEnvironment()) {
-    throw new CheckoutError(
-      "KORA_NOT_CONFIGURED",
-      "Secure payment is not configured yet.",
-    );
+    throw new CheckoutError("KORA_NOT_CONFIGURED", "Secure payment is not configured yet.");
   }
 
   await releaseExpiredCheckoutReservations();
@@ -390,12 +383,7 @@ export async function createKoraCheckout(identity: BuyerIdentity) {
   const [claimed] = await database
     .update(commercePayments)
     .set({ status: "PROCESSING", updatedAt: new Date() })
-    .where(
-      and(
-        eq(commercePayments.id, checkout.paymentId),
-        eq(commercePayments.status, "PENDING"),
-      ),
-    )
+    .where(and(eq(commercePayments.id, checkout.paymentId), eq(commercePayments.status, "PENDING")))
     .returning({ id: commercePayments.id });
 
   if (!claimed) {
@@ -425,9 +413,7 @@ export async function createKoraCheckout(identity: BuyerIdentity) {
         name: identity.fullName,
       },
       notificationUrl: `${appUrl}/api/payments/kora/webhook`,
-      redirectUrl: `${appUrl}/checkout/return?reference=${encodeURIComponent(
-        checkout.reference,
-      )}`,
+      redirectUrl: `${appUrl}/checkout/return?reference=${encodeURIComponent(checkout.reference)}`,
       reference: checkout.reference,
     });
 
@@ -454,10 +440,7 @@ export async function createKoraCheckout(identity: BuyerIdentity) {
       checkoutUrl: initialized.checkoutUrl,
     };
   } catch {
-    await releaseOrderReservations(
-      checkout.orderId,
-      "Kora checkout initialization failed.",
-    );
+    await releaseOrderReservations(checkout.orderId, "Kora checkout initialization failed.");
     throw new CheckoutError(
       "PAYMENT_INITIALIZATION_FAILED",
       "We could not start secure payment. No charge was made; please try again.",
@@ -483,6 +466,14 @@ async function markPaymentForReview(reference: string, message: string) {
     );
 }
 
+async function notifyPaidOrderSafely(orderId: string) {
+  try {
+    await notifyOrderPaid(orderId);
+  } catch {
+    console.error("Order-paid notification dispatch failed.");
+  }
+}
+
 export async function verifyAndFulfillKoraPayment(reference: string) {
   const database = getDatabase();
   const [localPayment] = await database
@@ -502,6 +493,7 @@ export async function verifyAndFulfillKoraPayment(reference: string) {
   }
 
   if (localPayment.paymentStatus === "PAID") {
+    await notifyPaidOrderSafely(localPayment.orderId);
     return { orderId: localPayment.orderId, status: "PAID" as const };
   }
 
@@ -539,7 +531,7 @@ export async function verifyAndFulfillKoraPayment(reference: string) {
     };
   }
 
-  return database.transaction(async (transaction) => {
+  const result = await database.transaction(async (transaction) => {
     const [payment] = await transaction
       .select({
         amountMinor: commercePayments.amountMinor,
@@ -565,7 +557,9 @@ export async function verifyAndFulfillKoraPayment(reference: string) {
       .limit(1);
 
     if (!order || order.orderStatus !== "PENDING_PAYMENT") {
-      throw new Error("Verified payment belongs to an order that cannot be fulfilled automatically.");
+      throw new Error(
+        "Verified payment belongs to an order that cannot be fulfilled automatically.",
+      );
     }
 
     const items = await transaction
@@ -635,17 +629,15 @@ export async function verifyAndFulfillKoraPayment(reference: string) {
         });
     }
 
-    await transaction
-      .delete(cartItems)
-      .where(
-        and(
-          eq(cartItems.buyerId, order.buyerId),
-          inArray(
-            cartItems.productId,
-            items.map((item) => item.productId),
-          ),
+    await transaction.delete(cartItems).where(
+      and(
+        eq(cartItems.buyerId, order.buyerId),
+        inArray(
+          cartItems.productId,
+          items.map((item) => item.productId),
         ),
-      );
+      ),
+    );
 
     const paidAt = new Date();
 
@@ -674,6 +666,12 @@ export async function verifyAndFulfillKoraPayment(reference: string) {
 
     return { orderId: payment.orderId, status: "PAID" as const };
   });
+
+  if (result.status === "PAID") {
+    await notifyPaidOrderSafely(result.orderId);
+  }
+
+  return result;
 }
 
 function getWebhookReference(payload: unknown) {
@@ -698,9 +696,7 @@ export async function handleKoraWebhook(payload: unknown, signature: string | nu
     return { accepted: false, reason: "INVALID_SIGNATURE" as const };
   }
 
-  const payloadHash = createHash("sha256")
-    .update(JSON.stringify(payload))
-    .digest("hex");
+  const payloadHash = createHash("sha256").update(JSON.stringify(payload)).digest("hex");
   const reference = getWebhookReference(payload);
   const eventType = typeof record.event === "string" ? record.event : null;
   const database = getDatabase();

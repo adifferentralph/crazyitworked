@@ -56,7 +56,10 @@ async function main() {
         and relname in ${sql(phaseTwoTables)}
     `;
     assert(tables.length === phaseTwoTables.length, "One or more Phase 2 tables are missing.");
-    assert(tables.every((table) => table.relrowsecurity), "Every Phase 2 table must enable RLS.");
+    assert(
+      tables.every((table) => table.relrowsecurity),
+      "Every Phase 2 table must enable RLS.",
+    );
 
     const policies = await sql<{ policyname: string; tablename: string }[]>`
       select policyname, tablename
@@ -64,7 +67,10 @@ async function main() {
       where schemaname = 'public'
         and tablename in ${sql(phaseTwoTables)}
     `;
-    assert(policies.length >= 36, `Expected at least 36 Phase 2 policies, found ${policies.length}.`);
+    assert(
+      policies.length >= 36,
+      `Expected at least 36 Phase 2 policies, found ${policies.length}.`,
+    );
 
     const triggers = await sql<{ trigger_name: string }[]>`
       select trigger_name
@@ -95,16 +101,27 @@ async function main() {
       "Product media MIME restrictions are incomplete.",
     );
 
-    const storagePolicies = await sql<{ cmd: string; policyname: string; qual: string | null; with_check: string | null }[]>`
+    const storagePolicies = await sql<
+      { cmd: string; policyname: string; qual: string | null; with_check: string | null }[]
+    >`
       select policyname, cmd, qual, with_check
       from pg_policies
       where schemaname = 'storage'
         and tablename = 'objects'
         and policyname like 'product_media_%'
     `;
-    assert(storagePolicies.some((policy) => policy.cmd === "SELECT"), "Storage SELECT policy missing.");
-    assert(storagePolicies.some((policy) => policy.cmd === "INSERT"), "Storage INSERT policy missing.");
-    const uploadPolicy = storagePolicies.find((policy) => policy.cmd === "INSERT");
+    assert(
+      storagePolicies.some((policy) => policy.cmd === "SELECT"),
+      "Storage SELECT policy missing.",
+    );
+    assert(
+      storagePolicies.some((policy) => policy.cmd === "INSERT"),
+      "Storage INSERT policy missing.",
+    );
+    const uploadPolicy = storagePolicies.find(
+      (policy) =>
+        policy.cmd === "INSERT" && policy.policyname === "product_media_insert_seller_original",
+    );
     assert(
       uploadPolicy?.with_check?.includes("seller_can_upload_product_media"),
       "Storage INSERT policy must use the seller/product ownership helper.",
@@ -117,8 +134,16 @@ async function main() {
         and pg_proc.proname = 'seller_can_upload_product_media'
     `;
     assert(uploadHelper?.prosecdef, "Storage upload ownership helper must be SECURITY DEFINER.");
+    const destructivePolicies = storagePolicies.filter((policy) =>
+      ["UPDATE", "DELETE"].includes(policy.cmd),
+    );
     assert(
-      storagePolicies.every((policy) => !["UPDATE", "DELETE"].includes(policy.cmd)),
+      destructivePolicies.every(
+        (policy) =>
+          policy.policyname === "product_media_delete_inventory_staff" &&
+          policy.cmd === "DELETE" &&
+          policy.qual?.includes("inventory_staff_can_upload_product_media"),
+      ),
       "Seller originals must not have Storage UPDATE or DELETE policies.",
     );
 
@@ -157,7 +182,9 @@ async function main() {
     console.log(`- ${tables.length} seller/catalog tables with RLS`);
     console.log(`- ${policies.length} public-schema RLS policies`);
     console.log(`- ${requiredTriggers.length} required workflow/history triggers`);
-    console.log(`- ${seedCounts.categories} categories and ${seedCounts.fitments} vehicle fitments`);
+    console.log(
+      `- ${seedCounts.categories} categories and ${seedCounts.fitments} vehicle fitments`,
+    );
     console.log("- private product-media bucket with immutable seller originals");
   } finally {
     await sql.end();

@@ -8,11 +8,13 @@ import { z } from "zod";
 import type { Database, ProductImageType } from "@/lib/supabase/database.types";
 
 config({ path: ".env.local" });
-const environment = z.object({
-  DATABASE_URL: z.string().url().startsWith("postgresql://"),
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(20),
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-}).parse(process.env);
+const environment = z
+  .object({
+    DATABASE_URL: z.string().url().startsWith("postgresql://"),
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(20),
+    NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  })
+  .parse(process.env);
 const sql = postgres(environment.DATABASE_URL, { max: 1, prepare: false });
 const userIds: string[] = [];
 const storagePaths: string[] = [];
@@ -72,8 +74,12 @@ async function run() {
   const staffAccount = await createPasswordUser("BUYER", "product-staff");
   const financeAccount = await createPasswordUser("BUYER", "finance-staff");
 
-  const [productRole] = await sql<{ id: string }[]>`select id from public.admin_roles where key = 'PRODUCT_MODERATOR' limit 1`;
-  const [financeRole] = await sql<{ id: string }[]>`select id from public.admin_roles where key = 'FINANCE_ADMIN' limit 1`;
+  const [productRole] = await sql<
+    { id: string }[]
+  >`select id from public.admin_roles where key = 'PRODUCT_MODERATOR' limit 1`;
+  const [financeRole] = await sql<
+    { id: string }[]
+  >`select id from public.admin_roles where key = 'FINANCE_ADMIN' limit 1`;
   assert(productRole?.id && financeRole?.id, "Seeded admin roles are required.");
   await sql.begin(async (transaction) => {
     await transaction`delete from public.buyer_profiles where user_id in (${staffAccount.id}::uuid, ${financeAccount.id}::uuid)`;
@@ -98,7 +104,10 @@ async function run() {
   const financeListing = await finance.rpc("inventory_onboarding_sellers");
   assert(Boolean(financeListing.error), "Finance-only admin accessed assisted inventory.");
   const staffListing = await staff.rpc("inventory_onboarding_sellers");
-  assert(!staffListing.error && staffListing.data.some((row) => row.seller_id === sellerAccount.id), "Authorized staff could not select the seller.");
+  assert(
+    !staffListing.error && staffListing.data.some((row) => row.seller_id === sellerAccount.id),
+    "Authorized staff could not select the seller.",
+  );
 
   const directStaffInsert = await staff.from("products").insert({
     brand: "Blocked",
@@ -118,7 +127,10 @@ async function run() {
     slug: `blocked-${randomUUID().slice(0, 8)}`,
     state: "Lagos",
   });
-  assert(Boolean(directStaffInsert.error), "Staff bypassed the assisted product RPC with a direct insert.");
+  assert(
+    Boolean(directStaffInsert.error),
+    "Staff bypassed the assisted product RPC with a direct insert.",
+  );
 
   const productUuid = randomUUID();
   const created = await staff.rpc("create_assisted_product_draft", {
@@ -129,7 +141,8 @@ async function run() {
     p_creation_source: "PLATFORM_ASSISTED",
     p_cross_references: ["04465-07010"],
     p_delivery_available: true,
-    p_description: "Live assisted inventory verification part with seller-owned provenance and genuine test images.",
+    p_description:
+      "Live assisted inventory verification part with seller-owned provenance and genuine test images.",
     p_fitment_ids: [catalog.fitment_id],
     p_manufacturer_part_number: "TTP-ASSIST-001",
     p_name: "Assisted Toyota brake pad set",
@@ -142,27 +155,58 @@ async function run() {
     p_slug: `assisted-brake-pad-${productUuid.slice(0, 8)}`,
     p_state: "Lagos",
   });
-  assert(!created.error && created.data, `Assisted draft creation failed: ${created.error?.message}`);
+  assert(
+    !created.error && created.data,
+    `Assisted draft creation failed: ${created.error?.message}`,
+  );
   productId = created.data;
 
-  const [stored] = await sql<{ assisted: boolean; created_by: string; seller_id: string; source: string }[]>`
+  const [stored] = await sql<
+    { assisted: boolean; created_by: string; seller_id: string; source: string }[]
+  >`
     select assisted_onboarding as assisted, created_by_user_id as created_by, seller_id, creation_source::text as source
     from public.products where id = ${productId}::uuid
   `;
-  assert(stored?.seller_id === sellerAccount.id, "Assisted product ownership was not assigned to seller.");
-  assert(stored.created_by === staffAccount.id && stored.assisted && stored.source === "PLATFORM_ASSISTED", "Product provenance is incorrect.");
+  assert(
+    stored?.seller_id === sellerAccount.id,
+    "Assisted product ownership was not assigned to seller.",
+  );
+  assert(
+    stored.created_by === staffAccount.id &&
+      stored.assisted &&
+      stored.source === "PLATFORM_ASSISTED",
+    "Product provenance is incorrect.",
+  );
   const staffDirectRead = await staff.from("products").select("id").eq("id", productId);
-  assert(!staffDirectRead.error && staffDirectRead.data.length === 0, "Staff received broad direct product-table read access.");
+  assert(
+    !staffDirectRead.error && staffDirectRead.data.length === 0,
+    "Staff received broad direct product-table read access.",
+  );
   const operationalRead = await staff.rpc("inventory_onboarding_products");
-  assert(!operationalRead.error && operationalRead.data.some((item) => item.product_id === productId), "Scoped operational product read failed.");
-  const sellerRead = await seller.from("products").select("id,creation_source").eq("id", productId).single();
-  assert(!sellerRead.error && sellerRead.data?.creation_source === "PLATFORM_ASSISTED", "Owning seller could not read assisted draft.");
+  assert(
+    !operationalRead.error && operationalRead.data.some((item) => item.product_id === productId),
+    "Scoped operational product read failed.",
+  );
+  const sellerRead = await seller
+    .from("products")
+    .select("id,creation_source")
+    .eq("id", productId)
+    .single();
+  assert(
+    !sellerRead.error && sellerRead.data?.creation_source === "PLATFORM_ASSISTED",
+    "Owning seller could not read assisted draft.",
+  );
 
-  const image = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+  const image = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "base64",
+  );
   const imageTypes: ProductImageType[] = ["PRIMARY", "ANGLE", "DETAIL", "PART_NUMBER", "PACKAGING"];
   for (const [index, type] of imageTypes.entries()) {
     const path = `${sellerAccount.id}/${productId}/${randomUUID()}.png`;
-    const upload = await staff.storage.from("product-media").upload(path, image, { contentType: "image/png", upsert: false });
+    const upload = await staff.storage
+      .from("product-media")
+      .upload(path, image, { contentType: "image/png", upsert: false });
     assert(!upload.error, `Authorized staff image upload failed: ${upload.error?.message}`);
     storagePaths.push(path);
     const registered = await staff.rpc("register_assisted_product_image", {
@@ -177,18 +221,26 @@ async function run() {
     assert(!registered.error, `Assisted image registration failed: ${registered.error?.message}`);
   }
 
-  const financeUpload = await finance.storage.from("product-media").upload(
-    `${sellerAccount.id}/${productId}/${randomUUID()}.png`, image, { contentType: "image/png" },
-  );
+  const financeUpload = await finance.storage
+    .from("product-media")
+    .upload(`${sellerAccount.id}/${productId}/${randomUUID()}.png`, image, {
+      contentType: "image/png",
+    });
   assert(Boolean(financeUpload.error), "Finance-only admin uploaded assisted product media.");
   const confirmed = await seller.rpc("confirm_assisted_product", { p_product_id: productId });
   assert(!confirmed.error, `Seller confirmation failed: ${confirmed.error?.message}`);
   const [confirmedProduct] = await sql<{ acknowledged: string | null; status: string }[]>`
     select seller_acknowledged_at as acknowledged, status::text from public.products where id = ${productId}::uuid
   `;
-  assert(confirmedProduct?.acknowledged && confirmedProduct.status === "PENDING_REVIEW", "Seller confirmation did not submit for moderation.");
+  assert(
+    confirmedProduct?.acknowledged && confirmedProduct.status === "PENDING_REVIEW",
+    "Seller confirmation did not submit for moderation.",
+  );
 
-  const provenanceChange = await seller.from("products").update({ creation_source: "SELLER" }).eq("id", productId);
+  const provenanceChange = await seller
+    .from("products")
+    .update({ creation_source: "SELLER" })
+    .eq("id", productId);
   assert(Boolean(provenanceChange.error), "Seller changed immutable assisted-listing provenance.");
 
   const importWrite = await staff.from("inventory_imports").insert({
@@ -200,32 +252,50 @@ async function run() {
     total_rows: 1,
     valid_rows: 1,
   });
-  assert(!importWrite.error, `Authorized import history write failed: ${importWrite.error?.message}`);
+  assert(
+    !importWrite.error,
+    `Authorized import history write failed: ${importWrite.error?.message}`,
+  );
   const sellerImports = await seller.from("inventory_imports").select("id");
-  assert(!sellerImports.error && sellerImports.data.length === 0, "Seller accessed staff import history.");
+  assert(
+    !sellerImports.error && sellerImports.data.length === 0,
+    "Seller accessed staff import history.",
+  );
   const financeImports = await finance.from("inventory_imports").select("id");
-  assert(!financeImports.error && financeImports.data.length === 0, "Finance-only admin accessed import history.");
+  assert(
+    !financeImports.error && financeImports.data.length === 0,
+    "Finance-only admin accessed import history.",
+  );
 
-  console.log("Live assisted inventory ownership, permission, media, seller confirmation, and RLS checks passed.");
+  console.log(
+    "Live assisted inventory ownership, permission, media, seller confirmation, and RLS checks passed.",
+  );
 }
 
-run().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-}).finally(async () => {
-  try {
-    if (productId) await sql`update public.products set status = 'DRAFT', seller_acknowledged_at = null where id = ${productId}::uuid`;
-    if (staffClient && storagePaths.length) await staffClient.storage.from("product-media").remove(storagePaths);
-    if (productId) {
-      await sql`delete from public.inventory_transactions where product_id = ${productId}::uuid`;
-      await sql`delete from public.product_modification_history where product_id = ${productId}::uuid`;
-      await sql`delete from public.products where id = ${productId}::uuid`;
+run()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    try {
+      if (productId)
+        await sql`update public.products set status = 'DRAFT', seller_acknowledged_at = null where id = ${productId}::uuid`;
+      if (staffClient && storagePaths.length)
+        await staffClient.storage.from("product-media").remove(storagePaths);
+      if (productId) {
+        await sql`delete from public.inventory_transactions where product_id = ${productId}::uuid`;
+        await sql`delete from public.product_modification_history where product_id = ${productId}::uuid`;
+        await sql`delete from public.products where id = ${productId}::uuid`;
+      }
+      if (userIds.length) {
+        await sql`delete from public.fitment_claim_history where seller_id in ${sql(userIds)}`;
+      }
+      if (userIds.length) {
+        await sql`delete from public.inventory_imports where created_by_user_id in ${sql(userIds)}`;
+        await sql`delete from auth.users where id in ${sql(userIds)}`;
+      }
+    } finally {
+      await sql.end();
     }
-    if (userIds.length) {
-      await sql`delete from public.inventory_imports where created_by_user_id in ${sql(userIds)}`;
-      await sql`delete from auth.users where id in ${sql(userIds)}`;
-    }
-  } finally {
-    await sql.end();
-  }
-});
+  });

@@ -23,7 +23,8 @@
     "db:verify:assisted": "tsx scripts/verify-assisted-inventory.ts",
     "db:verify:fitment": "tsx scripts/verify-fitment-intelligence.ts",
     "db:verify:auth": "tsx scripts/verify-auth-oauth.ts",
-    "db:verify:commerce": "tsx scripts/verify-commerce.ts"
+    "db:verify:commerce": "tsx scripts/verify-commerce.ts",
+    "db:verify:notifications": "tsx scripts/verify-notifications.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.1",
@@ -35,11 +36,12 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^0.468.0",
-    "next": "^15.1.0",
+    "next": "^15.5.25",
     "postgres": "^3.4.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^2.5.5",
+    "web-push": "^3.6.7",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -50,6 +52,7 @@
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
+    "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.17.0",

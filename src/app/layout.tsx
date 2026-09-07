@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, Playfair_Display, Space_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 
 import "@/app/globals.css";
+import { PwaClient } from "@/components/pwa/pwa-client";
 import { siteConfig } from "@/config/site";
 
 const displayFont = Playfair_Display({
@@ -32,6 +33,15 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   applicationName: siteConfig.name,
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: siteConfig.name,
+  },
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
   keywords: [
     "automotive spare parts",
     "car parts marketplace",
@@ -58,6 +68,11 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  colorScheme: "light",
+  themeColor: "#e30613",
+};
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
@@ -69,6 +84,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           Skip to content
         </a>
         {children}
+        <PwaClient />
         <Analytics />
       </body>
     </html>

@@ -23,6 +23,7 @@ const contentSecurityPolicy = [
   `script-src 'self' 'unsafe-inline'${developmentScriptPolicy}`,
   "style-src 'self' 'unsafe-inline'",
   `connect-src 'self' https://vitals.vercel-insights.com${supabaseOrigin ? ` ${supabaseOrigin}` : ""}`,
+  "worker-src 'self'",
 ].join("; ");
 
 const securityHeaders = [
@@ -43,6 +44,14 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
     return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
       {
         source: "/(.*)",
         headers: securityHeaders,

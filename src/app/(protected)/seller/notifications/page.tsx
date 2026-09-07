@@ -1,17 +1,19 @@
-import { Bell } from "lucide-react";
-
-import { SellerOperationPage } from "@/components/seller/seller-operation-page";
+import { NotificationCenter } from "@/components/notifications/notification-center";
+import { SellerShell } from "@/components/seller/seller-shell";
+import { getPushPublicKey } from "@/config/env";
 import { requireRole } from "@/lib/auth/principal";
+import { listUserNotifications } from "@/lib/notifications/push";
 
-export default async function SellerOperationRoute() {
-  await requireRole(["SELLER"], "/seller/notifications");
+export default async function SellerNotificationsPage() {
+  const principal = await requireRole(["SELLER"], "/seller/notifications");
+  const notifications = await listUserNotifications(principal.id);
+
   return (
-    <SellerOperationPage
+    <SellerShell
       description="See listing review, inventory, request, and order updates."
-      emptyDescription="New operational updates will appear here."
-      emptyTitle="You are all caught up"
-      icon={Bell}
       title="Notifications"
-    />
+    >
+      <NotificationCenter notifications={notifications} publicKey={getPushPublicKey()} />
+    </SellerShell>
   );
 }

@@ -8,7 +8,10 @@ config({ path: ".env.local" });
 const environment = z
   .object({
     DATABASE_URL: z.string().url().startsWith("postgresql://"),
-    KORA_SECRET_KEY: z.string().min(20).optional(),
+    KORA_SECRET_KEY: z.preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.string().min(20).optional(),
+    ),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(20),
     NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   })
@@ -49,9 +52,7 @@ async function main() {
       "RLS must be enabled on every commerce table.",
     );
 
-    const policies = await sql<
-      { cmd: string; policyname: string; tablename: string }[]
-    >`
+    const policies = await sql<{ cmd: string; policyname: string; tablename: string }[]>`
       select tablename, policyname, cmd
       from pg_policies
       where schemaname = 'public' and tablename in ${sql(commerceTables)}
@@ -62,9 +63,7 @@ async function main() {
       "Commerce client policies must remain read-only.",
     );
 
-    const grants = await sql<
-      { grantee: string; privilege_type: string; table_name: string }[]
-    >`
+    const grants = await sql<{ grantee: string; privilege_type: string; table_name: string }[]>`
       select grantee, table_name, privilege_type
       from information_schema.role_table_grants
       where table_schema = 'public'
@@ -74,8 +73,7 @@ async function main() {
     assert(
       grants.length === commerceTables.length &&
         grants.every(
-          (grant) =>
-            grant.grantee === "authenticated" && grant.privilege_type === "SELECT",
+          (grant) => grant.grantee === "authenticated" && grant.privilege_type === "SELECT",
         ),
       "Commerce tables must expose authenticated SELECT only.",
     );
@@ -186,13 +184,13 @@ async function main() {
     console.log(`- ${tables.length} commerce tables with RLS`);
     console.log("- authenticated clients have SELECT-only participant-scoped policies");
     console.log("- anonymous direct order access rejected by PostgreSQL privileges/RLS");
-    console.log("- exact total, seller entitlement, idempotency, and immutability controls present");
+    console.log(
+      "- exact total, seller entitlement, idempotency, and immutability controls present",
+    );
     console.log(
       `- marketplace: ${counts?.approved_products ?? 0} approved products across ${counts?.approved_sellers ?? 0} sellers; ${counts?.pending_products ?? 0} pending review`,
     );
-    console.log(
-      `- Kora secret: ${environment.KORA_SECRET_KEY ? "configured" : "not configured"}`,
-    );
+    console.log(`- Kora secret: ${environment.KORA_SECRET_KEY ? "configured" : "not configured"}`);
   } finally {
     await sql.end();
   }
