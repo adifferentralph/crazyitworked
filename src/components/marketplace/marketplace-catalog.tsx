@@ -4,6 +4,7 @@ import { PackageSearch, RotateCcw } from "lucide-react";
 import { DemandSignalReporter } from "@/components/marketplace/demand-signal-reporter";
 import { MarketplaceFilters } from "@/components/marketplace/marketplace-filters";
 import { MarketplaceSearchForm } from "@/components/marketplace/marketplace-search-form";
+import { MarketplaceSortLinks } from "@/components/marketplace/marketplace-sort-links";
 import { MobileMarketplaceControls } from "@/components/marketplace/mobile-marketplace-controls";
 import { ProductCard } from "@/components/marketplace/product-card";
 import { Button } from "@/components/ui/button";
@@ -155,7 +156,8 @@ export async function MarketplaceCatalog({
                   </Button>
                 ) : null}
               </div>
-              <div className="mt-4">
+              <div className="mt-4 grid gap-3">
+                <MarketplaceSortLinks actionPath={actionPath} raw={raw} selected={search.sort} />
                 <MobileMarketplaceControls
                   actionPath={actionPath}
                   lockedCategoryId={forcedCategoryId}
@@ -166,7 +168,7 @@ export async function MarketplaceCatalog({
             </div>
 
             {result.products.length > 0 ? (
-              <div className="mt-5 grid gap-4 min-[520px]:grid-cols-2 xl:grid-cols-3">
+              <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-3">
                 {result.products.map((product) => (
                   <ProductCard
                     canPurchase={Boolean(buyerName)}

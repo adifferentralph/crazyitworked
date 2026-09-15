@@ -140,6 +140,7 @@ export function MobileMarketplaceControls({
               <option value="newest">Newest</option>
               <option value="price-asc">Price: low to high</option>
               <option value="price-desc">Price: high to low</option>
+              <option value="name-asc">A–Z</option>
             </select>
           </label>
           <Button type="submit">Apply sort</Button>

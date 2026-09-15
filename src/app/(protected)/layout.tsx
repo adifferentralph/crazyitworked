@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { ApplicationHeader } from "@/components/layout/application-header";
-import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { MobileMarketplaceNavigation } from "@/components/marketplace/mobile-marketplace-navigation";
 import { getCurrentPrincipal } from "@/lib/auth/principal";
@@ -13,11 +12,7 @@ export const metadata: Metadata = {
   robots: { follow: false, index: false },
 };
 
-export default async function ProtectedLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export default async function ProtectedLayout({ children }: { children: ReactNode }) {
   const principal = await getCurrentPrincipal();
 
   // The marketplace alias in this route group is public. Middleware redirects
@@ -26,10 +21,9 @@ export default async function ProtectedLayout({
     return (
       <>
         <Header />
-        <div className="pb-20 lg:pb-0">
-          <main id="main-content">{children}</main>
-          <Footer />
-        </div>
+        <main className="pb-20 lg:pb-0" id="main-content">
+          {children}
+        </main>
         <MobileMarketplaceNavigation />
       </>
     );
@@ -54,11 +48,7 @@ export default async function ProtectedLayout({
 
   return (
     <>
-      <ApplicationHeader
-        cartCount={cartCount}
-        principal={principal}
-        storeName={storeName}
-      />
+      <ApplicationHeader cartCount={cartCount} principal={principal} storeName={storeName} />
       <main className="pb-20 lg:pb-0" id="main-content">
         {children}
       </main>

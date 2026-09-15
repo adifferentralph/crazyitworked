@@ -1,9 +1,10 @@
 import Link from "next/link";
 import {
   ArrowUpRight,
+  Search,
   ShoppingCart,
   Store,
-  UserRound,
+
 } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -54,11 +55,11 @@ export function Header() {
           className="ml-auto flex shrink-0 items-center gap-1 lg:hidden"
         >
           <Link
-            aria-label="Sign in or open account"
+            aria-label="Search marketplace"
             className="grid size-10 place-items-center rounded-md text-stone-700 focus-visible:ring-2 focus-visible:ring-primary"
-            href="/login"
+            href="/find-a-part"
           >
-            <UserRound aria-hidden="true" className="size-5" />
+            <Search aria-hidden="true" className="size-5" />
           </Link>
           <Link
             aria-label="Open cart"

@@ -1,5 +1,7 @@
 import { cache } from "react";
+import { sql } from "drizzle-orm";
 
+import { getDatabase } from "@/db/client";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductCondition } from "@/lib/supabase/database.types";
 import type { MarketplaceSearch, MarketplaceVehicleOption } from "@/lib/marketplace/search-options";
@@ -48,7 +50,7 @@ export function parseMarketplaceSearch(params: RawSearchParams): MarketplaceSear
     pickup: first(params.pickup) === "true" ? "true" : undefined,
     q: safeText(first(params.q), 160),
     seller: safeUuid(first(params.seller)),
-    sort: ["newest", "price-asc", "price-desc"].includes(sort ?? "")
+    sort: ["name-asc", "newest", "price-asc", "price-desc"].includes(sort ?? "")
       ? (sort as MarketplaceSearch["sort"])
       : "relevance",
     vehicle: safeUuid(first(params.vehicle)),
@@ -186,6 +188,7 @@ export async function searchMarketplaceProducts(
 
   if (search.sort === "price-asc") query = query.order("price_minor", { ascending: true });
   else if (search.sort === "price-desc") query = query.order("price_minor", { ascending: false });
+  else if (search.sort === "name-asc") query = query.order("name", { ascending: true });
   else query = query.order("created_at", { ascending: false });
 
   const start = (search.page - 1) * resultPageSize;
@@ -195,10 +198,20 @@ export async function searchMarketplaceProducts(
   const productIds = products.map((product) => product.id);
   const sellerIds = [...new Set(products.map((product) => product.seller_id))];
   const categoryIds = [...new Set(products.map((product) => product.category_id))];
-  const [imagesResult, sellersResult, categoriesResult] = await Promise.all([
+  const [imagesResult, sellersResult, categoriesResult, fitmentsResult, options, sponsorships] = await Promise.all([
     supabase.from("product_images").select("product_id, storage_path").in("product_id", productIds).eq("is_active", true).eq("is_primary", true),
     supabase.from("marketplace_sellers").select("*").in("seller_id", sellerIds),
     supabase.from("product_categories").select("id, name").in("id", categoryIds),
+    supabase.from("product_fitments").select("product_id, fitment_id, is_primary").in("product_id", productIds).eq("is_active", true).order("is_primary", { ascending: false }),
+    getMarketplaceOptions(),
+    getDatabase().execute(sql<{ productId: string }>`
+      select distinct product_id as "productId"
+      from public.product_sponsorships
+      where product_id in ${productIds}
+        and is_active
+        and starts_at <= now()
+        and (ends_at is null or ends_at > now())
+    `),
   ]);
   const paths = (imagesResult.data ?? []).map((image) => image.storage_path);
   const { data: signed } = paths.length
@@ -208,6 +221,15 @@ export async function searchMarketplaceProducts(
   const imageByProduct = new Map((imagesResult.data ?? []).map((image) => [image.product_id, urlByPath.get(image.storage_path) ?? null]));
   const sellerById = new Map((sellersResult.data ?? []).map((seller) => [seller.seller_id, seller]));
   const categoryById = new Map((categoriesResult.data ?? []).map((category) => [category.id, category.name]));
+  const vehicleByFitment = new Map(options.vehicles.map((vehicle) => [vehicle.id, vehicle]));
+  const sponsoredProductIds = new Set(sponsorships.map((item) => item.productId));
+  const primaryVehicleByProduct = new Map<string, MarketplaceVehicleOption>();
+  for (const fitment of fitmentsResult.data ?? []) {
+    const vehicle = vehicleByFitment.get(fitment.fitment_id);
+    if (vehicle && !primaryVehicleByProduct.has(fitment.product_id)) {
+      primaryVehicleByProduct.set(fitment.product_id, vehicle);
+    }
+  }
 
   return {
     count: count ?? products.length,
@@ -216,7 +238,9 @@ export async function searchMarketplaceProducts(
       ...product,
       categoryName: categoryById.get(product.category_id) ?? "Automotive part",
       primaryImageUrl: imageByProduct.get(product.id) ?? null,
+      primaryVehicle: primaryVehicleByProduct.get(product.id) ?? null,
       seller: sellerById.get(product.seller_id) ?? null,
+      sponsored: sponsoredProductIds.has(product.id),
     })),
   };
 }

@@ -58,14 +58,14 @@ async function loginUi(page: Page, seller: TestSeller) {
   await page.getByLabel("Password", { exact: true }).fill(seller.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/seller\/dashboard$/, { timeout: 30_000 });
-  await expect(page.getByText("Supplier workspace", { exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("heading", { level: 2, name: "Complete your supplier profile" })).toBeVisible({ timeout: 60_000 });
   const authCookieNames = (await page.context().cookies())
     .map((cookie) => cookie.name)
     .filter((name) => name.startsWith("sb-") && name.includes("auth-token"));
   console.log(`[phase2-live] browser auth cookie chunks: ${authCookieNames.length}`);
   expect(authCookieNames.length).toBeGreaterThan(0);
   await page.reload();
-  await expect(page.getByText("Supplier workspace", { exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("heading", { level: 2, name: "Complete your supplier profile" })).toBeVisible({ timeout: 60_000 });
 }
 
 function productInsert(sellerId: string, categoryId: string, id = randomUUID()) {
@@ -171,12 +171,19 @@ test("live seller onboarding, product media, workflow, and ownership RLS", async
     console.log("[phase2-live] browser login completed");
     await page.goto("/seller/onboarding");
     await page.getByLabel("Store or business name").fill("Phase 2 Owner Parts");
-    await page.getByLabel("Registration number").fill("BN-PHASE2-OWNER");
     await page.getByLabel("Business phone").fill("+234 800 123 4567");
-    await page.getByLabel("About your business").fill("We supply traceable automotive service parts and preserve original product media for review.");
+    const selectAllCategories = page.getByLabel("Select all categories");
+    const categoryCheckboxes = page.locator('input[name="categoryIds"]');
+    await selectAllCategories.check();
+    await expect(categoryCheckboxes.first()).toBeChecked();
+    await categoryCheckboxes.first().uncheck();
+    await expect(selectAllCategories).not.toBeChecked();
+    await expect(selectAllCategories).toHaveJSProperty("indeterminate", true);
+    await categoryCheckboxes.first().check();
+    await expect(selectAllCategories).toBeChecked();
     await page.getByLabel("State").fill("Lagos");
     await page.getByLabel("City").fill("Ikeja");
-    await page.getByRole("button", { name: "Save and submit for verification" }).click();
+    await page.getByRole("button", { name: "Save store profile" }).click();
     await expect(page).toHaveURL(/\/seller\/dashboard\?message=onboarding-complete$/, { timeout: 30_000 });
     console.log("[phase2-live] owner onboarding completed");
 

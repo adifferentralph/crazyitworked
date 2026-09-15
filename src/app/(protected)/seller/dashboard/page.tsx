@@ -41,7 +41,7 @@ export default async function SellerDashboardPage() {
   getSellerProducts(principal.id),
 
   getSellerFitmentPerformance(principal.id),
-]);
+]); 
   const approved = products.filter((product) => product.status === "APPROVED").length;
   const pending = products.filter((product) => product.status === "PENDING_REVIEW").length;
   const needsAttention = products.filter((product) =>

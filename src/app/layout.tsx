@@ -41,6 +41,11 @@ export const metadata: Metadata = {
   },
   icons: {
     apple: "/icons/apple-touch-icon.png",
+    icon: [
+      { sizes: "32x32", type: "image/x-icon", url: "/favicon.ico?v=20260907" },
+      { sizes: "32x32", type: "image/png", url: "/icon.png?v=20260907" },
+    ],
+    shortcut: "/favicon.ico?v=20260907",
   },
   keywords: [
     "automotive spare parts",
@@ -83,8 +88,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         >
           Skip to content
         </a>
-        {children}
         <PwaClient />
+        {children}
         <Analytics />
       </body>
     </html>

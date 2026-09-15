@@ -20,6 +20,7 @@ test.describe("installable web app", () => {
       expect.arrayContaining([
         expect.objectContaining({ sizes: "192x192", src: "/icons/app-icon-192.png" }),
         expect.objectContaining({ sizes: "512x512", src: "/icons/app-icon-512.png" }),
+        expect.objectContaining({ purpose: "maskable", sizes: "512x512", src: "/icons/app-icon-maskable-512.png" }),
       ]),
     );
 
@@ -55,7 +56,7 @@ test.describe("installable web app", () => {
     });
 
     await expect(page.getByRole("heading", { name: "Install Twenty-Two Parts" })).toBeVisible();
-    await page.getByRole("button", { name: "Not now" }).click();
+    await page.getByRole("button", { name: "Dismiss install suggestion" }).click();
     await expect(page.getByRole("heading", { name: "Install Twenty-Two Parts" })).toBeHidden();
   });
 

@@ -56,7 +56,7 @@ export function MobileMarketplaceNavigation({
       label: "Cart",
     },
     {
-      href: authenticated ? "/account" : "/login",
+      href: authenticated ? "/account" : "/signup",
       icon: UserRound,
       key: "account",
       label: "Account",

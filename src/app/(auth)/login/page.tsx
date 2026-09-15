@@ -47,7 +47,9 @@ export default async function LoginPage({
   const notice =
     params.message === "password-updated"
       ? "Your password has been updated. Sign in with your new password."
-      : params.error === "configuration"
+      : params.message === "session-expired"
+        ? "Your session has expired. Sign in again."
+        : params.error === "configuration"
         ? "Authentication is being configured. Please try again shortly."
         : params.error === "oauth"
           ? `${providerLabel} sign-in could not be started. Use email sign-in or try again shortly.`

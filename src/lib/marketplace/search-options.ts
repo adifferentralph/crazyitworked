@@ -13,7 +13,7 @@ export type MarketplaceSearch = {
   pickup?: "true";
   q?: string;
   seller?: string;
-  sort: "newest" | "price-asc" | "price-desc" | "relevance";
+  sort: "name-asc" | "newest" | "price-asc" | "price-desc" | "relevance";
   vehicle?: string;
 };
 

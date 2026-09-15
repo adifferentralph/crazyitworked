@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
 import { ApplicationHeader } from "@/components/layout/application-header";
-import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { MobileMarketplaceNavigation } from "@/components/marketplace/mobile-marketplace-navigation";
 import { getCurrentPrincipal } from "@/lib/auth/principal";
@@ -41,10 +40,9 @@ export default async function PublicLayout({ children }: { children: ReactNode }
   return (
     <>
       <Header />
-      <div className="pb-20 lg:pb-0">
-        <main id="main-content">{children}</main>
-        <Footer />
-      </div>
+      <main className="pb-20 lg:pb-0" id="main-content">
+        {children}
+      </main>
       <MobileMarketplaceNavigation />
     </>
   );

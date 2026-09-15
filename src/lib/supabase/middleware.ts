@@ -1,10 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-import {
-  getPublicEnvironment,
-  hasSupabaseEnvironment,
-} from "@/config/env";
+import { getAuthCookieOptions, getPublicEnvironment, hasSupabaseEnvironment } from "@/config/env";
+import { normalizeRequestHostname } from "@/lib/routing/vendor";
 import type { Database } from "@/lib/supabase/database.types";
 
 function createResponse(request: NextRequest) {
@@ -19,18 +17,20 @@ export async function updateSession(request: NextRequest) {
   }
 
   const environment = getPublicEnvironment();
+  const hostname = normalizeRequestHostname(
+    request.headers.get("x-forwarded-host") ?? request.headers.get("host"),
+  );
   const supabase = createServerClient<Database>(
     environment.NEXT_PUBLIC_SUPABASE_URL,
     environment.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
+      cookieOptions: getAuthCookieOptions(hostname),
       cookies: {
         getAll() {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = createResponse(request);
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options);
@@ -41,10 +41,7 @@ export async function updateSession(request: NextRequest) {
   );
 
   const { data, error } = await supabase.auth.getClaims();
-  const userId =
-    !error && typeof data?.claims?.sub === "string"
-      ? data.claims.sub
-      : null;
+  const userId = !error && typeof data?.claims?.sub === "string" ? data.claims.sub : null;
 
   return { response, userId };
 }

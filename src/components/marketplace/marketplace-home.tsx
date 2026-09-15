@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { CategoryCard } from "@/components/marketplace/category-card";
+import { MarketplaceBanners } from "@/components/marketplace/marketplace-banners";
 import { MarketplaceSearchForm } from "@/components/marketplace/marketplace-search-form";
 import { ProductCard } from "@/components/marketplace/product-card";
 import { VehicleSearch } from "@/components/marketplace/vehicle-search";
@@ -87,6 +88,8 @@ export async function MarketplaceHome() {
         </div>
       </section>
 
+      <MarketplaceBanners placement="HOME_HERO" />
+
       {options.vehicles.length > 0 ? (
         <section className="py-8 sm:py-12">
           <div className="container-page">
@@ -149,6 +152,8 @@ export async function MarketplaceHome() {
           </div>
         </section>
       ) : null}
+
+      <MarketplaceBanners placement="HOME_MID" />
 
       {recent.products.length > 0 ? (
         <section className="py-8 sm:py-12">

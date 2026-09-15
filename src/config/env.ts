@@ -3,9 +3,16 @@ import { z } from "zod";
 import { siteConfig } from "@/config/site";
 
 const developmentAppUrl = "http://localhost:3000";
+const developmentVendorAppUrl = "http://vendors.localhost:3000";
 
 function getDefaultAppUrl() {
   return process.env.NODE_ENV === "production" ? siteConfig.url : developmentAppUrl;
+}
+
+function getDefaultVendorAppUrl() {
+  return process.env.NODE_ENV === "production"
+    ? "https://vendors.twentytwoparts.com"
+    : developmentVendorAppUrl;
 }
 
 const vapidPublicKeySchema = z
@@ -17,6 +24,7 @@ const vapidPublicKeySchema = z
 
 const publicEnvironmentSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url().default(getDefaultAppUrl()),
+  NEXT_PUBLIC_VENDOR_APP_URL: z.string().url().default(getDefaultVendorAppUrl()),
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(20),
 });
@@ -51,6 +59,7 @@ export function hasPushEnvironment() {
 export function getPublicEnvironment() {
   return publicEnvironmentSchema.parse({
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_VENDOR_APP_URL: process.env.NEXT_PUBLIC_VENDOR_APP_URL,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   });
@@ -78,4 +87,28 @@ export function getPushServerEnvironment() {
 export function getAppUrl() {
   const value = process.env.NEXT_PUBLIC_APP_URL ?? getDefaultAppUrl();
   return new URL(value).origin;
+}
+
+export function getVendorAppUrl() {
+  const value = process.env.NEXT_PUBLIC_VENDOR_APP_URL ?? getDefaultVendorAppUrl();
+  return new URL(value).origin;
+}
+
+export function getAuthCookieOptions(currentHostname?: string | null) {
+  const app = new URL(getAppUrl());
+  const vendor = new URL(getVendorAppUrl());
+  const hostname = currentHostname?.split(":", 1)[0]?.toLowerCase();
+  const isCanonicalProductionHost =
+    process.env.NODE_ENV === "production" &&
+    app.protocol === "https:" &&
+    vendor.protocol === "https:" &&
+    vendor.hostname === `vendors.${app.hostname}` &&
+    (hostname === app.hostname || hostname === vendor.hostname);
+
+  return {
+    path: "/",
+    sameSite: "lax" as const,
+    secure: isCanonicalProductionHost,
+    ...(isCanonicalProductionHost ? { domain: app.hostname } : {}),
+  };
 }

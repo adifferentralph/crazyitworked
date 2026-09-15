@@ -624,6 +624,7 @@ seller_categories: Table<
           evidence_type: FitmentEvidenceType;
           fitment_id: string;
           is_active: boolean;
+          is_primary: boolean;
           notes: string | null;
           product_id: string;
           updated_at: string;
@@ -636,6 +637,7 @@ seller_categories: Table<
           evidence_type?: FitmentEvidenceType;
           fitment_id: string;
           is_active?: boolean;
+          is_primary?: boolean;
           notes?: string | null;
           product_id: string;
           verified_at?: string | null;
@@ -645,6 +647,7 @@ seller_categories: Table<
           evidence_metadata?: Json;
           evidence_type?: FitmentEvidenceType;
           is_active?: boolean;
+          is_primary?: boolean;
           notes?: string | null;
           verified_at?: string | null;
           verified_by_user_id?: string | null;

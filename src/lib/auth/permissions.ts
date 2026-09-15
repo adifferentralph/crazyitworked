@@ -11,6 +11,9 @@ export type AdminPermission =
   | "demand.read"
   | "fitment.manage"
   | "audit.read"
+  | "content.manage"
+  | "finance.read"
+  | "sellers.manage"
   | "products.approve"
   | "products.edit"
   | "products.read";

@@ -10,6 +10,18 @@ const supabaseOrigin = (() => {
   }
 })();
 
+const supabaseImages = (() => {
+  if (!supabaseOrigin) return [];
+  const url = new URL(supabaseOrigin);
+  return [
+    {
+      protocol: url.protocol.replace(":", "") as "http" | "https",
+      hostname: url.hostname,
+      port: url.port,
+      pathname: "/storage/v1/object/public/marketplace-banners/**",
+    },
+  ];
+})();
 const developmentScriptPolicy = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
 
 const contentSecurityPolicy = [
@@ -36,6 +48,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  images: { remotePatterns: supabaseImages },
   experimental: {
     serverActions: {
       bodySizeLimit: "45mb",

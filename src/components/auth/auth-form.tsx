@@ -314,7 +314,7 @@ function AuthFooter({ variant }: { variant: AuthVariant }) {
           className="font-semibold text-primary underline-offset-4 focus-visible:underline"
           href="/signup"
         >
-          Choose an account type
+          Create account
         </Link>
       </p>
     );

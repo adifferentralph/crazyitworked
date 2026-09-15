@@ -86,7 +86,7 @@ export async function loginAction(
 
   if (signInError || !signInData.user) {
     return {
-      message: "The email or password is incorrect.",
+      message: "We couldn't sign you in. Check your email and password, or create an account if you're new.",
       status: "error",
       values: getSafeSubmittedValues(formData),
     };

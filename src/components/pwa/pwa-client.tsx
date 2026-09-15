@@ -1,11 +1,14 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Download, Share, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import logo from "@/components/brand/logo.png";
 
 const DISMISSAL_KEY = "ttp-install-prompt-dismissed-until";
+const INSTALLED_KEY = "ttp-install-completed";
+const SPLASH_KEY = "ttp-standalone-splash-shown";
 const DISMISSAL_MS = 30 * 24 * 60 * 60 * 1_000;
 
 interface BeforeInstallPromptEvent extends Event {
@@ -33,6 +36,7 @@ function dismissalIsActive() {
 export function PwaClient() {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [iosInstructions, setIosInstructions] = useState(false);
+  const [splashVisible, setSplashVisible] = useState(false);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -43,30 +47,42 @@ export function PwaClient() {
       void navigator.serviceWorker.register("/sw.js", { scope: "/" });
     }
 
-    if (isStandalone()) return;
-
-    const ios = isIosDevice();
-    if (ios && !dismissalIsActive()) {
-      setIosInstructions(true);
-      setVisible(true);
+    if (isStandalone()) {
+      if (!window.sessionStorage.getItem(SPLASH_KEY)) {
+        window.sessionStorage.setItem(SPLASH_KEY, "true");
+        setSplashVisible(true);
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const timeout = window.setTimeout(() => setSplashVisible(false), reducedMotion ? 200 : 800);
+        return () => window.clearTimeout(timeout);
+      }
+      return;
     }
 
     function handleBeforeInstallPrompt(event: Event) {
       event.preventDefault();
       setInstallEvent(event as BeforeInstallPromptEvent);
-      if (!dismissalIsActive()) setVisible(true);
+      setIosInstructions(false);
+      if (!dismissalIsActive() && window.localStorage.getItem(INSTALLED_KEY) !== "true") {
+        setVisible(true);
+      }
     }
 
     function handleInstalled() {
       setInstallEvent(null);
       setVisible(false);
+      window.localStorage.setItem(INSTALLED_KEY, "true");
       window.localStorage.removeItem(DISMISSAL_KEY);
     }
 
     function handleShowPrompt() {
-      if (isStandalone()) return;
-      setIosInstructions(isIosDevice());
-      setVisible(true);
+      if (isStandalone() || dismissalIsActive()) return;
+      if (installEvent) {
+        setIosInstructions(false);
+        setVisible(true);
+      } else if (isIosDevice()) {
+        setIosInstructions(true);
+        setVisible(true);
+      }
     }
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -78,7 +94,7 @@ export function PwaClient() {
       window.removeEventListener("appinstalled", handleInstalled);
       window.removeEventListener("ttp:show-install-prompt", handleShowPrompt);
     };
-  }, []);
+  }, [installEvent]);
 
   function dismiss() {
     window.localStorage.setItem(DISMISSAL_KEY, String(Date.now() + DISMISSAL_MS));
@@ -92,58 +108,47 @@ export function PwaClient() {
     if (choice.outcome === "accepted") {
       setInstallEvent(null);
       setVisible(false);
+      window.localStorage.setItem(INSTALLED_KEY, "true");
+    } else {
+      dismiss();
     }
   }
 
-  if (!visible || (!installEvent && !iosInstructions)) return null;
-
   return (
-    <aside
-      aria-label="Install Twenty-Two Parts"
-      className="fixed inset-x-4 bottom-4 z-[90] mx-auto max-w-lg rounded-xl border border-stone-200 bg-white p-5 shadow-2xl sm:left-auto sm:right-5 sm:mx-0"
-    >
-      <button
-        aria-label="Dismiss install prompt"
-        className="absolute right-3 top-3 grid size-9 place-items-center rounded-md text-stone-500 hover:bg-stone-100 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
-        onClick={dismiss}
-        type="button"
-      >
-        <X aria-hidden="true" className="size-4" />
-      </button>
-      <div className="flex items-start gap-3 pr-8">
-        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-stone-950 text-white">
-          <Download aria-hidden="true" className="size-5" />
-        </span>
-        <div>
-          <h2 className="font-semibold text-stone-950">Install Twenty-Two Parts</h2>
-          {iosInstructions ? (
-            <p className="mt-1 text-sm leading-6 text-stone-600">
-              In Safari, tap Share, then choose Add to Home Screen. Open the installed app to enable
-              push notifications.
-            </p>
-          ) : (
-            <p className="mt-1 text-sm leading-6 text-stone-600">
-              Add the marketplace to this device for faster access. Installation is optional.
-            </p>
-          )}
+    <>
+      {visible && (installEvent || iosInstructions) ? (
+        <aside aria-label="Install Twenty-Two Parts" className="border-b border-stone-200 bg-white">
+          <div className="container-page flex min-h-16 items-center gap-3 py-2">
+            <Image alt="" aria-hidden="true" className="size-10 shrink-0 rounded-lg" height={40} src="/icons/app-icon-192.png" width={40} />
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate text-sm font-bold text-stone-950">Install Twenty-Two Parts</h2>
+              <p className="truncate text-xs text-stone-500">
+                {iosInstructions ? "Use Share, then Add to Home Screen" : "twentytwoparts.com"}
+              </p>
+            </div>
+            {installEvent ? (
+              <button className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-xs font-bold text-white hover:bg-red-700" onClick={install} type="button">
+                <Download aria-hidden="true" className="size-4" /> Install
+              </button>
+            ) : (
+              <span className="hidden items-center gap-1 text-xs font-semibold text-stone-700 min-[375px]:inline-flex">
+                <Share aria-hidden="true" className="size-4" /> Share
+              </span>
+            )}
+            <button aria-label="Dismiss install suggestion" className="grid size-9 shrink-0 place-items-center rounded-md text-stone-500 hover:bg-stone-100 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={dismiss} type="button">
+              <X aria-hidden="true" className="size-4" />
+            </button>
+          </div>
+        </aside>
+      ) : null}
+      {splashVisible ? (
+        <div aria-label="Twenty-Two Parts is opening" className="pwa-launch fixed inset-0 z-[120] grid place-items-center bg-white" role="status">
+          <div className="pwa-launch__mark grid place-items-center">
+            <Image alt="" aria-hidden="true" className="size-24 object-contain" priority src={logo} />
+            <span className="pwa-launch__accent mt-3 h-1 w-16 rounded-full bg-primary" />
+          </div>
         </div>
-      </div>
-      <div className="mt-4 flex flex-wrap gap-3">
-        {iosInstructions ? (
-          <span className="inline-flex h-10 items-center gap-2 rounded-md border border-stone-200 px-4 text-sm font-semibold text-stone-800">
-            <Share aria-hidden="true" className="size-4" />
-            Share, then Add to Home Screen
-          </span>
-        ) : (
-          <Button onClick={install} type="button">
-            <Download aria-hidden="true" className="size-4" />
-            Install app
-          </Button>
-        )}
-        <Button onClick={dismiss} type="button" variant="ghost">
-          Not now
-        </Button>
-      </div>
-    </aside>
+      ) : null}
+    </>
   );
 }
