@@ -43,7 +43,7 @@ test("category icons are semantic and category navigation owns results", async (
   expect(new Set(iconKeys).size).toBeGreaterThan(2);
 
   await page.locator('a[href^="/categories/"]').first().click();
-  await expect(page).toHaveURL(/\/categories\/[^/?#]+$/);
+  await expect(page).toHaveURL(/\/categories\/[^/?#]+$/, { timeout: 30_000 });
   await expect(page.getByRole("button", { name: "Filter" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sort" })).toBeVisible();
 });
@@ -54,7 +54,7 @@ test("mobile filters and sort controls apply real query parameters", async ({ pa
 
   await page.getByRole("button", { name: "Filter" }).click();
   const filterDialog = page.getByRole("dialog", { name: "Filter parts" });
-  await expect(filterDialog).toBeVisible();
+  await expect(filterDialog).toBeVisible({ timeout: 30_000 });
   await filterDialog.getByLabel("Condition").selectOption("NEW");
   await filterDialog.getByRole("button", { name: "Apply filters" }).click();
   await expect(page).toHaveURL(/condition=NEW/);

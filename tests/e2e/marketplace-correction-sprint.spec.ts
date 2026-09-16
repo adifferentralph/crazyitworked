@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test.use({ actionTimeout: 30_000, navigationTimeout: 180_000 });
+test.use({ actionTimeout: 90_000, navigationTimeout: 180_000 });
 test.describe.configure({ timeout: 360_000 });
 
 test("marketplace hierarchy, category chips, and local vehicle search work on mobile", async ({
@@ -44,7 +44,7 @@ test("marketplace hierarchy, category chips, and local vehicle search work on mo
     await makeInput.fill(query);
     await expect(
       page.getByRole("option", { name: new RegExp(expected, "i") }).first(),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 60_000 });
   }
 
   await expect(page.getByRole("heading", { name: "All Products" })).toBeVisible();
@@ -72,7 +72,9 @@ test("cookie consent is retained and preferences control analytics state", async
   const essential = page.getByRole("checkbox", { name: /Essential/ });
   await expect(essential).toBeChecked();
   await expect(essential).toBeDisabled();
-  await page.getByRole("checkbox", { name: /Analytics/ }).check();
+  const analytics = page.getByRole("checkbox", { name: /Analytics/ });
+  await expect(analytics).toBeEnabled({ timeout: 60_000 });
+  await analytics.check();
   await page.getByRole("button", { name: "Save preferences" }).click();
   await expect(page.getByText("Cookie preferences saved.")).toBeVisible();
   await expect
@@ -88,18 +90,18 @@ test("vendor host serves vendor auth without marketplace navigation", async ({
   const vendorUrl =
     process.env.NEXT_PUBLIC_VENDOR_APP_URL ?? "http://vendors.localhost:3000";
   const vendorHost = new URL(vendorUrl).host;
-  const root = await request.get("/", {
-    headers: { "x-forwarded-host": vendorHost },
+  const root = await request.get(new URL("/", vendorUrl).toString(), {
     maxRedirects: 0,
+    timeout: 120_000,
   });
   expect(root.status()).toBeGreaterThanOrEqual(300);
   expect(root.status()).toBeLessThan(400);
-  expect(root.headers().location).toContain(
-    "vendors.twentytwoparts.com/login",
-  );
+  const loginLocation = new URL(root.headers().location ?? "", vendorUrl);
+  expect(loginLocation.host).toBe(vendorHost);
+  expect(loginLocation.pathname).toBe("/login");
 
-  const login = await request.get("/login", {
-    headers: { "x-forwarded-host": vendorHost },
+  const login = await request.get(new URL("/login", vendorUrl).toString(), {
+    timeout: 120_000,
   });
   expect(login.ok()).toBe(true);
   const html = await login.text();

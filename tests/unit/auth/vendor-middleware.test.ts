@@ -7,7 +7,7 @@ vi.mock("@/lib/supabase/middleware", () => ({
   updateSession: updateSessionMock,
 }));
 
-import { middleware } from "../../../middleware";
+import { middleware } from "../../../src/middleware";
 
 beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://twentytwoparts.com");

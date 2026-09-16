@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowUpDown, Filter, X } from "lucide-react";
 
 import {
@@ -28,12 +28,16 @@ export function MobileMarketplaceControls({
 }) {
   const filterDialog = useRef<HTMLDialogElement>(null);
   const sortDialog = useRef<HTMLDialogElement>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => setHydrated(true), []);
 
   return (
     <>
       <div className="grid grid-cols-2 gap-2 lg:hidden">
         <Button
           className="w-full"
+          disabled={!hydrated}
           onClick={() => filterDialog.current?.showModal()}
           type="button"
           variant="outline"
@@ -43,6 +47,7 @@ export function MobileMarketplaceControls({
         </Button>
         <Button
           className="w-full"
+          disabled={!hydrated}
           onClick={() => sortDialog.current?.showModal()}
           type="button"
           variant="outline"

@@ -36,9 +36,7 @@ function createLoginUrl(returnTo: string, sessionExpired: boolean, origin = getA
 export async function middleware(request: NextRequest) {
   const originalHadAuthCookie = hasAuthCookie(request);
   const { principal, response, userId } = await updateSession(request);
-  const hostname = normalizeRequestHostname(
-    request.headers.get("x-forwarded-host") ?? request.headers.get("host"),
-  );
+  const hostname = normalizeRequestHostname(request.headers.get("host"));
   const marketplaceOrigin = getAppUrl();
   const vendorOrigin = getVendorAppUrl();
   const pathname = request.nextUrl.pathname;

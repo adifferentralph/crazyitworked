@@ -17,13 +17,23 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("vehicle_makes")
-    .select("id, name, is_discontinued, origin_country")
-    .eq("is_active", true)
-    .ilike("name", "%" + query + "%")
-    .order("name")
-    .limit(20);
+  const [prefixResult, containsResult] = await Promise.all([
+    supabase
+      .from("vehicle_makes")
+      .select("id, name, is_discontinued, origin_country")
+      .eq("is_active", true)
+      .ilike("name", query + "%")
+      .order("name")
+      .limit(20),
+    supabase
+      .from("vehicle_makes")
+      .select("id, name, is_discontinued, origin_country")
+      .eq("is_active", true)
+      .ilike("name", "%" + query + "%")
+      .order("name")
+      .limit(60),
+  ]);
+  const error = prefixResult.error ?? containsResult.error;
 
   if (error) {
     return NextResponse.json(
@@ -32,9 +42,17 @@ export async function GET(request: Request) {
     );
   }
 
+  const prioritizedMakes = [
+    ...new Map(
+      [...(prefixResult.data ?? []), ...(containsResult.data ?? [])].map(
+        (make) => [make.id, make],
+      ),
+    ).values(),
+  ].slice(0, 20);
+
   return NextResponse.json(
     {
-      makes: (data ?? []).map((make) => ({
+      makes: prioritizedMakes.map((make) => ({
         id: make.id,
         isDiscontinued: make.is_discontinued,
         label: make.name,
