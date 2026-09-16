@@ -7,8 +7,12 @@ export type AuthActionState = {
   values?: {
     accountType?: string;
     email?: string;
+    firstName?: string;
     fullName?: string;
+    lastName?: string;
+    marketingOptIn?: "on";
     organizationName?: string;
+    phone?: string;
     storeName?: string;
     terms?: "on";
   };

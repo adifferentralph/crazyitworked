@@ -16,6 +16,7 @@ import {
 import { AuthAlert } from "@/components/auth/auth-alert";
 import { AuthField } from "@/components/auth/auth-field";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
+import { BuyerSignupWizardFields } from "@/components/auth/buyer-signup-wizard-fields";
 import { Button } from "@/components/ui/button";
 import type { SocialProviderAvailability } from "@/lib/auth/providers";
 import { initialAuthActionState } from "@/lib/auth/types";
@@ -87,10 +88,10 @@ export function AuthForm({
   const enabledSocialOptions = socialOptions.filter((option) => option.enabled);
 
   useEffect(() => {
-    if (state.status !== "error") return;
+    if (variant === "buyer-signup" || state.status !== "error") return;
 
     formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
-  }, [state]);
+  }, [state, variant]);
 
   return (
     <div className="mt-5 max-w-lg sm:mt-6">
@@ -145,7 +146,7 @@ export function AuthForm({
           />
         </div>
 
-        {isSignup ? (
+        {variant === "seller-signup" ? (
           <AuthField
             autoComplete="name"
             defaultValue={state.values?.fullName}
@@ -158,47 +159,7 @@ export function AuthForm({
         ) : null}
 
         {variant === "buyer-signup" ? (
-          <>
-            <div className="grid gap-2">
-              <label className="text-sm font-semibold text-stone-800" htmlFor="buyer-account-type">
-                How will you use Twenty-Two Parts?
-              </label>
-              <select
-                aria-describedby={
-                  state.fieldErrors?.accountType?.[0] ? "buyer-account-type-error" : undefined
-                }
-                aria-invalid={Boolean(state.fieldErrors?.accountType?.[0])}
-                className={`h-12 w-full rounded-md border bg-white px-3.5 text-base text-stone-950 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 ${
-                  state.fieldErrors?.accountType?.[0]
-                    ? "border-primary bg-red-50 ring-2 ring-primary/20"
-                    : "border-stone-300"
-                }`}
-                defaultValue={state.values?.accountType ?? "INDIVIDUAL"}
-                id="buyer-account-type"
-                name="accountType"
-              >
-                <option value="INDIVIDUAL">Individual vehicle owner</option>
-                <option value="MECHANIC_TECHNICIAN">Mechanic or technician</option>
-                <option value="GARAGE_WORKSHOP">Garage or workshop</option>
-                <option value="FLEET_OPERATOR">Fleet operator</option>
-                <option value="CORPORATE_BUYER">Corporate buyer</option>
-              </select>
-              {state.fieldErrors?.accountType?.[0] ? (
-                <p className="text-sm font-medium text-primary" id="buyer-account-type-error">
-                  {state.fieldErrors.accountType[0]}
-                </p>
-              ) : null}
-            </div>
-            <AuthField
-              autoComplete="organization"
-              defaultValue={state.values?.organizationName}
-              errors={state.fieldErrors?.organizationName}
-              label="Business or organisation name (optional for individuals)"
-              name="organizationName"
-              placeholder="Your workshop, fleet, or company"
-              type="text"
-            />
-          </>
+          <BuyerSignupWizardFields state={state} />
         ) : null}
 
         {variant === "seller-signup" ? (
@@ -213,7 +174,7 @@ export function AuthForm({
           />
         ) : null}
 
-        {variant !== "reset" ? (
+        {variant !== "reset" && variant !== "buyer-signup" ? (
           <AuthField
             autoComplete="email"
             defaultValue={state.values?.email}
@@ -226,7 +187,7 @@ export function AuthForm({
           />
         ) : null}
 
-        {variant === "login" || isSignup || variant === "reset" ? (
+        {variant === "login" || variant === "seller-signup" || variant === "reset" ? (
           <AuthField
             autoComplete={variant === "login" ? "current-password" : "new-password"}
             errors={state.fieldErrors?.password}
@@ -237,7 +198,7 @@ export function AuthForm({
           />
         ) : null}
 
-        {isSignup || variant === "reset" ? (
+        {variant === "seller-signup" || variant === "reset" ? (
           <AuthField
             autoComplete="new-password"
             errors={state.fieldErrors?.confirmPassword}
@@ -248,7 +209,7 @@ export function AuthForm({
           />
         ) : null}
 
-        {isSignup ? (
+        {variant === "seller-signup" ? (
           <div>
             <div className="flex items-start gap-3 text-sm leading-6 text-stone-700">
               <input
@@ -298,8 +259,12 @@ export function AuthForm({
           </div>
         ) : null}
 
-        <AuthAlert state={state} />
-        <AuthSubmitButton label={submitLabel.idle} pendingLabel={submitLabel.pending} />
+        {variant !== "buyer-signup" ? (
+          <>
+            <AuthAlert state={state} />
+            <AuthSubmitButton label={submitLabel.idle} pendingLabel={submitLabel.pending} />
+          </>
+        ) : null}
       </form>
 
       <AuthFooter context={context} variant={variant} />
@@ -321,7 +286,7 @@ function AuthFooter({
           New supplier?{" "}
           <Link
             className="font-semibold text-primary underline-offset-4 focus-visible:underline"
-            href="/signup/seller"
+            href="/signup"
           >
             Create supplier account
           </Link>
@@ -334,7 +299,7 @@ function AuthFooter({
         New to Twenty-Two Parts?{" "}
         <Link
           className="font-semibold text-primary underline-offset-4 focus-visible:underline"
-          href="/signup"
+          href="/signup/buyer"
         >
           Create account
         </Link>

@@ -44,6 +44,46 @@ export async function middleware(request: NextRequest) {
   if (isVendorHostname(hostname, vendorOrigin)) {
     if (isVendorPassthroughPath(pathname)) return response;
 
+    if (pathname === "/signup/seller") {
+      return copyResponseCookies(
+        response,
+        NextResponse.redirect(new URL("/signup", vendorOrigin)),
+      );
+    }
+
+    if (pathname === "/signup") {
+      if (!userId) {
+        const signupUrl = request.nextUrl.clone();
+        signupUrl.pathname = "/vendor-signup";
+        const rewritten = NextResponse.rewrite(signupUrl);
+        return copyResponseCookies(response, rewritten);
+      }
+
+      const destination = getVendorAccessDestination(principal?.role, principal?.status);
+      if (destination === "SELLER") {
+        return copyResponseCookies(
+          response,
+          NextResponse.redirect(new URL("/dashboard", vendorOrigin)),
+        );
+      }
+      if (destination === "ADMIN") {
+        return copyResponseCookies(
+          response,
+          NextResponse.redirect(new URL("/admin", marketplaceOrigin)),
+        );
+      }
+      if (destination === "MARKETPLACE") {
+        return copyResponseCookies(
+          response,
+          NextResponse.redirect(new URL("/marketplace", marketplaceOrigin)),
+        );
+      }
+      return copyResponseCookies(
+        response,
+        NextResponse.redirect(new URL("/account-restricted", marketplaceOrigin)),
+      );
+    }
+
     if (pathname === "/login") {
       if (!userId) {
         const loginUrl = request.nextUrl.clone();
@@ -123,6 +163,13 @@ export async function middleware(request: NextRequest) {
     internalUrl.pathname = internalPath;
     const rewritten = NextResponse.rewrite(internalUrl);
     return copyResponseCookies(response, rewritten);
+  }
+
+  if (isMarketplaceHostname(hostname, marketplaceOrigin) && pathname === "/vendor-signup") {
+    return copyResponseCookies(
+      response,
+      NextResponse.redirect(new URL("/signup", vendorOrigin)),
+    );
   }
 
   if (isMarketplaceHostname(hostname, marketplaceOrigin) && pathname === "/vendor-login") {

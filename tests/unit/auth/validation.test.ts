@@ -8,6 +8,19 @@ import {
   sellerSignupSchema,
 } from "@/lib/validation/auth";
 
+const validBuyer = {
+  accountType: "INDIVIDUAL",
+  confirmPassword: "strong-password",
+  email: "buyer@example.com",
+  firstName: "Ada",
+  lastName: "Driver",
+  organizationName: "",
+  password: "strong-password",
+  phone: "+234 800 000 0000",
+  terms: "on",
+  _gotcha: "",
+};
+
 describe("auth validation", () => {
   it("normalizes email before authentication", () => {
     const result = loginSchema.parse({
@@ -21,11 +34,9 @@ describe("auth validation", () => {
 
   it("requires buyer terms and matching passwords", () => {
     const result = buyerSignupSchema.safeParse({
+      ...validBuyer,
       confirmPassword: "different-password",
-      email: "buyer@example.com",
-      fullName: "Ada Driver",
-      password: "strong-password",
-      _gotcha: "",
+      terms: undefined,
     });
 
     expect(result.success).toBe(false);
@@ -37,31 +48,35 @@ describe("auth validation", () => {
     }
   });
 
-it("supports professional buyer types and requires organisation details where appropriate", () => {
+  it("accepts buyer names, optional phone, and marketing consent", () => {
+    const result = buyerSignupSchema.parse({
+      ...validBuyer,
+      email: "  ADA@EXAMPLE.COM ",
+      marketingOptIn: "on",
+    });
+
+    expect(result.firstName).toBe("Ada");
+    expect(result.lastName).toBe("Driver");
+    expect(result.email).toBe("ada@example.com");
+    expect(result.marketingOptIn).toBe("on");
+  });
+
+  it("supports professional buyer types and requires organisation details where appropriate", () => {
     const missingOrganisation = buyerSignupSchema.safeParse({
+      ...validBuyer,
       accountType: "FLEET_OPERATOR",
-      confirmPassword: "strong-password",
-      email: "fleet@example.com",
-      fullName: "Ada Fleet",
       organizationName: "",
-      password: "strong-password",
-      terms: "on",
-      _gotcha: "",
     });
     expect(missingOrganisation.success).toBe(false);
 
     const independentMechanic = buyerSignupSchema.safeParse({
+      ...validBuyer,
       accountType: "MECHANIC_TECHNICIAN",
-      confirmPassword: "strong-password",
-      email: "mechanic@example.com",
-      fullName: "Tomi Mechanic",
       organizationName: "",
-      password: "strong-password",
-      terms: "on",
-      _gotcha: "",
     });
     expect(independentMechanic.success).toBe(true);
   });
+
   it("requires a supplier business name", () => {
     const result = sellerSignupSchema.safeParse({
       confirmPassword: "strong-password",
@@ -96,14 +111,11 @@ it("supports professional buyer types and requires organisation details where ap
       );
     }
   });
+
   it("rejects a populated bot trap without treating a normal website autofill name as a field", () => {
     const result = buyerSignupSchema.safeParse({
+      ...validBuyer,
       _gotcha: "filled-by-a-bot",
-      confirmPassword: "strong-password",
-      email: "buyer@example.com",
-      fullName: "Ada Driver",
-      password: "strong-password",
-      terms: "on",
       website: "https://example.com",
     });
 

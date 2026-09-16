@@ -26,6 +26,6 @@ describe("public marketplace content", () => {
 
   it("separates buyer and supplier authentication entry points", () => {
     expect(siteConfig.auth.buyers).toBe("/signup/buyer");
-    expect(siteConfig.auth.suppliers).toBe("/signup/seller");
+    expect(siteConfig.auth.suppliers).toBe("https://vendors.twentytwoparts.com/signup");
   });
 });

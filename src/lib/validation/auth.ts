@@ -22,60 +22,77 @@ export const loginSchema = z.object({
   [authBotTrapField]: honeypot,
 });
 
-const signupBase = z
+function validateSignup(
+  values: { confirmPassword: string; password: string; terms?: string },
+  context: z.RefinementCtx,
+) {
+  if (values.terms !== "on") {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Accept the Terms and Privacy Policy to continue.",
+      path: ["terms"],
+    });
+  }
+
+  if (values.confirmPassword !== values.password) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Passwords do not match.",
+      path: ["confirmPassword"],
+    });
+  }
+}
+
+export const buyerSignupSchema = z
   .object({
+    accountType: z
+      .enum([
+        "INDIVIDUAL",
+        "MECHANIC_TECHNICIAN",
+        "GARAGE_WORKSHOP",
+        "FLEET_OPERATOR",
+        "CORPORATE_BUYER",
+      ])
+      .default("INDIVIDUAL"),
     confirmPassword: z.string({ required_error: "Confirm your password." }),
     email,
-    fullName: z
-      .string({ required_error: "Enter your full name." })
+    firstName: z
+      .string({ required_error: "Enter your first name." })
       .trim()
-      .min(2, "Full name must contain at least 2 characters.")
-      .max(100, "Full name is too long."),
+      .min(1, "Enter your first name.")
+      .max(50, "First name is too long."),
+    lastName: z
+      .string({ required_error: "Enter your last name." })
+      .trim()
+      .min(1, "Enter your last name.")
+      .max(50, "Last name is too long."),
+    marketingOptIn: z.string().optional(),
+    organizationName: z
+      .string()
+      .trim()
+      .max(120, "Organisation name is too long.")
+      .optional(),
     password,
+    phone: z
+      .string()
+      .trim()
+      .max(30, "Phone number is too long.")
+      .refine(
+        (value) => !value || /^[+0-9().\s-]{7,30}$/.test(value),
+        "Enter a valid phone number.",
+      )
+      .optional(),
     terms: z.string().optional(),
     [authBotTrapField]: honeypot,
   })
-  .superRefine(({ confirmPassword, password, terms }, context) => {
-    if (terms !== "on") {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Accept the Terms and Privacy Policy to continue.",
-        path: ["terms"],
-      });
-    }
+  .superRefine((values, context) => {
+    validateSignup(values, context);
 
-    if (confirmPassword !== password) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Passwords do not match.",
-        path: ["confirmPassword"],
-      });
-    }
-  });
-
-export const buyerSignupSchema = signupBase
-  .and(
-    z.object({
-      accountType: z
-        .enum([
-          "INDIVIDUAL",
-          "MECHANIC_TECHNICIAN",
-          "GARAGE_WORKSHOP",
-          "FLEET_OPERATOR",
-          "CORPORATE_BUYER",
-        ])
-        .default("INDIVIDUAL"),
-      organizationName: z
-        .string()
-        .trim()
-        .max(120, "Organisation name is too long.")
-        .optional(),
-    }),
-  )
-  .superRefine(({ accountType, organizationName }, context) => {
     if (
-      ["GARAGE_WORKSHOP", "FLEET_OPERATOR", "CORPORATE_BUYER"].includes(accountType) &&
-      !organizationName
+      ["GARAGE_WORKSHOP", "FLEET_OPERATOR", "CORPORATE_BUYER"].includes(
+        values.accountType,
+      ) &&
+      !values.organizationName
     ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -85,15 +102,25 @@ export const buyerSignupSchema = signupBase
     }
   });
 
-export const sellerSignupSchema = signupBase.and(
-  z.object({
+export const sellerSignupSchema = z
+  .object({
+    confirmPassword: z.string({ required_error: "Confirm your password." }),
+    email,
+    fullName: z
+      .string({ required_error: "Enter your full name." })
+      .trim()
+      .min(2, "Full name must contain at least 2 characters.")
+      .max(100, "Full name is too long."),
+    password,
     storeName: z
       .string({ required_error: "Enter your store or business name." })
       .trim()
       .min(2, "Store name must contain at least 2 characters.")
       .max(120, "Store name is too long."),
-  }),
-);
+    terms: z.string().optional(),
+    [authBotTrapField]: honeypot,
+  })
+  .superRefine(validateSignup);
 
 export const forgotPasswordSchema = z.object({
   email,

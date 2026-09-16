@@ -162,6 +162,13 @@
       "when": 1789475636203,
       "tag": "0022_product_fitment_primary",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1789520000000,
+      "tag": "0023_buyer_signup_preference_grants",
+      "breakpoints": true
     }
   ]
 }

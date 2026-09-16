@@ -3,9 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AuthForm } from "@/components/auth/auth-form";
 import { AuthShell } from "@/components/auth/auth-shell";
-import {
-  getHomeForRole,
-} from "@/lib/auth/authorization";
+import { getHomeForRole, getPostAuthDestination } from "@/lib/auth/authorization";
 import { getCurrentPrincipal } from "@/lib/auth/principal";
 import { getSocialProviderAvailability } from "@/lib/auth/providers";
 
@@ -15,15 +13,23 @@ export const metadata: Metadata = {
   title: "Create buyer account",
 };
 
-export default async function BuyerSignupPage() {
-  const principal = await getCurrentPrincipal();
+export default async function BuyerSignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const [principal, params, providers] = await Promise.all([
+    getCurrentPrincipal(),
+    searchParams,
+    getSocialProviderAvailability(),
+  ]);
 
   if (principal) {
     if (principal.status !== "ACTIVE") redirect("/account-restricted");
     redirect(getHomeForRole(principal.role));
   }
 
-  const providers = await getSocialProviderAvailability();
+  const next = getPostAuthDestination("BUYER", params.next);
 
   return (
     <AuthShell
@@ -37,7 +43,7 @@ export default async function BuyerSignupPage() {
       <p className="mt-2 text-stone-600">
         For drivers, workshops, and fleet teams sourcing parts.
       </p>
-      <AuthForm providers={providers} variant="buyer-signup" />
+      <AuthForm next={next} providers={providers} variant="buyer-signup" />
     </AuthShell>
   );
 }

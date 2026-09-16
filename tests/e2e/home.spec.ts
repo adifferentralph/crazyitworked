@@ -17,9 +17,9 @@ test("marketplace home exposes real discovery paths", async ({ page }) => {
     "href",
     "/find-a-part",
   );
-  await expect(page.locator('a[href="/signup/seller"]').first()).toHaveAttribute(
+  await expect(page.getByRole("link", { name: /suppliers/i }).first()).toHaveAttribute(
     "href",
-    "/signup/seller",
+    "http://vendors.localhost:3000/signup",
   );
   await expect(page.getByRole("link", { name: "Request a part" }).first()).toHaveAttribute(
     "href",
@@ -56,26 +56,23 @@ test("marketplace home has accessible route-aware mobile navigation", async ({ p
 
 test("buyer, supplier, and login entry pages expose the correct forms", async ({ page }) => {
   test.setTimeout(360_000);
-  await page.goto("/signup/buyer");
+  await page.goto("/signup");
+  await expect(page).toHaveURL("http://localhost:3000/signup/buyer");
   await expect(
     page.getByRole("heading", { name: "Create a buyer account", level: 2 }),
   ).toBeVisible();
-  await expect(page.getByLabel("Full name")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Create buyer account" })).toBeVisible();
-  await expect(page.locator("main").getByRole("link", { name: "Privacy Policy" })).toHaveAttribute(
-    "href",
-    "/privacy-policy",
-  );
+  await expect(page.getByLabel("First name")).toBeVisible();
+  await expect(page.getByLabel("Last name")).toBeVisible();
+  await expect(page.getByText("Step 1 of 4")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Create buyer account" }).click();
-  await expect(page.getByLabel("Full name")).toHaveAttribute("aria-invalid", "true", {
-    timeout: 30_000,
-  });
-  await expect(page.getByLabel("Full name")).toBeFocused();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByLabel("First name")).toBeFocused();
 
   await page.goto("/signup/seller");
+  await expect(page).toHaveURL("http://vendors.localhost:3000/signup");
   await expect(
-    page.getByRole("heading", { name: "Create a supplier account", level: 2 }),
+    page.getByRole("heading", { name: "Create a seller account", level: 1 }),
   ).toBeVisible();
   await expect(page.getByLabel("Store or business name")).toBeVisible();
   await expect(page.getByRole("button", { name: "Create supplier account" })).toBeVisible();

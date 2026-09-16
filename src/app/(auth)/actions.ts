@@ -5,10 +5,8 @@ import { redirect } from "next/navigation";
 import type { z } from "zod";
 
 import { getAppUrl, hasSupabaseEnvironment } from "@/config/env";
-import {
-  getHomeForRole,
-  getPostAuthDestination,
-} from "@/lib/auth/authorization";
+import { getPostAuthDestination } from "@/lib/auth/authorization";
+import { syncBuyerSignupProfile } from "@/lib/auth/buyer-signup-profile";
 import {
   getOAuthSignupIntent,
   type OAuthProvider,
@@ -41,8 +39,12 @@ function getSafeSubmittedValues(formData: FormData): AuthActionState["values"] {
   return {
     accountType: getText("accountType"),
     email: getText("email"),
+    firstName: getText("firstName"),
     fullName: getText("fullName"),
+    lastName: getText("lastName"),
+    marketingOptIn: formData.get("marketingOptIn") === "on" ? "on" : undefined,
     organizationName: getText("organizationName"),
+    phone: getText("phone"),
     storeName: getText("storeName"),
     terms: formData.get("terms") === "on" ? "on" : undefined,
   };
@@ -137,18 +139,28 @@ async function signup(
   const accountType = "accountType" in parsed.data ? parsed.data.accountType : undefined;
   const organizationName =
     "organizationName" in parsed.data ? parsed.data.organizationName : undefined;
+  const phone = "phone" in parsed.data ? parsed.data.phone : undefined;
+  const marketingOptIn =
+    "marketingOptIn" in parsed.data && parsed.data.marketingOptIn === "on";
+  const fullName =
+    "firstName" in parsed.data
+      ? `${parsed.data.firstName} ${parsed.data.lastName}`.trim()
+      : parsed.data.fullName;
+  const destination = getPostAuthDestination(role, formData.get("next"));
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
       data: {
-        full_name: parsed.data.fullName,
+        full_name: fullName,
         ...(accountType ? { buyer_account_type: accountType } : {}),
+        marketing_opt_in: marketingOptIn,
         ...(organizationName ? { organization_name: organizationName } : {}),
+        ...(phone ? { phone } : {}),
         requested_role: role,
         ...(storeName ? { store_name: storeName } : {}),
       },
-      emailRedirectTo: `${getAppUrl()}/auth/callback?next=${encodeURIComponent(getHomeForRole(role))}`,
+      emailRedirectTo: `${getAppUrl()}/auth/callback?next=${encodeURIComponent(destination)}`,
     },
   });
 
@@ -160,8 +172,17 @@ async function signup(
     };
   }
 
-  if (data.session) {
-    redirect(getHomeForRole(role));
+  if (data.session && data.user) {
+    try {
+      await syncBuyerSignupProfile(supabase, data.user);
+    } catch {
+      await supabase.auth.signOut({ scope: "local" });
+      return {
+        message: "Your account was created, but its profile could not be completed. Sign in again or contact support.",
+        status: "error",
+      };
+    }
+    redirect(destination);
   }
 
   redirect(`/verify-email?email=${encodeURIComponent(parsed.data.email)}`);

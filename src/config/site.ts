@@ -1,3 +1,7 @@
+const vendorAppUrl = (
+  process.env.NEXT_PUBLIC_VENDOR_APP_URL ?? "https://vendors.twentytwoparts.com"
+).replace(/\/+$/, "");
+
 export const siteConfig = {
   name: "Twenty-Two Parts",
   shortName: "22 Parts",
@@ -11,6 +15,6 @@ export const siteConfig = {
   ],
   auth: {
     buyers: "/signup/buyer",
-    suppliers: "/signup/seller",
+    suppliers: `${vendorAppUrl}/signup`,
   },
 } as const;

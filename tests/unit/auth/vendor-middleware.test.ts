@@ -48,6 +48,29 @@ describe("vendor hostname middleware", () => {
     );
   });
 
+  it("keeps seller signup on the vendor shell and resolves existing roles first", async () => {
+    const signedOutRequest = request("/signup");
+    session(null);
+    const signedOutResponse = await middleware(signedOutRequest);
+    expect(signedOutResponse.headers.get("x-middleware-rewrite")).toBe(
+      "https://vendors.twentytwoparts.com/vendor-signup",
+    );
+
+    const sellerRequest = request("/signup");
+    session({ role: "SELLER", status: "ACTIVE" });
+    const sellerResponse = await middleware(sellerRequest);
+    expect(sellerResponse.headers.get("location")).toBe(
+      "https://vendors.twentytwoparts.com/dashboard",
+    );
+
+    const adminRequest = request("/signup");
+    session({ role: "ADMIN", status: "ACTIVE" });
+    const adminResponse = await middleware(adminRequest);
+    expect(adminResponse.headers.get("location")).toBe(
+      "https://twentytwoparts.com/admin",
+    );
+  });
+
   it("routes authoritative roles away from the wrong application shell", async () => {
     const sellerRequest = request("/");
     session({ role: "SELLER", status: "ACTIVE" });

@@ -44,6 +44,36 @@ function decodeHtmlAttribute(value: string) {
     .replaceAll("&#61;", "=");
 }
 
+async function resolveTrackedAuthLink(value: string) {
+  let current = value;
+
+  for (let redirectCount = 0; redirectCount < 5; redirectCount += 1) {
+    let url: URL;
+    try {
+      url = new URL(current);
+    } catch {
+      return null;
+    }
+
+    if (url.pathname.includes("/auth/v1/verify")) return url.toString();
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        redirect: "manual",
+        signal: AbortSignal.timeout(5_000),
+      });
+    } catch {
+      return null;
+    }
+    const location = response.headers.get("location");
+    if (!location || ![301, 302, 303, 307, 308].includes(response.status)) return null;
+    current = new URL(location, url).toString();
+  }
+
+  return null;
+}
+
 async function waitForAuthLink(
   email: string,
   subject: RegExp,
@@ -88,23 +118,19 @@ async function waitForAuthLink(
       }
 
       const detail = (await detailResponse.json()) as BrevoMessageDetail;
-      const html = detail.body ?? "";
-      const links = [...html.matchAll(/href=(?:"([^"]+)"|'([^']+)')/gi)].map((match) =>
-        decodeHtmlAttribute(match[1] ?? match[2] ?? ""),
+      const body = decodeHtmlAttribute(detail.body ?? "");
+      const hrefLinks = [...body.matchAll(/href=(?:"([^"]+)"|'([^']+)')/gi)].map(
+        (match) => match[1] ?? match[2] ?? "",
       );
-      const authLink = links.find((link) => {
-        try {
-          return new URL(link).pathname.includes("/auth/v1/verify");
-        } catch {
-          return false;
-        }
-      });
+      const plainLinks = body.match(/https?:\/\/[^\s<>"']+/gi) ?? [];
+      const links = [...new Set([...hrefLinks, ...plainLinks])];
 
-      if (!authLink) {
-        throw new Error(`Brevo message "${message.subject}" has no Supabase Auth link.`);
+      for (const link of links) {
+        const authLink = await resolveTrackedAuthLink(link);
+        if (authLink) return authLink;
       }
 
-      return authLink;
+      throw new Error(`Brevo message "${message.subject}" has no Supabase Auth link.`);
     }
 
     await delay(1_000);
@@ -120,7 +146,7 @@ async function openAuthLink(page: Page, authLink: string) {
   expect(location, "Supabase verification should return an application callback").toBeTruthy();
   const callback = new URL(location!);
   const testOrigin = process.env.PLAYWRIGHT_BASE_URL;
-  if (testOrigin && ["localhost", "127.0.0.1"].includes(callback.hostname)) {
+  if (testOrigin) {
     const replacement = new URL(testOrigin);
     callback.protocol = replacement.protocol;
     callback.hostname = replacement.hostname;
@@ -143,12 +169,19 @@ test("live confirmation and password recovery use Brevo links", async ({ page },
 
   try {
     const signupStartedAt = Date.now();
-    await page.goto("/signup/buyer");
-    await page.getByLabel("Full name").fill("Foundation Email Buyer");
+    await page.goto("/signup");
+    await expect(page).toHaveURL(/\/signup\/buyer$/);
+    await page.getByLabel("First name").fill("Foundation");
+    await page.getByLabel("Last name").fill("Email Buyer");
+    await page.getByRole("button", { name: "Continue" }).click();
     await page.getByLabel("Email address").fill(email);
+    await page.getByLabel("Phone number (optional)").fill("+234 800 000 0000");
+    await page.getByRole("button", { name: "Continue" }).click();
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByLabel("Confirm password", { exact: true }).fill(password);
+    await page.getByRole("button", { name: "Continue" }).click();
     await page.getByLabel(/I agree to the Terms of Use/i).check();
+    await page.getByLabel(/Email me useful product updates/i).check();
     await page.getByRole("button", { name: "Create buyer account" }).click();
     await expect(page).toHaveURL(/\/verify-email\?email=/, { timeout: 120_000 });
 
@@ -175,9 +208,33 @@ test("live confirmation and password recovery use Brevo links", async ({ page },
     await openAuthLink(page, confirmationLink);
     await expect(page).toHaveURL(/\/marketplace$/, { timeout: 120_000 });
     await expect(page.getByRole("search").first()).toBeVisible();
+
+    const [buyerProfile] = await sql<
+      {
+        fullName: string;
+        marketingOptIn: boolean;
+        phone: string | null;
+      }[]
+    >`
+      select
+        profiles.full_name as "fullName",
+        profiles.phone,
+        buyer_profiles.marketing_opt_in as "marketingOptIn"
+      from auth.users
+      join public.profiles on profiles.id = auth.users.id
+      join public.buyer_profiles on buyer_profiles.user_id = profiles.id
+      where auth.users.email = ${email}
+    `;
+    expect(buyerProfile).toEqual({
+      fullName: "Foundation Email Buyer",
+      marketingOptIn: true,
+      phone: "+234 800 000 0000",
+    });
+
     await page.reload();
     await expect(page.getByRole("search").first()).toBeVisible();
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await page.getByRole("button", { name: "Open account menu" }).click();
+    await page.getByRole("button", { name: "Sign Out" }).click();
     await expect(page).toHaveURL(/\/login$/, { timeout: 120_000 });
 
     const recoveryStartedAt = Date.now();

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getAppUrl, hasSupabaseEnvironment } from "@/config/env";
 import { getPostAuthDestination } from "@/lib/auth/authorization";
+import { syncBuyerSignupProfile } from "@/lib/auth/buyer-signup-profile";
 import {
   finalizeOAuthSignupRole,
   getOAuthProvider,
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
           provider,
           userId: user.id,
         });
+        await syncBuyerSignupProfile(supabase, user);
       } catch {
         await supabase.auth.signOut({ scope: "local" });
         return NextResponse.redirect(
