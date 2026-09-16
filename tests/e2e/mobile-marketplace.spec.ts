@@ -11,7 +11,7 @@ test("mobile marketplace home remains usable at required widths", async ({ page 
     await page.goto("/");
 
     await expect(
-      page.getByRole("heading", { name: "Find the exact part. Faster.", level: 1 }),
+      page.getByRole("heading", { name: "Find the right part for your vehicle", level: 2 }),
     ).toBeVisible();
     await expect(page.getByRole("link", { name: /Twenty-Two Parts/i }).first()).toBeVisible();
     await expect(page.getByRole("navigation", {

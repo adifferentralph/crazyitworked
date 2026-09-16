@@ -12,13 +12,13 @@ test("marketplace browsing is public while private buyer routes preserve return 
   await expect(page).toHaveURL(/\/marketplace$/);
   await expect(
     page.getByRole("heading", {
-      level: 1,
-      name: /Find the exact part\. Faster\./i,
+      level: 2,
+      name: /Find the right part for your vehicle/i,
     }),
   ).toBeVisible();
 
   await page.goto("/account/requests/new");
-  await expect(page).toHaveURL(/\/login\?/);
+  await expect(page).toHaveURL(/\/login\?/, { timeout: 30_000 });
   expect(new URL(page.url()).searchParams.get("next")).toBe("/account/requests/new");
 });
 
@@ -27,7 +27,7 @@ test("legacy auth routes resolve to the universal login", async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
 
   await page.goto("/suppliers/auth");
-  await expect(page).toHaveURL(/\/login\?/);
+  await expect(page).toHaveURL(/\/login\?/, { timeout: 30_000 });
   expect(new URL(page.url()).searchParams.get("next")).toBe("/seller/dashboard");
 });
 

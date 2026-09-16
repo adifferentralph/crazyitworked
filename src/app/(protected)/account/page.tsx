@@ -1,72 +1,94 @@
-import Link from "next/link";
 import {
-  Bell,
   CarFront,
   ClipboardList,
   FileQuestion,
   Heart,
-  LockKeyhole,
-  MapPin,
+  LogOut,
+  Settings,
   Star,
-  UserRound,
-  type LucideIcon,
 } from "lucide-react";
 
+import { signOutAction } from "@/app/(auth)/actions";
+import { AccountMenuRow } from "@/components/account/account-menu-row";
+import { LetterAvatar } from "@/components/account/letter-avatar";
 import { requireRole } from "@/lib/auth/principal";
 
-type AccountDestination = {
-  description: string;
-  href: string;
-  icon: LucideIcon;
-  label: string;
-};
-
-const destinations: AccountDestination[] = [
-  { href: "/account/orders", icon: ClipboardList, label: "Orders", description: "Track purchases and review order history." },
-  { href: "/account/requests", icon: FileQuestion, label: "Part Requests", description: "Send requests and compare matched supplier quotes." },
-  { href: "/account/vehicles", icon: CarFront, label: "Saved Vehicles", description: "Keep the vehicles you source parts for." },
-  { href: "/account/saved-parts", icon: Heart, label: "Saved Parts", description: "Return to parts you want to compare." },
-  { href: "/account/addresses", icon: MapPin, label: "Addresses", description: "Manage delivery and pickup details." },
-  { href: "/account/reviews", icon: Star, label: "Reviews", description: "Review eligible purchases and your feedback." },
-  { href: "/account/notifications", icon: Bell, label: "Notifications", description: "See marketplace and order updates." },
-  { href: "/account/security", icon: LockKeyhole, label: "Profile & Security", description: "Review account details and password security." },
-];
+const accountDestinations = [
+  { href: "/account/orders", icon: ClipboardList, label: "Orders" },
+  { href: "/account/requests", icon: FileQuestion, label: "Part Requests" },
+  { href: "/account/reviews", icon: Star, label: "Pending Reviews" },
+  { href: "/account/saved-parts", icon: Heart, label: "Saved Parts" },
+] as const;
 
 export default async function AccountPage() {
   const principal = await requireRole(["BUYER"], "/account");
-  const firstName = principal.fullName.trim().split(/\s+/)[0] || principal.fullName;
 
   return (
-    <section className="min-h-[70vh] bg-stone-50 py-8 sm:py-12">
-      <div className="container-page">
-        <div className="flex items-start gap-4 border-b border-stone-200 pb-7">
-          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-black text-white">
-            <UserRound aria-hidden="true" className="size-6" />
-          </span>
-          <div>
-            <h1 className="text-3xl font-semibold text-stone-950 sm:text-4xl">Hello, {firstName}</h1>
-            <p className="mt-2 text-sm text-stone-600">Manage your shopping activity, vehicles, delivery details, and account security.</p>
+    <section className="min-h-[70vh] bg-stone-50 py-6 font-body sm:py-10">
+      <div className="container-page max-w-3xl">
+        <div className="flex items-center gap-4 rounded-xl border border-stone-200 bg-white p-5">
+          <LetterAvatar
+            email={principal.email}
+            name={principal.fullName}
+            size="lg"
+            userId={principal.id}
+          />
+          <div className="min-w-0">
+            <h1 className="truncate font-body text-2xl font-bold text-stone-950">
+              {principal.fullName}
+            </h1>
+            <p className="mt-1 truncate text-sm text-stone-600">{principal.email}</p>
           </div>
         </div>
 
-        <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {destinations.map(({ description, href, icon: Icon, label }) => (
-            <Link className="rounded-xl border border-stone-200 bg-white p-5 focus-visible:ring-2 focus-visible:ring-primary" href={href} key={href}>
-              <Icon aria-hidden="true" className="size-5 text-primary" />
-              <h2 className="mt-4 font-body text-lg font-bold text-stone-950">{label}</h2>
-              <p className="mt-2 text-sm leading-6 text-stone-600">{description}</p>
-            </Link>
-          ))}
-        </div>
+        <div className="mt-7 grid gap-7">
+          <section>
+            <h2 className="mb-2 px-1 font-body text-xs font-bold uppercase tracking-[0.14em] text-stone-500">
+              My account
+            </h2>
+            <nav aria-label="My account" className="overflow-hidden rounded-xl border border-stone-200 bg-white">
+              {accountDestinations.map((destination) => (
+                <AccountMenuRow {...destination} key={destination.href} />
+              ))}
+            </nav>
+          </section>
 
-        <div className="mt-7 rounded-xl border border-stone-200 bg-white p-5">
-          <h2 className="font-body text-sm font-bold text-stone-950">Account details</h2>
-          <dl className="mt-3 text-sm">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <dt className="text-stone-500">Email address</dt>
-              <dd className="break-all font-semibold text-stone-800">{principal.email}</dd>
-            </div>
-          </dl>
+          <section>
+            <h2 className="mb-2 px-1 font-body text-xs font-bold uppercase tracking-[0.14em] text-stone-500">
+              My vehicles
+            </h2>
+            <nav aria-label="My vehicles" className="overflow-hidden rounded-xl border border-stone-200 bg-white">
+              <AccountMenuRow
+                href="/account/vehicles"
+                icon={CarFront}
+                label="Saved Vehicles"
+              />
+            </nav>
+          </section>
+
+          <section>
+            <h2 className="mb-2 px-1 font-body text-xs font-bold uppercase tracking-[0.14em] text-stone-500">
+              Account settings
+            </h2>
+            <nav aria-label="Account settings" className="overflow-hidden rounded-xl border border-stone-200 bg-white">
+              <AccountMenuRow
+                description="Profile, addresses, notifications, privacy and security"
+                href="/account/settings"
+                icon={Settings}
+                label="Settings"
+              />
+            </nav>
+          </section>
+
+          <form action={signOutAction}>
+            <button
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-4 font-bold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              type="submit"
+            >
+              <LogOut aria-hidden="true" className="size-4" />
+              Sign out
+            </button>
+          </form>
         </div>
       </div>
     </section>

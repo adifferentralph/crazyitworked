@@ -74,22 +74,22 @@ export async function MarketplaceCatalog({
       ? `Parts listed for ${selectedVehicle.label}`
       : selectedCategory
         ? `${selectedCategory.label} parts`
-        : "Marketplace parts";
+        : "All Products";
 
   return (
-    <section className="min-h-[70vh] bg-white py-6 sm:py-10">
+    <section className="min-h-[70vh] bg-white py-6 font-body sm:py-10">
       {demandSignal ? <DemandSignalReporter signal={demandSignal} /> : null}
       <div className="container-page">
         <header className="max-w-3xl">
           <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-primary">
-            Approved marketplace inventory
+            Automotive parts marketplace
           </p>
-          <h1 className="mt-2 text-3xl font-semibold text-stone-950 sm:text-5xl">
+          <h1 className="mt-2 font-body text-3xl font-bold text-stone-950 sm:text-5xl">
             {resultTitle}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600 sm:text-base">
-            Search by part name or number, then narrow real seller listings by
-            vehicle, condition, brand, seller, price, and location.
+            Search by part name, OEM number, brand or vehicle, then narrow
+            results by condition, seller, price, and location.
           </p>
         </header>
 
@@ -135,8 +135,7 @@ export async function MarketplaceCatalog({
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-stone-500">
-                    {result.count} approved{" "}
-                    {result.count === 1 ? "part" : "parts"}
+                    {result.count} {result.count === 1 ? "product" : "products"}
                   </p>
                   <h2 className="mt-1 font-body text-xl font-bold text-stone-950 sm:text-2xl">
                     {resultTitle}
@@ -184,15 +183,26 @@ export async function MarketplaceCatalog({
                   aria-hidden="true"
                   className="mx-auto size-9 text-stone-400"
                 />
-                <h2 className="mt-4 text-2xl font-semibold text-stone-950">
-                  No matching parts yet
+                <h2 className="mt-4 font-body text-2xl font-bold text-stone-950">
+                  {activeSearch ? "No matching parts yet" : "No products yet"}
                 </h2>
                 <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-stone-600">
-                  Try a broader part name, remove a filter, or search using an
-                  OEM or manufacturer number.
+                  {activeSearch
+                    ? "Try a broader part name, remove a filter, or search using an OEM or manufacturer number."
+                    : "Products from our sellers will appear here as they are added."}
                 </p>
                 <Button asChild className="mt-5" variant="outline">
-                  <Link href={actionPath}>Clear filters</Link>
+                  <Link
+                    href={
+                      activeSearch
+                        ? actionPath
+                        : buyerName
+                          ? "/account/requests/new"
+                          : "/login?next=/account/requests/new"
+                    }
+                  >
+                    {activeSearch ? "Clear filters" : "Request a part"}
+                  </Link>
                 </Button>
               </div>
             )}

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+
+import { LetterAvatar } from "@/components/account/letter-avatar";
 import { usePathname } from "next/navigation";
 import {
   FileQuestion,
@@ -26,9 +28,11 @@ type NavigationItem = {
 
 export function MobileMarketplaceNavigation({
   authenticated = false,
+  avatar,
   cartCount = 0,
 }: {
   authenticated?: boolean;
+  avatar?: { email: string; id: string; name: string };
   cartCount?: number;
 }) {
   const pathname = usePathname();
@@ -80,7 +84,17 @@ export function MobileMarketplaceNavigation({
             href={href}
             key={key}
           >
-            <Icon aria-hidden="true" className="size-5" />
+            {key === "account" && avatar ? (
+              <LetterAvatar
+                className="size-5"
+                email={avatar.email}
+                name={avatar.name}
+                size="sm"
+                userId={avatar.id}
+              />
+            ) : (
+              <Icon aria-hidden="true" className="size-5" />
+            )}
             <span className="max-w-full truncate">{label}</span>
             {key === "cart" && cartCount > 0 ? (
               <span

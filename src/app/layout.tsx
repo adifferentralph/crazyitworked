@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Playfair_Display, Space_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/react";
+import { CookieConsentManager } from "@/components/privacy/cookie-consent-manager";
 
 import "@/app/globals.css";
 import { PwaClient } from "@/components/pwa/pwa-client";
@@ -90,7 +90,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </a>
         <PwaClient />
         {children}
-        <Analytics />
+        <CookieConsentManager />
       </body>
     </html>
   );

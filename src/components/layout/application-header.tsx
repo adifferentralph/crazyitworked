@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { signOutAction } from "@/app/(auth)/actions";
+import { LetterAvatar } from "@/components/account/letter-avatar";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { MobileMarketplaceNavigation } from "@/components/marketplace/mobile-marketplace-navigation";
 import type { Principal } from "@/lib/auth/types";
@@ -97,11 +98,11 @@ function SignOutButton({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function BuyerAccountMenu({ firstName }: { firstName: string }) {
+function BuyerAccountMenu({ firstName, principal }: { firstName: string; principal: Principal }) {
   return (
     <details className="group relative">
       <summary aria-label="Open account menu" className="flex cursor-pointer list-none items-center gap-2 rounded-md px-2 py-2 text-sm font-semibold text-stone-800 outline-none hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-primary [&::-webkit-details-marker]:hidden">
-        <UserRound aria-hidden="true" className="size-5" />
+        <LetterAvatar email={principal.email} name={principal.fullName} size="md" userId={principal.id} />
         <span className="hidden xl:block">
           <span className="block text-[11px] font-medium leading-none text-stone-500">Hi, {firstName}</span>
           <span className="mt-1 block leading-none">Account</span>
@@ -157,7 +158,7 @@ function BuyerHeader({ cartCount, principal }: { cartCount: number; principal: P
                 <ClipboardList aria-hidden="true" className="size-5" />
                 Orders
               </Link>
-              <BuyerAccountMenu firstName={firstName} />
+              <BuyerAccountMenu firstName={firstName} principal={principal} />
               <Link
                 aria-label={`Cart with ${cartCount} ${cartCount === 1 ? "item" : "items"}`}
                 className="relative flex items-center gap-2 rounded-md px-2 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-primary"
@@ -174,7 +175,11 @@ function BuyerHeader({ cartCount, principal }: { cartCount: number; principal: P
           </div>
         </div>
       </header>
-      <MobileMarketplaceNavigation authenticated cartCount={cartCount} />
+      <MobileMarketplaceNavigation
+        authenticated
+        avatar={{ email: principal.email, id: principal.id, name: principal.fullName }}
+        cartCount={cartCount}
+      />
     </>
   );
 }
@@ -204,7 +209,7 @@ function SellerHeader({ principal, storeName }: { principal: Principal; storeNam
             </Link>
             <details className="group relative">
               <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-2 py-2 text-sm font-semibold outline-none hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-primary [&::-webkit-details-marker]:hidden">
-                <UserRound aria-hidden="true" className="size-5" />
+                <LetterAvatar email={principal.email} name={principal.fullName} size="md" userId={principal.id} />
                 <span className="hidden 2xl:block">{storeName || principal.fullName}</span>
               </summary>
               <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-64 rounded-lg border border-stone-200 bg-white p-2 shadow-xl">

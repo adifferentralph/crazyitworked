@@ -50,11 +50,13 @@ const noSocialProviders: SocialProviderAvailability = {
 };
 
 export function AuthForm({
+  context = "universal",
   next,
   notice,
   providers = noSocialProviders,
   variant,
 }: {
+  context?: "universal" | "vendor";
   next?: string;
   notice?: string;
   providers?: SocialProviderAvailability;
@@ -300,13 +302,33 @@ export function AuthForm({
         <AuthSubmitButton label={submitLabel.idle} pendingLabel={submitLabel.pending} />
       </form>
 
-      <AuthFooter variant={variant} />
+      <AuthFooter context={context} variant={variant} />
     </div>
   );
 }
 
-function AuthFooter({ variant }: { variant: AuthVariant }) {
+function AuthFooter({
+  context,
+  variant,
+}: {
+  context: "universal" | "vendor";
+  variant: AuthVariant;
+}) {
   if (variant === "login") {
+    if (context === "vendor") {
+      return (
+        <p className="mt-5 text-sm text-stone-600">
+          New supplier?{" "}
+          <Link
+            className="font-semibold text-primary underline-offset-4 focus-visible:underline"
+            href="/signup/seller"
+          >
+            Create supplier account
+          </Link>
+        </p>
+      );
+    }
+
     return (
       <p className="mt-5 text-sm text-stone-600">
         New to Twenty-Two Parts?{" "}

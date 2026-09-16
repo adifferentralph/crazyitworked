@@ -3,7 +3,16 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { getAuthCookieOptions, getPublicEnvironment, hasSupabaseEnvironment } from "@/config/env";
 import { normalizeRequestHostname } from "@/lib/routing/vendor";
-import type { Database } from "@/lib/supabase/database.types";
+import type {
+  AccountStatus,
+  Database,
+  UserRole,
+} from "@/lib/supabase/database.types";
+
+export type MiddlewarePrincipal = {
+  role: UserRole;
+  status: AccountStatus;
+};
 
 function createResponse(request: NextRequest) {
   return NextResponse.next({ request });
@@ -13,7 +22,7 @@ export async function updateSession(request: NextRequest) {
   let response = createResponse(request);
 
   if (!hasSupabaseEnvironment()) {
-    return { response, userId: null };
+    return { principal: null, response, userId: null };
   }
 
   const environment = getPublicEnvironment();
@@ -43,5 +52,19 @@ export async function updateSession(request: NextRequest) {
   const { data, error } = await supabase.auth.getClaims();
   const userId = !error && typeof data?.claims?.sub === "string" ? data.claims.sub : null;
 
-  return { response, userId };
+  if (!userId) {
+    return { principal: null, response, userId: null };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, status")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const principal: MiddlewarePrincipal | null = profile
+    ? { role: profile.role, status: profile.status }
+    : null;
+
+  return { principal, response, userId };
 }

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getAuthCookieOptions } from "@/config/env";
 import {
+  getVendorAccessDestination,
   isMarketplaceHostname,
   isVendorHostname,
   sellerPathToVendorPath,
@@ -13,6 +14,14 @@ afterEach(() => {
 });
 
 describe("vendor hostname routing", () => {
+  it("resolves vendor access from the authoritative account role and status", () => {
+    expect(getVendorAccessDestination("SELLER", "ACTIVE")).toBe("SELLER");
+    expect(getVendorAccessDestination("BUYER", "ACTIVE")).toBe("MARKETPLACE");
+    expect(getVendorAccessDestination("ADMIN", "ACTIVE")).toBe("ADMIN");
+    expect(getVendorAccessDestination("SELLER", "SUSPENDED")).toBe("RESTRICTED");
+    expect(getVendorAccessDestination(undefined, undefined)).toBe("RESTRICTED");
+  });
+
   it("maps vendor URLs onto the existing private seller routes", () => {
     expect(vendorPathToInternal("/")).toBe("/seller/dashboard");
     expect(vendorPathToInternal("/products/new")).toBe("/seller/products/new");

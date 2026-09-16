@@ -6,13 +6,13 @@ test("marketplace home exposes real discovery paths", async ({ page }) => {
   await page.goto("/");
 
   await expect(
-    page.getByRole("heading", { name: "Find the exact part. Faster.", level: 1 }),
+    page.getByRole("heading", { name: "Find the right part for your vehicle", level: 2 }),
   ).toBeVisible();
   await expect(page.getByRole("search")).toBeVisible();
   await expect(page.getByLabel(/search part name, OEM number, vehicle, or seller/i)).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Shop by category" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Cannot find the exact part?" })).toBeVisible();
-
+  await expect(
+    page.getByRole("heading", { exact: true, name: "Categories" }),
+  ).toBeVisible();
   await expect(page.getByRole("link", { name: "Find a part" }).first()).toHaveAttribute(
     "href",
     "/find-a-part",
@@ -21,7 +21,7 @@ test("marketplace home exposes real discovery paths", async ({ page }) => {
     "href",
     "/signup/seller",
   );
-  await expect(page.getByRole("link", { name: "Request a part" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Request a part" }).first()).toHaveAttribute(
     "href",
     "/login?next=/account/requests/new",
   );

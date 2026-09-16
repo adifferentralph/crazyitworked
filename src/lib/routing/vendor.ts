@@ -11,6 +11,18 @@ const vendorRoutePrefixes = [
 
 const vendorPassthroughPaths = new Set(["/manifest.webmanifest", "/robots.txt", "/sw.js"]);
 
+export type VendorAccessDestination = "ADMIN" | "MARKETPLACE" | "RESTRICTED" | "SELLER";
+
+export function getVendorAccessDestination(
+  role: "ADMIN" | "BUYER" | "SELLER" | undefined,
+  status: "ACTIVE" | "RESTRICTED" | "SUSPENDED" | undefined,
+): VendorAccessDestination {
+  if (!role || status !== "ACTIVE") return "RESTRICTED";
+  if (role === "ADMIN") return "ADMIN";
+  if (role === "BUYER") return "MARKETPLACE";
+  return "SELLER";
+}
+
 export function normalizeRequestHostname(value: string | null | undefined) {
   return value?.split(",", 1)[0]?.trim().split(":", 1)[0]?.toLowerCase() ?? "";
 }

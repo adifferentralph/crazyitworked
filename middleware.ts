@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { getAppUrl, getVendorAppUrl } from "@/config/env";
 import {
+  getVendorAccessDestination,
   isMarketplaceHostname,
   isVendorHostname,
   isVendorPassthroughPath,
@@ -25,8 +26,8 @@ function hasAuthCookie(request: NextRequest) {
     .some(({ name }) => name.startsWith("sb-") && name.includes("auth-token"));
 }
 
-function createLoginUrl(returnTo: string, sessionExpired: boolean) {
-  const loginUrl = new URL("/login", getAppUrl());
+function createLoginUrl(returnTo: string, sessionExpired: boolean, origin = getAppUrl()) {
+  const loginUrl = new URL("/login", origin);
   loginUrl.searchParams.set("next", returnTo);
   if (sessionExpired) loginUrl.searchParams.set("message", "session-expired");
   return loginUrl;
@@ -34,7 +35,7 @@ function createLoginUrl(returnTo: string, sessionExpired: boolean) {
 
 export async function middleware(request: NextRequest) {
   const originalHadAuthCookie = hasAuthCookie(request);
-  const { response, userId } = await updateSession(request);
+  const { principal, response, userId } = await updateSession(request);
   const hostname = normalizeRequestHostname(
     request.headers.get("x-forwarded-host") ?? request.headers.get("host"),
   );
@@ -44,6 +45,39 @@ export async function middleware(request: NextRequest) {
 
   if (isVendorHostname(hostname, vendorOrigin)) {
     if (isVendorPassthroughPath(pathname)) return response;
+
+    if (pathname === "/login") {
+      if (!userId) {
+        const loginUrl = request.nextUrl.clone();
+        loginUrl.pathname = "/vendor-login";
+        const rewritten = NextResponse.rewrite(loginUrl);
+        return copyResponseCookies(response, rewritten);
+      }
+
+      const destination = getVendorAccessDestination(principal?.role, principal?.status);
+      if (destination === "SELLER") {
+        return copyResponseCookies(
+          response,
+          NextResponse.redirect(new URL("/dashboard", vendorOrigin)),
+        );
+      }
+      if (destination === "ADMIN") {
+        return copyResponseCookies(
+          response,
+          NextResponse.redirect(new URL("/admin", marketplaceOrigin)),
+        );
+      }
+      if (destination === "MARKETPLACE") {
+        return copyResponseCookies(
+          response,
+          NextResponse.redirect(new URL("/marketplace", marketplaceOrigin)),
+        );
+      }
+      return copyResponseCookies(
+        response,
+        NextResponse.redirect(new URL("/account-restricted", marketplaceOrigin)),
+      );
+    }
 
     if (pathname.startsWith("/seller")) {
       const vendorPath = sellerPathToVendorPath(pathname);
@@ -63,16 +97,41 @@ export async function middleware(request: NextRequest) {
     if (!userId) {
       return copyResponseCookies(
         response,
-        NextResponse.redirect(createLoginUrl(returnTo, originalHadAuthCookie)),
+        NextResponse.redirect(createLoginUrl(returnTo, originalHadAuthCookie, vendorOrigin)),
+      );
+    }
+
+    const destination = getVendorAccessDestination(principal?.role, principal?.status);
+    if (destination === "ADMIN") {
+      return copyResponseCookies(
+        response,
+        NextResponse.redirect(new URL("/admin", marketplaceOrigin)),
+      );
+    }
+    if (destination === "MARKETPLACE") {
+      return copyResponseCookies(
+        response,
+        NextResponse.redirect(new URL("/marketplace", marketplaceOrigin)),
+      );
+    }
+    if (destination === "RESTRICTED") {
+      return copyResponseCookies(
+        response,
+        NextResponse.redirect(new URL("/account-restricted", marketplaceOrigin)),
       );
     }
 
     const internalUrl = request.nextUrl.clone();
     internalUrl.pathname = internalPath;
-    const rewritten = NextResponse.rewrite(internalUrl, {
-      request: { headers: request.headers },
-    });
+    const rewritten = NextResponse.rewrite(internalUrl);
     return copyResponseCookies(response, rewritten);
+  }
+
+  if (isMarketplaceHostname(hostname, marketplaceOrigin) && pathname === "/vendor-login") {
+    return copyResponseCookies(
+      response,
+      NextResponse.redirect(new URL("/login", marketplaceOrigin)),
+    );
   }
 
   if (isMarketplaceHostname(hostname, marketplaceOrigin) && pathname.startsWith("/seller")) {

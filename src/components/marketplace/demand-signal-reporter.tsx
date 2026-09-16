@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+import { readCookieConsent, type CookieConsent } from "@/lib/privacy/cookie-consent";
 
 export type DemandSignal = {
   categoryId?: string;
@@ -21,7 +23,19 @@ function getSessionId() {
 }
 
 export function DemandSignalReporter({ signal }: { signal: DemandSignal }) {
+  const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
+
   useEffect(() => {
+    setAnalyticsAllowed(readCookieConsent()?.analytics === true);
+    function handleConsent(event: Event) {
+      setAnalyticsAllowed((event as CustomEvent<CookieConsent>).detail.analytics);
+    }
+    window.addEventListener("ttp:consent-changed", handleConsent);
+    return () => window.removeEventListener("ttp:consent-changed", handleConsent);
+  }, []);
+
+  useEffect(() => {
+    if (!analyticsAllowed) return;
     const fingerprint = JSON.stringify(signal);
     const storageKey = `twenty-two-parts-demand:${fingerprint}`;
     if (window.sessionStorage.getItem(storageKey)) return;
@@ -66,7 +80,7 @@ export function DemandSignalReporter({ signal }: { signal: DemandSignal }) {
       window.removeEventListener("pagehide", onPageExit);
       window.clearTimeout(timeout);
     };
-  }, [signal]);
+  }, [analyticsAllowed, signal]);
 
   return null;
 }

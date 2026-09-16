@@ -17,6 +17,13 @@ export type MarketplaceSearch = {
   vehicle?: string;
 };
 
+export type MarketplaceVehicleMakeOption = {
+  id: string;
+  isDiscontinued: boolean;
+  label: string;
+  originCountry: string | null;
+};
+
 export type MarketplaceVehicleOption = {
   engine: string | null;
   engineId: string | null;
@@ -41,6 +48,7 @@ export type MarketplaceOptions = {
     slug: string;
   }>;
   locations: string[];
+  makes: MarketplaceVehicleMakeOption[];
   sellers: Array<{
     seller_id: string;
     store_name: string;

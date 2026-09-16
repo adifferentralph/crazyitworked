@@ -232,6 +232,9 @@ export type Database = {
         TimestampColumns & {
           account_type: BuyerAccountType;
           business_registration_number: string | null;
+          marketing_opt_in: boolean;
+          marketing_opted_in_at: string | null;
+          marketing_unsubscribed_at: string | null;
           organization_name: string | null;
           preferred_market: string;
           user_id: string;
@@ -239,6 +242,9 @@ export type Database = {
         {
           account_type?: BuyerAccountType;
           business_registration_number?: string | null;
+          marketing_opt_in?: boolean;
+          marketing_opted_in_at?: string | null;
+          marketing_unsubscribed_at?: string | null;
           organization_name?: string | null;
           preferred_market?: string;
           user_id: string;
@@ -246,6 +252,9 @@ export type Database = {
         {
           account_type?: BuyerAccountType;
           business_registration_number?: string | null;
+          marketing_opt_in?: boolean;
+          marketing_opted_in_at?: string | null;
+          marketing_unsubscribed_at?: string | null;
           organization_name?: string | null;
           preferred_market?: string;
         }
@@ -442,6 +451,9 @@ seller_categories: Table<
           contact_phone: string | null;
           country: string;
           description: string | null;
+          marketing_opt_in: boolean;
+          marketing_opted_in_at: string | null;
+          marketing_unsubscribed_at: string | null;
           onboarding_completed_at: string | null;
           slug: string;
           state: string | null;
@@ -457,6 +469,9 @@ seller_categories: Table<
           contact_phone?: string | null;
           country?: string;
           description?: string | null;
+          marketing_opt_in?: boolean;
+          marketing_opted_in_at?: string | null;
+          marketing_unsubscribed_at?: string | null;
           onboarding_completed_at?: string | null;
           state?: string | null;
           store_name?: string;
@@ -488,10 +503,27 @@ seller_categories: Table<
         }
       >;
       vehicle_makes: Table<
-        CatalogRecord & { is_active: boolean; name: string; slug: string }
+        CatalogRecord & {
+          is_active: boolean;
+          is_discontinued: boolean;
+          name: string;
+          origin_country: string | null;
+          slug: string;
+          source: string;
+          source_identifier: string | null;
+        }
       >;
       vehicle_models: Table<
-        CatalogRecord & { is_active: boolean; make_id: string; name: string; slug: string }
+        CatalogRecord & {
+          is_active: boolean;
+          is_discontinued: boolean;
+          make_id: string;
+          name: string;
+          origin_country: string | null;
+          slug: string;
+          source: string;
+          source_identifier: string | null;
+        }
       >;
       vehicle_generations: Table<
         CatalogRecord & {

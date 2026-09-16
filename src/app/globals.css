@@ -73,6 +73,14 @@ samp {
   width: min(100% - 2rem, 1180px);
 }
 
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 @media (min-width: 640px) {
   .container-page {
     width: min(100% - 3rem, 1180px);

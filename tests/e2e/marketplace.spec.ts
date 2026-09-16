@@ -9,7 +9,7 @@ test("public marketplace exposes search and complete listing filters", async ({
 }) => {
   await page.goto("/find-a-part");
   await expect(
-    page.getByRole("heading", { level: 1, name: "Marketplace parts" }),
+    page.getByRole("heading", { level: 1, name: "All Products" }),
   ).toBeVisible();
   await expect(
     page.getByLabel("Search part name, OEM number, vehicle, or seller"),
@@ -21,7 +21,7 @@ test("public marketplace exposes search and complete listing filters", async ({
   await expect(filters.getByLabel("Category")).toBeVisible();
   await expect(filters.getByLabel("Vehicle")).toBeVisible();
   await expect(filters.getByLabel("Condition")).toBeVisible();
-  await expect(page.getByText(/approved parts/i).first()).toBeVisible();
+  await expect(page.getByText(/products/i).first()).toBeVisible();
   if (isMobile) await filters.getByRole("button", { name: "Close filters" }).click();
 
   await page
@@ -47,7 +47,7 @@ test("requesting a part requires a buyer session and preserves the destination",
   page,
 }) => {
   await page.goto("/find-a-part");
-  await page.getByRole("link", { name: "Request a part" }).click();
+  await page.getByRole("link", { name: "Request a part" }).first().click();
   await expect(page).toHaveURL(/\/login\?/);
   expect(new URL(page.url()).searchParams.get("next")).toBe(
     "/account/requests/new",

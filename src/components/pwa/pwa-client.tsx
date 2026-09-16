@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Download, Share, X } from "lucide-react";
 
 import logo from "@/components/brand/logo.png";
+import { readCookieConsent, type CookieConsent } from "@/lib/privacy/cookie-consent";
 
 const DISMISSAL_KEY = "ttp-install-prompt-dismissed-until";
 const INSTALLED_KEY = "ttp-install-completed";
@@ -28,7 +29,12 @@ function isIosDevice() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
+function preferenceStorageAllowed() {
+  return readCookieConsent()?.preferences === true;
+}
+
 function dismissalIsActive() {
+  if (!preferenceStorageAllowed()) return false;
   const value = Number(window.localStorage.getItem(DISMISSAL_KEY));
   return Number.isFinite(value) && value > Date.now();
 }
@@ -62,7 +68,11 @@ export function PwaClient() {
       event.preventDefault();
       setInstallEvent(event as BeforeInstallPromptEvent);
       setIosInstructions(false);
-      if (!dismissalIsActive() && window.localStorage.getItem(INSTALLED_KEY) !== "true") {
+      if (
+        !dismissalIsActive() &&
+        (!preferenceStorageAllowed() ||
+          window.localStorage.getItem(INSTALLED_KEY) !== "true")
+      ) {
         setVisible(true);
       }
     }
@@ -70,8 +80,18 @@ export function PwaClient() {
     function handleInstalled() {
       setInstallEvent(null);
       setVisible(false);
-      window.localStorage.setItem(INSTALLED_KEY, "true");
-      window.localStorage.removeItem(DISMISSAL_KEY);
+      if (preferenceStorageAllowed()) {
+        window.localStorage.setItem(INSTALLED_KEY, "true");
+        window.localStorage.removeItem(DISMISSAL_KEY);
+      }
+    }
+
+    function handleConsentChanged(event: Event) {
+      const consent = (event as CustomEvent<CookieConsent>).detail;
+      if (!consent.preferences) {
+        window.localStorage.removeItem(DISMISSAL_KEY);
+        window.localStorage.removeItem(INSTALLED_KEY);
+      }
     }
 
     function handleShowPrompt() {
@@ -88,16 +108,20 @@ export function PwaClient() {
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     window.addEventListener("appinstalled", handleInstalled);
     window.addEventListener("ttp:show-install-prompt", handleShowPrompt);
+    window.addEventListener("ttp:consent-changed", handleConsentChanged);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleInstalled);
       window.removeEventListener("ttp:show-install-prompt", handleShowPrompt);
+      window.removeEventListener("ttp:consent-changed", handleConsentChanged);
     };
   }, [installEvent]);
 
   function dismiss() {
-    window.localStorage.setItem(DISMISSAL_KEY, String(Date.now() + DISMISSAL_MS));
+    if (preferenceStorageAllowed()) {
+      window.localStorage.setItem(DISMISSAL_KEY, String(Date.now() + DISMISSAL_MS));
+    }
     setVisible(false);
   }
 
@@ -108,7 +132,9 @@ export function PwaClient() {
     if (choice.outcome === "accepted") {
       setInstallEvent(null);
       setVisible(false);
-      window.localStorage.setItem(INSTALLED_KEY, "true");
+      if (preferenceStorageAllowed()) {
+        window.localStorage.setItem(INSTALLED_KEY, "true");
+      }
     } else {
       dismiss();
     }

@@ -59,71 +59,143 @@ export function parseMarketplaceSearch(params: RawSearchParams): MarketplaceSear
 
 export const getMarketplaceOptions = cache(async function getMarketplaceOptions() {
   const supabase = await createClient();
-  const [
-    categoriesResult,
-    productsResult,
-    sellersResult,
-    fitmentsResult,
-    makesResult,
-    modelsResult,
-    yearsResult,
-    trimsResult,
-    enginesResult,
-  ] = await Promise.all([
-    supabase.from("product_categories").select("id, name, parent_id, position, slug").eq("is_active", true).order("position"),
-    supabase.from("products").select("brand, state, seller_id").eq("status", "APPROVED").limit(1000),
-    supabase.from("marketplace_sellers").select("seller_id, store_name").order("store_name"),
-    supabase.from("vehicle_fitments").select("id, make_id, model_id, year_id, trim_id, engine_id"),
-    supabase.from("vehicle_makes").select("id, name"),
-    supabase.from("vehicle_models").select("id, name"),
-    supabase.from("vehicle_years").select("id, year"),
-    supabase.from("vehicle_trims").select("id, name"),
-    supabase.from("engines").select("id, name"),
-  ]);
+  const [categoriesResult, productsResult, sellersResult, fitmentsResult] =
+    await Promise.all([
+      supabase
+        .from("product_categories")
+        .select("id, name, parent_id, position, slug")
+        .eq("is_active", true)
+        .order("position"),
+      supabase
+        .from("products")
+        .select("brand, state, seller_id")
+        .eq("status", "APPROVED")
+        .limit(1000),
+      supabase
+        .from("marketplace_sellers")
+        .select("seller_id, store_name")
+        .order("store_name"),
+      supabase
+        .from("vehicle_fitments")
+        .select("id, make_id, model_id, year_id, trim_id, engine_id"),
+    ]);
 
   const categoryRows = categoriesResult.data ?? [];
   const names = new Map(categoryRows.map((category) => [category.id, category.name]));
-  const categories = categoryRows.map((category) => ({
-    id: category.id,
-    label: category.parent_id
-      ? `${names.get(category.parent_id) ?? "Category"} / ${category.name}`
-      : category.name,
-    parentId: category.parent_id,
-    slug: category.slug,
-  })).sort((a, b) => a.label.localeCompare(b.label));
+  const categories = categoryRows
+    .map((category) => ({
+      id: category.id,
+      label: category.parent_id
+        ? (names.get(category.parent_id) ?? "Category") + " / " + category.name
+        : category.name,
+      parentId: category.parent_id,
+      slug: category.slug,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
-  const makes = new Map((makesResult.data ?? []).map((row) => [row.id, row.name]));
-  const models = new Map((modelsResult.data ?? []).map((row) => [row.id, row.name]));
-  const years = new Map((yearsResult.data ?? []).map((row) => [row.id, row.year]));
-  const trims = new Map((trimsResult.data ?? []).map((row) => [row.id, row.name]));
-  const engines = new Map((enginesResult.data ?? []).map((row) => [row.id, row.name]));
-  const vehicles: MarketplaceVehicleOption[] = (fitmentsResult.data ?? []).flatMap((fitment) => {
-    const make = makes.get(fitment.make_id);
-    const model = models.get(fitment.model_id);
-    const year = years.get(fitment.year_id);
-    if (!make || !model || !year) return [];
-    const trim = fitment.trim_id ? (trims.get(fitment.trim_id) ?? null) : null;
-    const engine = fitment.engine_id ? (engines.get(fitment.engine_id) ?? null) : null;
-    return [{
-      engine,
-      engineId: fitment.engine_id,
-      id: fitment.id,
-      label: [year, make, model, trim, engine].filter(Boolean).join(" · "),
-      make,
-      makeId: fitment.make_id,
-      model,
-      modelId: fitment.model_id,
-      trim,
-      trimId: fitment.trim_id,
-      year,
-      yearId: fitment.year_id,
-    }];
-  }).sort((a, b) => a.label.localeCompare(b.label));
+  const fitmentRows = fitmentsResult.data ?? [];
+  const makeIds = [...new Set(fitmentRows.map((row) => row.make_id))];
+  const modelIds = [...new Set(fitmentRows.map((row) => row.model_id))];
+  const yearIds = [...new Set(fitmentRows.map((row) => row.year_id))];
+  const trimIds = [
+    ...new Set(
+      fitmentRows.flatMap((row) => (row.trim_id ? [row.trim_id] : [])),
+    ),
+  ];
+  const engineIds = [
+    ...new Set(
+      fitmentRows.flatMap((row) => (row.engine_id ? [row.engine_id] : [])),
+    ),
+  ];
+
+  const [makeRows, modelRows, yearRows, trimRows, engineRows] =
+    await Promise.all([
+      makeIds.length
+        ? supabase
+            .from("vehicle_makes")
+            .select("id, name, is_discontinued, origin_country")
+            .in("id", makeIds)
+            .then((result) => result.data ?? [])
+        : Promise.resolve([]),
+      modelIds.length
+        ? supabase
+            .from("vehicle_models")
+            .select("id, name")
+            .in("id", modelIds)
+            .then((result) => result.data ?? [])
+        : Promise.resolve([]),
+      yearIds.length
+        ? supabase
+            .from("vehicle_years")
+            .select("id, year")
+            .in("id", yearIds)
+            .then((result) => result.data ?? [])
+        : Promise.resolve([]),
+      trimIds.length
+        ? supabase
+            .from("vehicle_trims")
+            .select("id, name")
+            .in("id", trimIds)
+            .then((result) => result.data ?? [])
+        : Promise.resolve([]),
+      engineIds.length
+        ? supabase
+            .from("engines")
+            .select("id, name")
+            .in("id", engineIds)
+            .then((result) => result.data ?? [])
+        : Promise.resolve([]),
+    ]);
+
+  const vehicleMakes = makeRows
+    .map((row) => ({
+      id: row.id,
+      isDiscontinued: row.is_discontinued,
+      label: row.name,
+      originCountry: row.origin_country,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const makeNames = new Map(vehicleMakes.map((row) => [row.id, row.label]));
+  const models = new Map(modelRows.map((row) => [row.id, row.name]));
+  const years = new Map(yearRows.map((row) => [row.id, row.year]));
+  const trims = new Map(trimRows.map((row) => [row.id, row.name]));
+  const engines = new Map(engineRows.map((row) => [row.id, row.name]));
+  const vehicles: MarketplaceVehicleOption[] = fitmentRows
+    .flatMap((fitment) => {
+      const make = makeNames.get(fitment.make_id);
+      const model = models.get(fitment.model_id);
+      const year = years.get(fitment.year_id);
+      if (!make || !model || !year) return [];
+      const trim = fitment.trim_id
+        ? (trims.get(fitment.trim_id) ?? null)
+        : null;
+      const engine = fitment.engine_id
+        ? (engines.get(fitment.engine_id) ?? null)
+        : null;
+      return [
+        {
+          engine,
+          engineId: fitment.engine_id,
+          id: fitment.id,
+          label: [year, make, model, trim, engine].filter(Boolean).join(" - "),
+          make,
+          makeId: fitment.make_id,
+          model,
+          modelId: fitment.model_id,
+          trim,
+          trimId: fitment.trim_id,
+          year,
+          yearId: fitment.year_id,
+        },
+      ];
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   return {
     brands: [...new Set((productsResult.data ?? []).map((row) => row.brand))].sort(),
     categories,
     locations: [...new Set((productsResult.data ?? []).map((row) => row.state))].sort(),
+    makes: vehicleMakes,
     sellers: sellersResult.data ?? [],
     vehicles,
   };

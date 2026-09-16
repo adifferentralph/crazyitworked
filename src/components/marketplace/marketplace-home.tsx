@@ -3,13 +3,14 @@ import {
   ArrowRight,
   CarFront,
   FileQuestion,
-  MapPin,
+  PackageSearch,
   Search,
 } from "lucide-react";
 
-import { CategoryCard } from "@/components/marketplace/category-card";
+import { CategoryChips } from "@/components/marketplace/category-chips";
 import { MarketplaceBanners } from "@/components/marketplace/marketplace-banners";
 import { MarketplaceSearchForm } from "@/components/marketplace/marketplace-search-form";
+import { MarketplaceSortLinks } from "@/components/marketplace/marketplace-sort-links";
 import { ProductCard } from "@/components/marketplace/product-card";
 import { VehicleSearch } from "@/components/marketplace/vehicle-search";
 import { Button } from "@/components/ui/button";
@@ -35,146 +36,111 @@ export async function MarketplaceHome() {
   ]);
   const topCategories = options.categories
     .filter((category) => !category.parentId)
-    .slice(0, 8);
+    .slice(0, 12);
   const defaultVehicle = options.vehicles.find(
     (vehicle) => vehicle.id === defaultVehicleId,
   );
-  const vehicleHref = buyer
-    ? "/account/vehicles"
-    : "/login?next=/account/vehicles";
   const requestHref = buyer
     ? "/account/requests/new"
     : "/login?next=/account/requests/new";
 
   return (
-    <div className="bg-white">
-      <section className="border-b border-stone-200 bg-[#fffdf9] py-7 sm:py-12">
-        <div className="container-page">
-          <div className="max-w-3xl">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-primary">
-              Automotive parts marketplace
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold leading-tight text-stone-950 sm:text-5xl">
-              Find the exact part. Faster.
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600 sm:text-base">
-              Search approved listings by part name, OEM number, or vehicle.
-            </p>
-          </div>
-
-          <div className="mt-6 rounded-xl border border-stone-200 bg-white p-3 shadow-sm sm:p-5">
+    <div className="bg-white font-body">
+      {!principal ? (
+        <section aria-label="Search marketplace" className="border-b border-stone-200 bg-[#fffdf9] py-4">
+          <div className="container-page">
             <MarketplaceSearchForm
               actionPath="/find-a-part"
               preserveVehicle={false}
               search={recentSearch}
             />
           </div>
-
-          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-            <div className="flex min-w-0 items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-3 text-stone-700">
-              <MapPin aria-hidden="true" className="size-4 shrink-0 text-primary" />
-              <span className="truncate">Deliver to Nigeria</span>
-            </div>
-            <Link
-              className="flex min-w-0 items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-3 font-semibold text-stone-800 focus-visible:ring-2 focus-visible:ring-primary"
-              href={vehicleHref}
-            >
-              <CarFront aria-hidden="true" className="size-4 shrink-0 text-primary" />
-              <span className="truncate">
-                {defaultVehicle ? "My vehicle" : "Add my vehicle"}
-              </span>
-            </Link>
-          </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <MarketplaceBanners placement="HOME_HERO" />
 
-      {options.vehicles.length > 0 ? (
-        <section className="py-8 sm:py-12">
+      {topCategories.length > 0 ? (
+        <section className="border-y border-stone-200 bg-stone-50 py-6 sm:py-8">
           <div className="container-page">
-            <div className="mb-5 flex items-end justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-primary">
-                  Vehicle-first search
-                </p>
-                <h2 className="mt-1 text-2xl font-semibold text-stone-950 sm:text-3xl">
-                  Find parts for your vehicle
-                </h2>
-              </div>
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <h2 className="font-body text-xl font-bold text-stone-950 sm:text-2xl">
+                Categories
+              </h2>
+              <Link className="text-sm font-bold text-primary" href="/categories">
+                Directory
+              </Link>
             </div>
-            <form action="/find-a-part" method="get">
-              <VehicleSearch
-                initialVehicle={defaultVehicleId}
-                vehicles={options.vehicles}
-              />
-              <Button className="mt-4 w-full sm:w-auto" type="submit">
-                <Search aria-hidden="true" className="size-4" />
-                Find matching parts
-              </Button>
-            </form>
+            <CategoryChips
+              categories={topCategories}
+              totalCount={options.categories.length}
+            />
           </div>
         </section>
       ) : null}
 
-      {topCategories.length > 0 ? (
-        <section className="border-y border-stone-200 bg-stone-50 py-8 sm:py-12">
+      {options.makes.length > 0 ? (
+        <section className="py-7 sm:py-9">
           <div className="container-page">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-primary">
-                  Useful shortcuts
-                </p>
-                <h2 className="mt-1 text-2xl font-semibold text-stone-950 sm:text-3xl">
-                  Shop by category
-                </h2>
+            <div className="rounded-xl border border-stone-200 bg-[#fffdf9] p-4 sm:p-6">
+              <div className="mb-4 flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-black text-white">
+                  <CarFront aria-hidden="true" className="size-5" />
+                </span>
+                <div>
+                  <h2 className="font-body text-xl font-bold text-stone-950">
+                    Find parts for your car
+                  </h2>
+                  <p className="mt-1 text-sm text-stone-600">
+                    Choose your car to see compatible parts.
+                  </p>
+                </div>
               </div>
-              <Link
-                className="hidden items-center gap-2 text-sm font-semibold text-primary sm:flex"
-                href="/categories"
-              >
-                View all categories
-                <ArrowRight aria-hidden="true" className="size-4" />
-              </Link>
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-              {topCategories.map((category) => (
-                <CategoryCard
-                  category={category}
-                  compact
-                  key={category.id}
+              <form action="/find-a-part" method="get">
+                <VehicleSearch
+                  initialVehicle={defaultVehicleId}
+                  makes={options.makes}
+                  vehicles={options.vehicles}
                 />
-              ))}
+                <Button className="mt-4 w-full sm:w-auto" type="submit">
+                  <Search aria-hidden="true" className="size-4" />
+                  Find parts
+                </Button>
+              </form>
             </div>
-            <Button asChild className="mt-5 w-full sm:hidden" variant="outline">
-              <Link href="/categories">View all categories</Link>
-            </Button>
           </div>
         </section>
       ) : null}
 
       <MarketplaceBanners placement="HOME_MID" />
 
-      {recent.products.length > 0 ? (
-        <section className="py-8 sm:py-12">
-          <div className="container-page">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-primary">
-                  Live approved inventory
-                </p>
-                <h2 className="mt-1 text-2xl font-semibold text-stone-950 sm:text-3xl">
-                  Recently added
-                </h2>
-              </div>
-              <Link
-                className="hidden items-center gap-2 text-sm font-semibold text-primary sm:flex"
-                href="/find-a-part?sort=newest"
-              >
-                View all parts
+      <section className="border-t border-stone-200 py-7 sm:py-10">
+        <div className="container-page">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h2 className="font-body text-2xl font-bold text-stone-950 sm:text-3xl">
+                All Products
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-stone-500">
+                {recent.count} {recent.count === 1 ? "product" : "products"}
+              </p>
+            </div>
+            {recent.count > recent.products.length ? (
+              <Link className="hidden items-center gap-2 text-sm font-bold text-primary sm:flex" href="/find-a-part?sort=newest">
+                View all
                 <ArrowRight aria-hidden="true" className="size-4" />
               </Link>
-            </div>
+            ) : null}
+          </div>
+          <div className="mt-4">
+            <MarketplaceSortLinks
+              actionPath="/find-a-part"
+              raw={{}}
+              selected={recentSearch.sort}
+            />
+          </div>
+
+          {recent.products.length > 0 ? (
             <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
               {recent.products.map((product) => (
                 <ProductCard
@@ -185,34 +151,26 @@ export async function MarketplaceHome() {
                 />
               ))}
             </div>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="border-t border-stone-200 bg-[#fffdf9] py-8 sm:py-12">
-        <div className="container-page">
-          <div className="flex flex-col gap-5 rounded-xl border border-stone-200 bg-white p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-            <div className="flex gap-4">
-              <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-stone-950 text-white">
-                <FileQuestion aria-hidden="true" className="size-5" />
-              </span>
-              <div>
-                <h2 className="font-body text-xl font-bold text-stone-950">
-                  Cannot find the exact part?
-                </h2>
-                <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600">
-                  Send one structured request to matched suppliers instead of
-                  repeating the same details.
-                </p>
-              </div>
+          ) : (
+            <div className="mt-5 rounded-xl border border-dashed border-stone-300 bg-stone-50 px-5 py-12 text-center">
+              <PackageSearch aria-hidden="true" className="mx-auto size-9 text-stone-400" />
+              <h3 className="mt-4 font-body text-xl font-bold text-stone-950">
+                No products yet
+              </h3>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-stone-600">
+                Products from our sellers will appear here as they are added.
+              </p>
+              <p className="mt-4 text-sm font-semibold text-stone-800">
+                Looking for something now?
+              </p>
+              <Button asChild className="mt-3" variant="outline">
+                <Link href={requestHref}>
+                  <FileQuestion aria-hidden="true" className="size-4" />
+                  Request a part
+                </Link>
+              </Button>
             </div>
-            <Button asChild className="shrink-0">
-              <Link href={requestHref}>
-                Request a part
-                <ArrowRight aria-hidden="true" className="size-4" />
-              </Link>
-            </Button>
-          </div>
+          )}
         </div>
       </section>
     </div>

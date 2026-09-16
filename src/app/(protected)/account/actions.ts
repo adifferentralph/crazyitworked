@@ -45,6 +45,39 @@ export async function updateBuyerProfileAction(
   return { message: "Buyer profile updated.", status: "success" };
 }
 
+export async function updateBuyerMarketingAction(
+  _previousState: BuyerActionState,
+  formData: FormData,
+): Promise<BuyerActionState> {
+  const principal = await requireRole(["BUYER"], "/account/settings/marketing");
+  const enabled = formData.get("marketingOptIn") === "on";
+  const changedAt = new Date().toISOString();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("buyer_profiles")
+    .update({
+      marketing_opt_in: enabled,
+      marketing_opted_in_at: enabled ? changedAt : null,
+      marketing_unsubscribed_at: enabled ? null : changedAt,
+    })
+    .eq("user_id", principal.id);
+
+  if (error) {
+    return {
+      message: "We could not update your marketing preference. Try again.",
+      status: "error",
+    };
+  }
+
+  revalidatePath("/account/settings/marketing");
+  return {
+    message: enabled
+      ? "Marketing emails enabled."
+      : "Marketing emails disabled.",
+    status: "success",
+  };
+}
+
 export async function saveVehicleAction(
   _previousState: BuyerActionState,
   formData: FormData,
