@@ -1,4 +1,4 @@
-﻿import Image from "next/image";
+import Image from "next/image";
 import { Check, ShieldCheck } from "lucide-react";
 
 import logo from "@/components/brand/logo.png";
@@ -33,7 +33,7 @@ export function WhyUs() {
           <Badge className="border border-primary/20 bg-white text-primary">
             Why Twenty-Two Parts
           </Badge>
-          <h2 className="mt-5 text-balance font-display text-3xl font-semibold tracking-tight sm:text-5xl">
+          <h2 className="mt-5 text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
             The spare-parts market should feel less like guesswork.
           </h2>
           <p className="mt-6 max-w-2xl text-pretty text-lg leading-8 text-muted-foreground">

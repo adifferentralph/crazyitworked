@@ -1,5 +1,10 @@
+import { eq } from "drizzle-orm";
+
+import { getDatabase } from "@/db/client";
+import { vehicleFitments, vehicleMakes, vehicleModels, vehicleYears } from "@/db/schema";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
+import type { MarketplaceVehicleMakeOption } from "@/lib/marketplace/search-options";
 
 export type SellerProduct = Database["public"]["Tables"]["products"]["Row"];
 export type SellerProductImage =
@@ -10,37 +15,38 @@ export type ProductCategoryOption = {
   label: string;
 };
 
-export type VehicleFitmentOption = {
-  id: string;
-  label: string;
-};
-
 export async function getProductFormOptions() {
   const supabase = await createClient();
-  const [
-    categoriesResult,
-    fitmentsResult,
-    makesResult,
-    modelsResult,
-    yearsResult,
-    trimsResult,
-    enginesResult,
-    transmissionsResult,
-    drivetrainsResult,
-  ] = await Promise.all([
+  const marketplaceMakeSlugs = [
+    "toyota",
+    "honda",
+    "lexus",
+    "mercedes-benz",
+    "bmw",
+    "volkswagen",
+    "peugeot",
+    "ford",
+    "hyundai",
+    "kia",
+    "nissan",
+    "land-rover",
+    "mazda",
+    "mitsubishi",
+    "byd",
+    "saab",
+  ];
+  const [categoriesResult, makesResult] = await Promise.all([
     supabase
       .from("product_categories")
       .select("id, name, parent_id, position")
       .eq("is_active", true)
       .order("position"),
-    supabase.from("vehicle_fitments").select("*"),
-    supabase.from("vehicle_makes").select("id, name"),
-    supabase.from("vehicle_models").select("id, name"),
-    supabase.from("vehicle_years").select("id, year"),
-    supabase.from("vehicle_trims").select("id, name"),
-    supabase.from("engines").select("id, name"),
-    supabase.from("transmissions").select("id, name"),
-    supabase.from("drivetrains").select("id, name"),
+    supabase
+      .from("vehicle_makes")
+      .select("id, name, is_discontinued, origin_country")
+      .eq("is_active", true)
+      .in("slug", marketplaceMakeSlugs)
+      .order("name"),
   ]);
 
   const categoryRows = categoriesResult.data ?? [];
@@ -54,34 +60,47 @@ export async function getProductFormOptions() {
     }))
     .sort((left, right) => left.label.localeCompare(right.label));
 
-  const makes = new Map((makesResult.data ?? []).map((item) => [item.id, item.name]));
-  const models = new Map((modelsResult.data ?? []).map((item) => [item.id, item.name]));
-  const years = new Map((yearsResult.data ?? []).map((item) => [item.id, item.year]));
-  const trims = new Map((trimsResult.data ?? []).map((item) => [item.id, item.name]));
-  const engines = new Map((enginesResult.data ?? []).map((item) => [item.id, item.name]));
-  const transmissions = new Map(
-    (transmissionsResult.data ?? []).map((item) => [item.id, item.name]),
+  const makes: MarketplaceVehicleMakeOption[] = (makesResult.data ?? []).map(
+    (make) => ({
+      id: make.id,
+      isDiscontinued: make.is_discontinued,
+      label: make.name,
+      originCountry: make.origin_country,
+    }),
   );
-  const drivetrains = new Map((drivetrainsResult.data ?? []).map((item) => [item.id, item.name]));
 
-  const fitments: VehicleFitmentOption[] = (fitmentsResult.data ?? [])
-    .map((fitment) => ({
-      id: fitment.id,
-      label: [
-        years.get(fitment.year_id),
-        makes.get(fitment.make_id),
-        models.get(fitment.model_id),
-        fitment.trim_id ? trims.get(fitment.trim_id) : null,
-        fitment.engine_id ? engines.get(fitment.engine_id) : null,
-        fitment.transmission_id ? transmissions.get(fitment.transmission_id) : null,
-        fitment.drivetrain_id ? drivetrains.get(fitment.drivetrain_id) : null,
-      ]
-        .filter(Boolean)
-        .join(" · "),
-    }))
-    .sort((left, right) => left.label.localeCompare(right.label));
+  return { categories, makes };
+}
 
-  return { categories, fitments };
+export type VehicleFitmentOption = {
+  id: string;
+  label: string;
+};
+
+export async function getInventoryImportOptions() {
+  const [{ categories }, db] = await Promise.all([
+    getProductFormOptions(),
+    getDatabase(),
+  ]);
+  const rows = await db
+    .select({
+      id: vehicleFitments.id,
+      make: vehicleMakes.name,
+      model: vehicleModels.name,
+      year: vehicleYears.year,
+    })
+    .from(vehicleFitments)
+    .innerJoin(vehicleMakes, eq(vehicleMakes.id, vehicleFitments.makeId))
+    .innerJoin(vehicleModels, eq(vehicleModels.id, vehicleFitments.modelId))
+    .innerJoin(vehicleYears, eq(vehicleYears.id, vehicleFitments.yearId));
+
+  return {
+    categories,
+    fitments: rows.map((row) => ({
+      id: row.id,
+      label: `${row.year} · ${row.make} · ${row.model}`,
+    })),
+  };
 }
 
 export async function getSellerProduct(productId: string, sellerId: string) {

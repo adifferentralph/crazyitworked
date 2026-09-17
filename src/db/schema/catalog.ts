@@ -331,6 +331,15 @@ export const vehicleFitments = pgTable(
       table.transmissionId,
       table.drivetrainId,
     ),
+    uniqueIndex("vehicle_fitments_base_configuration_unique")
+      .on(table.makeId, table.modelId, table.yearId)
+      .where(
+        sql`${table.generationId} is null
+          and ${table.trimId} is null
+          and ${table.engineId} is null
+          and ${table.transmissionId} is null
+          and ${table.drivetrainId} is null`,
+      ),
     index("vehicle_fitments_lookup_idx").on(table.makeId, table.modelId, table.yearId),
     pgPolicy("vehicle_fitments_read_authenticated", {
       for: "select",
@@ -687,6 +696,7 @@ export const marketplaceProductSearch = pgView("marketplace_product_search", {
       products.oem_part_number,
       products.manufacturer_part_number,
       product_categories.name,
+      seller_profiles.store_name,
       coalesce(string_agg(distinct product_cross_references.reference_number, ' '), ''),
       coalesce(string_agg(distinct concat_ws(' ',
         vehicle_makes.name,
@@ -701,6 +711,8 @@ export const marketplaceProductSearch = pgView("marketplace_product_search", {
   from ${products} as products
   join ${productCategories} as product_categories
     on product_categories.id = products.category_id
+  join ${sellerProfiles} as seller_profiles
+    on seller_profiles.user_id = products.seller_id
   left join ${productCrossReferences} as product_cross_references
     on product_cross_references.product_id = products.id
   left join ${productFitments} as product_fitments
@@ -715,5 +727,6 @@ export const marketplaceProductSearch = pgView("marketplace_product_search", {
   left join ${transmissions} as transmissions on transmissions.id = vehicle_fitments.transmission_id
   left join ${drivetrains} as drivetrains on drivetrains.id = vehicle_fitments.drivetrain_id
   where products.status = 'APPROVED'
-  group by products.id, product_categories.name
+    and seller_profiles.status = 'ACTIVE'
+  group by products.id, product_categories.name, seller_profiles.store_name
 `);

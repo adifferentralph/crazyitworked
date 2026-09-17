@@ -2,11 +2,16 @@ import type { Metadata } from "next";
 
 import { MarketplaceCatalog } from "@/components/marketplace/marketplace-catalog";
 import { getCurrentPrincipal } from "@/lib/auth/principal";
+import { createPublicMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = {
-  description:
-    "Search approved automotive parts by name, OEM number, brand, category, location, and vehicle compatibility.",
-  title: "Find an automotive part",
+  ...createPublicMetadata({
+    description:
+      "Search approved automotive parts by name, OEM number, brand, category, location, and vehicle compatibility.",
+    path: "/find-a-part",
+    title: "Find an automotive part",
+  }),
+  robots: { follow: true, index: false },
 };
 
 export default async function FindAPartPage({

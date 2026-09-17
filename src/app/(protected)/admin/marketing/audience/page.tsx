@@ -4,6 +4,7 @@ import { AdminStatus, AdminTable } from "@/components/admin/admin-table";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { requireRole } from "@/lib/auth/principal";
 import { getMarketingAudience } from "@/lib/admin/operations";
+import { formatAdminDate } from "@/lib/admin/format";
 
 export default async function MarketingAudiencePage({ searchParams }: { searchParams: Promise<{ consent?: string; q?: string }> }) {
   await requireRole(["ADMIN"], "/admin/marketing/audience");
@@ -31,7 +32,7 @@ export default async function MarketingAudiencePage({ searchParams }: { searchPa
         <span className="font-semibold text-stone-950" key="name">{customer.fullName}</span>,
         customer.email,
         customer.accountType.replaceAll("_", " "),
-        customer.joinedAt.toLocaleDateString("en-NG"),
+        formatAdminDate(customer.joinedAt),
         <AdminStatus key="marketing" value={customer.unsubscribedAt ? "UNSUBSCRIBED" : customer.marketingOptIn ? "OPTED_IN" : "NOT_OPTED_IN"} />,
         <AdminStatus key="account" value={customer.accountStatus} />,
       ])} />

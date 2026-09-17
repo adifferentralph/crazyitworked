@@ -33,7 +33,7 @@ export default async function NewAssistedListingPage({ searchParams }: { searchP
     );
   }
 
-  const { categories, fitments } = await getProductFormOptions();
+  const { categories, makes } = await getProductFormOptions();
   const defaults: ProductFormDefaults = {
     brand: "",
     categoryId: "",
@@ -62,7 +62,7 @@ export default async function NewAssistedListingPage({ searchParams }: { searchP
         allowSubmitReview={false}
         categories={categories}
         defaults={defaults}
-        fitments={fitments}
+        makes={makes}
         hiddenFields={[{ name: "sellerId", value: seller.seller_id }]}
         imageDescription="Upload up to five genuine images captured for this seller. The five-image evidence standard remains required before seller confirmation. Originals are preserved."
         mode="create"

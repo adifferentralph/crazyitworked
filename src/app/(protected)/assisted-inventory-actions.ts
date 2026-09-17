@@ -16,7 +16,7 @@ import {
   type NormalizedInventoryRow,
 } from "@/lib/inventory/csv";
 import type { SellerActionState } from "@/lib/marketplace/seller-action-state";
-import { getProductFormOptions } from "@/lib/marketplace/seller-data";
+import { getInventoryImportOptions } from "@/lib/marketplace/seller-data";
 import {
   getSafeImageExtension,
   priceInputToMinor,
@@ -242,7 +242,7 @@ export async function uploadInventoryCsvAction(formData: FormData) {
 
   const supabase = await createClient();
   const [{ categories, fitments }, skuResult] = await Promise.all([
-    getProductFormOptions(),
+    getInventoryImportOptions(),
     supabase.rpc("inventory_onboarding_seller_skus" as never, { p_seller_id: sellerId.data } as never),
   ]);
   if (skuResult.error) redirect("/admin/inventory-onboarding/import?error=reference-data");

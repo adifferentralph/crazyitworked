@@ -107,7 +107,7 @@ export function AdminShell({
           <main className="min-w-0">
             <div className="mb-7 border-b border-stone-200 pb-5">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Admin operations</p>
-              <h1 className="mt-2 font-display text-3xl font-semibold text-stone-950 sm:text-4xl">{title}</h1>
+              <h1 className="mt-2 text-3xl font-semibold text-stone-950 sm:text-4xl">{title}</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">{description}</p>
             </div>
             {children}

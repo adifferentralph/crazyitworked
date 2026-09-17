@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PackageSearch, RotateCcw } from "lucide-react";
+import { PackageSearch, RotateCcw, Store } from "lucide-react";
 
 import { DemandSignalReporter } from "@/components/marketplace/demand-signal-reporter";
 import { MarketplaceFilters } from "@/components/marketplace/marketplace-filters";
@@ -12,6 +12,7 @@ import {
   getMarketplaceOptions,
   parseMarketplaceSearch,
   searchMarketplaceProducts,
+  searchMarketplaceStores,
 } from "@/lib/marketplace/public-catalog";
 
 export async function MarketplaceCatalog({
@@ -30,9 +31,10 @@ export async function MarketplaceCatalog({
   const search = forcedCategoryId
     ? { ...parsedSearch, category: forcedCategoryId }
     : parsedSearch;
-  const [options, result] = await Promise.all([
+  const [options, result, stores] = await Promise.all([
     getMarketplaceOptions(),
     searchMarketplaceProducts(search),
+    searchMarketplaceStores(search.q),
   ]);
   const selectedVehicle = options.vehicles.find(
     (vehicle) => vehicle.id === search.vehicle,
@@ -100,6 +102,34 @@ export async function MarketplaceCatalog({
             search={search}
           />
         </div>
+
+        {stores.length > 0 ? (
+          <section className="mt-6" aria-labelledby="matching-stores-title">
+            <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-stone-500" id="matching-stores-title">
+              Stores
+            </h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {stores.map((store) => (
+                <Link
+                  className="flex items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 focus-visible:ring-2 focus-visible:ring-primary"
+                  href={`/store/${store.slug}`}
+                  key={store.seller_id}
+                >
+                  <span className="grid size-11 place-items-center rounded-full bg-stone-950 text-white">
+                    <Store aria-hidden="true" className="size-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-bold text-stone-950">{store.store_name}</span>
+                    <span className="mt-1 block text-sm text-stone-600">
+                      {[store.city, store.state].filter(Boolean).join(", ") || "View store"}
+                    </span>
+                  </span>
+                  <span className="ml-auto text-sm font-bold text-primary">View store</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <div className="mt-4 grid gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:grid-cols-[1fr_auto] sm:items-center">
           <div>

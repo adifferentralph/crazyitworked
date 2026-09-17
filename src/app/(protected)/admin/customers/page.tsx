@@ -1,5 +1,6 @@
 import { AdminSearch, AdminStatus, AdminTable } from "@/components/admin/admin-table";
 import { AdminShell } from "@/components/admin/admin-shell";
+import { formatAdminDate } from "@/lib/admin/format";
 import { requireRole } from "@/lib/auth/principal";
 import { getAdminCustomers } from "@/lib/admin/operations";
 
@@ -15,8 +16,8 @@ export default async function AdminCustomersPage({ searchParams }: { searchParam
         <span className="grid gap-1" key="contact"><span>{customer.email}</span><span className="text-xs text-stone-500">{customer.phone ?? "No phone"}</span></span>,
         customer.accountType.replaceAll("_", " "),
         customer.orderCount,
-        customer.lastOrderAt ? customer.lastOrderAt.toLocaleDateString("en-NG") : "No orders",
-        customer.joinedAt.toLocaleDateString("en-NG"),
+        formatAdminDate(customer.lastOrderAt, "No orders"),
+        formatAdminDate(customer.joinedAt),
         <AdminStatus key="status" value={customer.accountStatus} />,
       ])} />
     </AdminShell>

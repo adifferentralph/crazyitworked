@@ -5,6 +5,7 @@ import { Camera, CarFront, CircleDollarSign, MapPin, PackageCheck, ScanLine } fr
 
 import { createProductAction, updateProductAction } from "@/app/(protected)/seller/actions";
 import { SellerFormAlert } from "@/components/seller/seller-form-alert";
+import { VehicleSearch } from "@/components/marketplace/vehicle-search";
 import {
   initialSellerActionState,
   type SellerActionState,
@@ -12,7 +13,8 @@ import {
 import { SellerSubmitButton } from "@/components/seller/seller-submit-button";
 import { Input } from "@/components/ui/input";
 import { productConditions, requiredProductImageSlots } from "@/lib/marketplace/products";
-import type { ProductCategoryOption, VehicleFitmentOption } from "@/lib/marketplace/seller-data";
+import type { ProductCategoryOption } from "@/lib/marketplace/seller-data";
+import type { MarketplaceVehicleMakeOption } from "@/lib/marketplace/search-options";
 import type { ProductCondition, ProductImageType } from "@/lib/supabase/database.types";
 
 export type ProductFormDefaults = {
@@ -84,7 +86,7 @@ export function ProductForm({
   categories,
   defaults,
   draftHrefPrefix = "/seller/products",
-  fitments,
+  makes,
   hiddenFields = [],
   imageDescription = "Upload five clear, seller-original images. Accepted: JPEG, PNG, or WebP, up to 8 MB each. Original uploads are preserved.",
   mode,
@@ -95,7 +97,7 @@ export function ProductForm({
   categories: ProductCategoryOption[];
   defaults: ProductFormDefaults;
   draftHrefPrefix?: string;
-  fitments: VehicleFitmentOption[];
+  makes: MarketplaceVehicleMakeOption[];
   hiddenFields?: Array<{ name: string; value: string }>;
   imageDescription?: string;
   mode: "create" | "edit";
@@ -257,25 +259,17 @@ export function ProductForm({
         title="Vehicle fitment"
       >
         <div className="sm:col-span-2">
-          <label className={labelClass} htmlFor="fitmentIds">
-            Cars this part fits
-          </label>
-          <select
-            className="min-h-44 w-full rounded-md border bg-white px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            defaultValue={defaults.fitmentIds}
-            id="fitmentIds"
-            multiple
-            name="fitmentIds"
-          >
-            {fitments.map((fitment) => (
-              <option key={fitment.id} value={fitment.id}>
-                {fitment.label}
-              </option>
-            ))}
-          </select>
+          {defaults.fitmentIds.slice(1).map((fitmentId) => (
+            <input key={fitmentId} name="fitmentIds" type="hidden" value={fitmentId} />
+          ))}
+          <VehicleSearch
+            initialVehicle={defaults.fitmentIds[0]}
+            inputName="fitmentIds"
+            makes={makes}
+            vehicles={[]}
+          />
           <p className="mt-2 text-xs text-stone-500">
-            Required when you submit for review. You can leave this blank while saving a draft. Hold
-            Ctrl on Windows or Command on macOS to select more than one.
+            Required when you submit for review. You can leave this blank while saving a draft.
           </p>
           <FieldError errors={state.fieldErrors?.fitmentIds} />
         </div>

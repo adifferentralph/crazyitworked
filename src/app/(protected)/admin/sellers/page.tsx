@@ -1,5 +1,6 @@
 import { AdminSearch, AdminStatus, AdminTable } from "@/components/admin/admin-table";
 import { AdminShell } from "@/components/admin/admin-shell";
+import { formatAdminDate } from "@/lib/admin/format";
 import { requireRole } from "@/lib/auth/principal";
 import { getAdminSellers } from "@/lib/admin/operations";
 
@@ -15,7 +16,7 @@ export default async function AdminSellersPage({ searchParams }: { searchParams:
         seller.email,
         [seller.city, seller.state].filter(Boolean).join(", ") || "Not provided",
         seller.productCount,
-        seller.onboardingCompletedAt ? seller.onboardingCompletedAt.toLocaleDateString("en-NG") : "Incomplete",
+        formatAdminDate(seller.onboardingCompletedAt, "Incomplete"),
         <AdminStatus key="status" value={seller.status} />,
       ])} />
     </AdminShell>

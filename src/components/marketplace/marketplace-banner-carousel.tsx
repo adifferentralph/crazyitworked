@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Boxes,
@@ -72,6 +72,17 @@ export function MarketplaceBannerCarousel({
     setActiveIndex(nextIndex);
   }
 
+  useEffect(() => {
+    if (slides.length <= 1 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setTimeout(() => {
+      const nextIndex = (activeIndex + 1) % slides.length;
+      const element = carouselRef.current?.children.item(nextIndex) as HTMLElement | null;
+      carouselRef.current?.scrollTo({ behavior: "smooth", left: element?.offsetLeft ?? 0 });
+      setActiveIndex(nextIndex);
+    }, 6000);
+    return () => window.clearTimeout(timer);
+  }, [activeIndex, slides.length]);
+
   function updateActiveSlide() {
     const carousel = carouselRef.current;
     if (!carousel || carousel.clientWidth === 0) return;
@@ -89,8 +100,13 @@ export function MarketplaceBannerCarousel({
         <div className="relative">
           <div
             className="scrollbar-none flex snap-x snap-mandatory overflow-x-auto rounded-xl"
+            onKeyDown={(event) => {
+              if (event.key === "ArrowLeft") goTo(activeIndex - 1);
+              if (event.key === "ArrowRight") goTo(activeIndex + 1);
+            }}
             onScroll={updateActiveSlide}
             ref={carouselRef}
+            tabIndex={0}
           >
             {slides.map((slide, index) => {
               const isGuide = "tone" in slide;
@@ -173,10 +189,10 @@ export function MarketplaceBannerCarousel({
 
           {slides.length > 1 ? (
             <>
-              <button aria-label="Previous highlight" className="absolute left-2 top-1/2 hidden size-9 -translate-y-1/2 place-items-center rounded-full bg-white text-stone-950 shadow-md focus-visible:ring-2 focus-visible:ring-primary sm:grid" onClick={() => goTo(activeIndex - 1)} type="button">
+              <button aria-label="Previous highlight" className="absolute left-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-white text-stone-950 shadow-md focus-visible:ring-2 focus-visible:ring-primary sm:grid" onClick={() => goTo(activeIndex - 1)} type="button">
                 <ChevronLeft aria-hidden="true" className="size-5" />
               </button>
-              <button aria-label="Next highlight" className="absolute right-2 top-1/2 hidden size-9 -translate-y-1/2 place-items-center rounded-full bg-white text-stone-950 shadow-md focus-visible:ring-2 focus-visible:ring-primary sm:grid" onClick={() => goTo(activeIndex + 1)} type="button">
+              <button aria-label="Next highlight" className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-white text-stone-950 shadow-md focus-visible:ring-2 focus-visible:ring-primary sm:grid" onClick={() => goTo(activeIndex + 1)} type="button">
                 <ChevronRight aria-hidden="true" className="size-5" />
               </button>
               <div aria-label="Choose marketplace highlight" className="mt-3 flex justify-center gap-2" role="group">

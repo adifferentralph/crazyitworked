@@ -141,7 +141,7 @@ export default function PrivacyPolicyPage() {
           <p className="mt-6 font-mono text-xs font-bold uppercase tracking-[0.16em] text-primary">
             Legal and privacy
           </p>
-          <h1 className="mt-3 max-w-3xl font-display text-4xl font-semibold tracking-tight text-stone-950 sm:text-6xl">
+          <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight text-stone-950 sm:text-6xl">
             Privacy Policy
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-8 text-stone-600 sm:text-lg">
@@ -172,7 +172,7 @@ export default function PrivacyPolicyPage() {
           <div className="space-y-10">
             {sections.map((section, index) => (
               <section className="scroll-mt-28" id={`section-${index + 1}`} key={section.title}>
-                <h2 className="font-display text-2xl font-semibold text-stone-950">
+                <h2 className="text-2xl font-semibold text-stone-950">
                   {index + 1}. {section.title}
                 </h2>
                 <div className="mt-4 space-y-4 text-sm leading-7 text-stone-600 sm:text-base sm:leading-8">

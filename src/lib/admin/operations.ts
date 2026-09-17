@@ -95,12 +95,12 @@ export type AdminCustomer = {
   accountType: string;
   email: string;
   fullName: string;
-  joinedAt: Date;
-  lastOrderAt: Date | null;
+  joinedAt: Date | string | null;
+  lastOrderAt: Date | string | null;
   marketingOptIn: boolean;
   orderCount: number;
   phone: string | null;
-  unsubscribedAt: Date | null;
+  unsubscribedAt: Date | string | null;
 };
 
 export async function getAdminCustomers(searchValue?: string): Promise<AdminCustomer[]> {
@@ -143,8 +143,8 @@ export async function getAdminCustomers(searchValue?: string): Promise<AdminCust
 export type AdminSeller = {
   city: string | null;
   email: string;
-  joinedAt: Date;
-  onboardingCompletedAt: Date | null;
+  joinedAt: Date | string | null;
+  onboardingCompletedAt: Date | string | null;
   productCount: number;
   state: string | null;
   status: string;

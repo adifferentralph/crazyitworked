@@ -12,7 +12,7 @@ export default async function NewProductPage() {
   const { data: seller } = await supabase.from("seller_profiles").select("onboarding_completed_at, state, city").eq("user_id", principal.id).single();
   if (!seller?.onboarding_completed_at) redirect("/seller/onboarding?next=/seller/products/new");
 
-  const { categories, fitments } = await getProductFormOptions();
+  const { categories, makes } = await getProductFormOptions();
   const defaults: ProductFormDefaults = {
     brand: "",
     categoryId: "",
@@ -35,7 +35,7 @@ export default async function NewProductPage() {
 
   return (
     <SellerShell description="Create an accurate listing, preserve your original media, and save as a draft until every review requirement is ready." title="Add product">
-      <ProductForm categories={categories} defaults={defaults} fitments={fitments} mode="create" />
+      <ProductForm categories={categories} defaults={defaults} makes={makes} mode="create" />
     </SellerShell>
   );
 }

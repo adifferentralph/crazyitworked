@@ -1,4 +1,4 @@
-﻿import Image from "next/image";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Search, Store } from "lucide-react";
 
@@ -29,7 +29,7 @@ export function Hero() {
             <span className="size-2 bg-primary" aria-hidden="true" />
             Automotive sourcing, made clearer
           </p>
-          <h1 className="mt-6 max-w-xl text-balance font-display text-5xl font-semibold leading-[1.02] tracking-[-0.035em] text-foreground sm:text-6xl lg:text-7xl">
+          <h1 className="mt-6 max-w-xl text-balance text-5xl font-semibold leading-[1.02] tracking-[-0.035em] text-foreground sm:text-6xl lg:text-7xl">
             Source the exact part you need. <span className="text-primary">Keep moving.</span>
           </h1>
           <p className="mt-6 max-w-xl text-pretty text-lg leading-8 text-muted-foreground">

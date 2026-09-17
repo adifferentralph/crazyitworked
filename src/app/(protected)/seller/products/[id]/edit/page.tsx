@@ -46,7 +46,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         allowSubmitReview={product.creation_source === "SELLER" || Boolean(product.seller_acknowledged_at)}
         categories={options.categories}
         defaults={defaults}
-        fitments={options.fitments}
+        makes={options.makes}
         mode="edit"
       />
     </SellerShell>

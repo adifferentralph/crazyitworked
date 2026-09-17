@@ -7,12 +7,14 @@ import {
   getCategoryIconKey,
 } from "@/lib/marketplace/category-icons";
 import { getMarketplaceOptions } from "@/lib/marketplace/public-catalog";
+import { createPublicMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
   description:
     "Browse automotive parts by vehicle system, from brakes and engines to cooling, electrical, interior, and accessories.",
+  path: "/categories",
   title: "Automotive parts categories",
-};
+});
 
 export default async function CategoriesPage() {
   const options = await getMarketplaceOptions();

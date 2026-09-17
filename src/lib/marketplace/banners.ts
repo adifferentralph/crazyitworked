@@ -46,5 +46,5 @@ export async function getActiveMarketplaceBanners(
       ),
     )
     .orderBy(asc(marketplaceBanners.displayOrder), asc(marketplaceBanners.createdAt))
-    .limit(3);
+    .limit(20);
 }

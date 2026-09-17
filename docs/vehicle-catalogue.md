@@ -1,25 +1,42 @@
-# Vehicle catalogue data
+# Vehicle catalogue
 
-Twenty-Two Parts stores vehicle catalogue records in PostgreSQL. Normal marketplace browsing does not call an external vehicle API.
+Twenty-Two Parts stores its normalized vehicle catalogue in PostgreSQL. Marketplace and seller forms read the local database; normal user journeys do not call an external vehicle service.
 
-## Primary source
+## Primary production import
 
-The repeatable importer uses the U.S. National Highway Traffic Safety Administration Product Information Catalog and Vehicle Listing (NHTSA vPIC).
+The production importer uses the version-locked `@meterapp/vehicle-db` offline snapshot. It combines documented government/open sources including NHTSA vPIC, UK DfT/DVLA, NZTA, Malaysia JPJ, EEA registration data, and the Dutch RDW register. The package exposes source names, source URLs, retrieval dates, regions, year ranges, and licence terms through `getDataSources()`.
 
-- API documentation: https://vpic.nhtsa.dot.gov/api/
-- All makes endpoint: /vehicles/GetAllMakes?format=json
-- Models endpoint: /vehicles/GetModelsForMakeId/{id}?format=json
+The imported vehicle types are passenger cars, multipurpose passenger vehicles, and trucks. Motorcycles, buses, auto-rickshaws, and miscellaneous records are not imported into the parts fitment picker.
 
-vPIC publishes manufacturer-submitted vehicle information through a public U.S. government service. Review the current NHTSA terms and data notes before redistributing a full dataset. Manufacturer and model names may be trademarks of their owners; they are used only for factual vehicle identification.
+Run:
 
-A small names-only regional supplement covers relevant global and legacy makes that may not appear consistently in a U.S.-focused source. It is deliberately kept in the importer normalization module, not in React UI code.
+```bash
+npm run db:migrate
+npm run db:import:vehicles
+npm run db:verify:vehicles
+```
 
-## Import and refresh
+The import is idempotent. It upserts makes, models, model years, and base fitments and preserves existing detailed generations, trims, engines, transmissions, and drivetrains.
 
-Run npm run db:import:vehicles to refresh active makes. To import models for selected makes without making thousands of upstream calls, run:
+Licence and provenance: review the installed package README and its upstream source notes at https://github.com/MeterApp/vehicle-db before redistributing the raw snapshot. Source-specific attribution obligations still apply. Vehicle and manufacturer names are factual identifiers and may be trademarks of their owners.
 
-    npm run db:import:vehicles -- --model-makes=Toyota,Honda,Peugeot
+## Optional upstream vPIC refresh
 
-The command is idempotent. It inserts normalized records locally and never makes page rendering depend on vPIC availability.
+The repository retains a separate live vPIC refresh command for selected makes:
 
-Complete fitments remain local records composed from make, model, generation, year, trim, engine, transmission, and drivetrain. Imported makes or models do not imply a compatibility claim. A product is searchable by vehicle only after a complete local fitment has been created and linked.
+```bash
+npm run db:import:vehicles:vpic -- --model-makes=Toyota,Honda,Ford --start-year=1996 --end-year=2027
+```
+
+vPIC is a U.S. government catalogue compiled from manufacturer submissions. It is useful for refreshing U.S.-market coverage, but it is not the only production source because it does not provide adequate model-year coverage for several globally important makes.
+
+## Updating production
+
+1. Review the locked `@meterapp/vehicle-db` version and upstream release/source notes.
+2. Update the dependency only after reviewing licence/provenance changes.
+3. Apply migrations.
+4. Run `npm run db:import:vehicles` against the production database.
+5. Run `npm run db:verify:vehicles`.
+6. Confirm make → model → year in the progressive selector for every make in the verifier.
+
+The verifier checks Toyota, Honda, Lexus, Mercedes-Benz, BMW, Volkswagen, Peugeot, Ford, Hyundai, KIA, Nissan, Land Rover, Mazda, Mitsubishi, BYD, and historic Saab coverage. It also checks key models and rejects duplicate base fitments.

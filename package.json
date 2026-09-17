@@ -28,7 +28,8 @@
     "db:verify:admin": "tsx scripts/verify-admin-identities.ts",
     "admin:create": "tsx scripts/create-admin.ts",
     "admin:retire": "tsx scripts/retire-admin.ts",
-    "db:import:vehicles": "tsx scripts/import-vpic-vehicles.ts",
+    "db:import:vehicles": "tsx scripts/import-global-vehicles.ts",
+    "db:import:vehicles:vpic": "tsx scripts/import-vpic-vehicles.ts",
     "db:verify:vehicles": "tsx scripts/verify-vehicle-catalogue.ts"
   },
   "dependencies": {
@@ -51,6 +52,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
+    "@meterapp/vehicle-db": "^2.11.0",
     "@playwright/test": "^1.49.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",

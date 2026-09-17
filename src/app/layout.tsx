@@ -5,6 +5,7 @@ import { CookieConsentManager } from "@/components/privacy/cookie-consent-manage
 import "@/app/globals.css";
 import { PwaClient } from "@/components/pwa/pwa-client";
 import { siteConfig } from "@/config/site";
+import { defaultOgImage } from "@/lib/seo/metadata";
 
 const displayFont = Playfair_Display({
   subsets: ["latin"],
@@ -26,7 +27,8 @@ const monoFont = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL?.trim() || siteConfig.url),
+  metadataBase: new URL(siteConfig.url),
+  alternates: { canonical: siteConfig.url },
   title: {
     default: "Twenty-Two Parts | Find the right automotive part",
     template: "%s | Twenty-Two Parts",
@@ -56,21 +58,27 @@ export const metadata: Metadata = {
   ],
   category: "automotive",
   openGraph: {
-    title: "Twenty-Two Parts",
+    title: "Twenty-Two Parts | Automotive spare parts marketplace",
     description: siteConfig.description,
+    images: [defaultOgImage],
     siteName: siteConfig.name,
     type: "website",
     locale: "en_NG",
+    url: siteConfig.url,
   },
   twitter: {
-    card: "summary",
-    title: "Twenty-Two Parts",
+    card: "summary_large_image",
+    title: "Twenty-Two Parts | Automotive spare parts marketplace",
     description: siteConfig.description,
+    images: [defaultOgImage.url],
   },
   robots: {
     index: true,
     follow: true,
   },
+  verification: process.env.GOOGLE_SITE_VERIFICATION?.trim()
+    ? { google: process.env.GOOGLE_SITE_VERIFICATION.trim() }
+    : undefined,
 };
 
 export const viewport: Viewport = {

@@ -63,10 +63,11 @@ test("buyer, supplier, and login entry pages expose the correct forms", async ({
   ).toBeVisible();
   await expect(page.getByLabel("First name")).toBeVisible();
   await expect(page.getByLabel("Last name")).toBeVisible();
-  await expect(page.getByText("Step 1 of 4")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Continue" })).toBeVisible();
+  await expect(page.getByLabel("Email")).toBeVisible();
+  await expect(page.getByLabel("Create a password")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create buyer account" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Create buyer account" }).click();
   await expect(page.getByLabel("First name")).toBeFocused();
 
   await page.goto("/signup/seller");
@@ -75,7 +76,7 @@ test("buyer, supplier, and login entry pages expose the correct forms", async ({
     page.getByRole("heading", { name: "Create a seller account", level: 1 }),
   ).toBeVisible();
   await expect(page.getByLabel("Store or business name")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Create supplier account" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create seller account" })).toBeVisible();
 
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Sign in", level: 2 })).toBeVisible();

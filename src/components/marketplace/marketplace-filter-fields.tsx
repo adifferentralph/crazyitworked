@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { VehicleSearch } from "@/components/marketplace/vehicle-search";
+
 import {
   publicProductConditions,
   type MarketplaceOptions,
@@ -87,20 +89,16 @@ export function MarketplaceFilterFields({
           </select>
         </FilterLabel>
       )}
-      <FilterLabel label="Vehicle">
-        <select
-          className={inputClass}
-          defaultValue={search.vehicle ?? ""}
-          name="vehicle"
-        >
-          <option value="">All compatible vehicles</option>
-          {options.vehicles.map((vehicle) => (
-            <option key={vehicle.id} value={vehicle.id}>
-              {vehicle.label}
-            </option>
-          ))}
-        </select>
-      </FilterLabel>
+      <div>
+        <p className="text-sm font-semibold text-stone-700">Vehicle</p>
+        <div className="mt-2">
+          <VehicleSearch
+            initialVehicle={search.vehicle}
+            makes={options.makes}
+            vehicles={options.vehicles}
+          />
+        </div>
+      </div>
       <FilterLabel label="Condition">
         <select
           className={inputClass}

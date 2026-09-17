@@ -43,7 +43,7 @@ export default async function InventoryOnboardingPage({ searchParams }: { search
       </dl>
 
       <section className="mt-9">
-        <h2 className="font-display text-2xl font-semibold text-stone-950">Assisted drafts</h2>
+        <h2 className="text-2xl font-semibold text-stone-950">Assisted drafts</h2>
         <div className="mt-4 overflow-hidden rounded-lg border border-stone-200 bg-white">
           {products.map((product) => (
             <div className="grid gap-3 border-b border-stone-100 p-5 last:border-0 md:grid-cols-[1fr_auto] md:items-center" key={product.product_id}>
@@ -63,7 +63,7 @@ export default async function InventoryOnboardingPage({ searchParams }: { search
       </section>
 
       <section className="mt-9">
-        <h2 className="font-display text-2xl font-semibold text-stone-950">Import history</h2>
+        <h2 className="text-2xl font-semibold text-stone-950">Import history</h2>
         <div className="mt-4 grid gap-3">
           {imports.map((item) => (
             <Link className="grid gap-2 rounded-lg border border-stone-200 bg-white p-5 hover:border-primary md:grid-cols-[1fr_auto] md:items-center" href={`/admin/inventory-onboarding/imports/${item.id}`} key={item.id}>

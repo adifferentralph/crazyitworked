@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { CircleCheck } from "lucide-react";
 
 import type {
@@ -11,9 +11,15 @@ import type {
 const selectClass =
   "h-11 w-full rounded-md border border-stone-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-function unique<T extends { id: string; label: string }>(items: T[]) {
-  return [...new Map(items.map((item) => [item.id, item])).values()];
-}
+type NamedOption = { id: string; name: string };
+type YearOption = { id: string; year: number };
+type FitmentDetail = {
+  engine: string | null;
+  engineId: string | null;
+  id: string;
+  trim: string | null;
+  trimId: string | null;
+};
 
 function isMakeOption(value: unknown): value is MarketplaceVehicleMakeOption {
   return (
@@ -30,15 +36,79 @@ function isMakeOption(value: unknown): value is MarketplaceVehicleMakeOption {
   );
 }
 
+function isNamedOption(value: unknown): value is NamedOption {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    typeof value.id === "string" &&
+    "name" in value &&
+    typeof value.name === "string"
+  );
+}
+
+function isYearOption(value: unknown): value is YearOption {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    typeof value.id === "string" &&
+    "year" in value &&
+    typeof value.year === "number"
+  );
+}
+
+function isFitmentDetail(value: unknown): value is FitmentDetail {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    typeof value.id === "string" &&
+    "trimId" in value &&
+    (typeof value.trimId === "string" || value.trimId === null) &&
+    "trim" in value &&
+    (typeof value.trim === "string" || value.trim === null) &&
+    "engineId" in value &&
+    (typeof value.engineId === "string" || value.engineId === null) &&
+    "engine" in value &&
+    (typeof value.engine === "string" || value.engine === null)
+  );
+}
+
+function isVehicleOption(value: unknown): value is MarketplaceVehicleOption {
+  return (
+    isFitmentDetail(value) &&
+    "label" in value &&
+    typeof value.label === "string" &&
+    "make" in value &&
+    typeof value.make === "string" &&
+    "makeId" in value &&
+    typeof value.makeId === "string" &&
+    "model" in value &&
+    typeof value.model === "string" &&
+    "modelId" in value &&
+    typeof value.modelId === "string" &&
+    "year" in value &&
+    typeof value.year === "number" &&
+    "yearId" in value &&
+    typeof value.yearId === "string"
+  );
+}
+
 export function VehicleSearch({
   initialVehicle,
+  inputName = "vehicle",
   makes,
   vehicles,
 }: {
   initialVehicle?: string;
+  inputName?: string;
   makes: MarketplaceVehicleMakeOption[];
   vehicles: MarketplaceVehicleOption[];
 }) {
+  const instanceId = useId().replaceAll(":", "");
+  const makeInputId = `${instanceId}-make-search`;
+  const makeListId = `${instanceId}-make-options`;
   const initial = vehicles.find((vehicle) => vehicle.id === initialVehicle);
   const [makeId, setMakeId] = useState(initial?.makeId ?? "");
   const [makeQuery, setMakeQuery] = useState(initial?.make ?? "");
@@ -49,40 +119,173 @@ export function VehicleSearch({
   const [makeOpen, setMakeOpen] = useState(false);
   const [highlightedMake, setHighlightedMake] = useState(0);
   const [makeOptions, setMakeOptions] = useState(makes);
-  const [makeLoading, setMakeLoading] = useState(false);
+  const [modelOptions, setModelOptions] = useState<NamedOption[]>(
+    initial ? [{ id: initial.modelId, name: initial.model }] : [],
+  );
+  const [yearOptions, setYearOptions] = useState<YearOption[]>(
+    initial ? [{ id: initial.yearId, year: initial.year }] : [],
+  );
+  const [fitmentOptions, setFitmentOptions] = useState<FitmentDetail[]>(
+    initial
+      ? [{
+          engine: initial.engine,
+          engineId: initial.engineId,
+          id: initial.id,
+          trim: initial.trim,
+          trimId: initial.trimId,
+        }]
+      : [],
+  );
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!initialVehicle || initial) return;
+    const controller = new AbortController();
+    void fetch(
+      "/api/vehicles/options?fitmentId=" + encodeURIComponent(initialVehicle),
+      { signal: controller.signal },
+    )
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: unknown) => {
+        if (
+          typeof payload !== "object" ||
+          payload === null ||
+          !("fitment" in payload) ||
+          !isVehicleOption(payload.fitment)
+        ) {
+          return;
+        }
+        const fitment = payload.fitment;
+        setMakeId(fitment.makeId);
+        setMakeQuery(fitment.make);
+        setModelId(fitment.modelId);
+        setYearId(fitment.yearId);
+        setTrimId(fitment.trimId ?? "");
+        setEngineId(fitment.engineId ?? "");
+        setModelOptions([{ id: fitment.modelId, name: fitment.model }]);
+        setYearOptions([{ id: fitment.yearId, year: fitment.year }]);
+        setFitmentOptions([fitment]);
+        const make = "make" in payload ? payload.make : null;
+        if (isMakeOption(make)) {
+          setMakeOptions((current) => [
+            make,
+            ...current.filter((option) => option.id !== make.id),
+          ]);
+        }
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [initial, initialVehicle]);
+
+  useEffect(() => {
+    if (!makeId) {
+      setModelOptions([]);
+      return;
+    }
+    const controller = new AbortController();
+    setLoading(true);
+    void fetch("/api/vehicles/options?makeId=" + encodeURIComponent(makeId), {
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: unknown) => {
+        if (
+          typeof payload === "object" &&
+          payload !== null &&
+          "models" in payload &&
+          Array.isArray(payload.models)
+        ) {
+          setModelOptions(payload.models.filter(isNamedOption));
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [makeId]);
+
+  useEffect(() => {
+    if (!modelId) {
+      setYearOptions([]);
+      return;
+    }
+    const controller = new AbortController();
+    setLoading(true);
+    void fetch("/api/vehicles/options?modelId=" + encodeURIComponent(modelId), {
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: unknown) => {
+        if (
+          typeof payload === "object" &&
+          payload !== null &&
+          "years" in payload &&
+          Array.isArray(payload.years)
+        ) {
+          setYearOptions(payload.years.filter(isYearOption));
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [modelId]);
+
+  useEffect(() => {
+    if (!yearId) {
+      setFitmentOptions([]);
+      return;
+    }
+    const controller = new AbortController();
+    setLoading(true);
+    void fetch("/api/vehicles/options?yearId=" + encodeURIComponent(yearId), {
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: unknown) => {
+        if (
+          typeof payload === "object" &&
+          payload !== null &&
+          "fitments" in payload &&
+          Array.isArray(payload.fitments)
+        ) {
+          setFitmentOptions(payload.fitments.filter(isFitmentDetail));
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [yearId]);
 
   useEffect(() => {
     if (makeId) return;
     const query = makeQuery.trim();
     if (query.length < 2) {
       setMakeOptions(makes);
-      setMakeLoading(false);
       return;
     }
-
     const controller = new AbortController();
-    const timeout = window.setTimeout(async () => {
-      setMakeLoading(true);
-      try {
-        const response = await fetch(
-          "/api/vehicles/makes?q=" + encodeURIComponent(query),
-          { signal: controller.signal },
-        );
-        if (!response.ok) return;
-        const payload: unknown = await response.json();
-        if (
-          typeof payload === "object" &&
-          payload !== null &&
-          "makes" in payload &&
-          Array.isArray(payload.makes)
-        ) {
-          setMakeOptions(payload.makes.filter(isMakeOption));
-        }
-      } finally {
-        if (!controller.signal.aborted) setMakeLoading(false);
-      }
-    }, 200);
-
+    const timeout = window.setTimeout(() => {
+      setLoading(true);
+      void fetch("/api/vehicles/makes?q=" + encodeURIComponent(query), {
+        signal: controller.signal,
+      })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((payload: unknown) => {
+          if (
+            typeof payload === "object" &&
+            payload !== null &&
+            "makes" in payload &&
+            Array.isArray(payload.makes)
+          ) {
+            setMakeOptions(payload.makes.filter(isMakeOption));
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false);
+        });
+    }, 250);
     return () => {
       window.clearTimeout(timeout);
       controller.abort();
@@ -93,85 +296,54 @@ export function VehicleSearch({
     const query = makeQuery.trim().toLocaleLowerCase();
     return makeOptions
       .filter((make) => !query || make.label.toLocaleLowerCase().includes(query))
-      .slice(0, 12);
+      .slice(0, 20);
   }, [makeOptions, makeQuery]);
 
-  const models = useMemo(
-    () =>
-      unique(
-        vehicles
-          .filter((vehicle) => vehicle.makeId === makeId)
-          .map((vehicle) => ({ id: vehicle.modelId, label: vehicle.model })),
-      ),
-    [makeId, vehicles],
-  );
-  const years = useMemo(
-    () =>
-      unique(
-        vehicles
-          .filter(
-            (vehicle) =>
-              vehicle.makeId === makeId && vehicle.modelId === modelId,
-          )
-          .map((vehicle) => ({
-            id: vehicle.yearId,
-            label: String(vehicle.year),
-          })),
-      ),
-    [makeId, modelId, vehicles],
-  );
   const trims = useMemo(
-    () =>
-      unique(
-        vehicles
-          .filter(
-            (vehicle) =>
-              vehicle.makeId === makeId &&
-              vehicle.modelId === modelId &&
-              vehicle.yearId === yearId &&
-              vehicle.trimId,
-          )
-          .map((vehicle) => ({
-            id: vehicle.trimId!,
-            label: vehicle.trim!,
-          })),
-      ),
-    [makeId, modelId, yearId, vehicles],
+    () => [
+      ...new Map(
+        fitmentOptions.flatMap((fitment) =>
+          fitment.trimId && fitment.trim
+            ? [[fitment.trimId, { id: fitment.trimId, name: fitment.trim }] as const]
+            : [],
+        ),
+      ).values(),
+    ],
+    [fitmentOptions],
   );
   const engines = useMemo(
-    () =>
-      unique(
-        vehicles
-          .filter(
-            (vehicle) =>
-              vehicle.makeId === makeId &&
-              vehicle.modelId === modelId &&
-              vehicle.yearId === yearId &&
-              (!trimId || vehicle.trimId === trimId) &&
-              vehicle.engineId,
-          )
-          .map((vehicle) => ({
-            id: vehicle.engineId!,
-            label: vehicle.engine!,
-          })),
-      ),
-    [makeId, modelId, trimId, vehicles, yearId],
+    () => [
+      ...new Map(
+        fitmentOptions
+          .filter((fitment) => !trimId || fitment.trimId === trimId)
+          .flatMap((fitment) =>
+            fitment.engineId && fitment.engine
+              ? [[fitment.engineId, { id: fitment.engineId, name: fitment.engine }] as const]
+              : [],
+          ),
+      ).values(),
+    ],
+    [fitmentOptions, trimId],
   );
-  const candidates = vehicles.filter(
-    (vehicle) =>
-      vehicle.makeId === makeId &&
-      vehicle.modelId === modelId &&
-      vehicle.yearId === yearId &&
-      (!trimId || vehicle.trimId === trimId) &&
-      (!engineId || vehicle.engineId === engineId),
-  );
-  const selected = candidates.length === 1 ? candidates[0] : undefined;
+  const selected =
+    fitmentOptions.find(
+      (fitment) =>
+        fitment.trimId === (trimId || null) &&
+        fitment.engineId === (engineId || null),
+    ) ??
+    fitmentOptions.find(
+      (fitment) =>
+        (!trimId || fitment.trimId === trimId) &&
+        (!engineId || fitment.engineId === engineId),
+    );
 
   function clearAfterMake() {
     setModelId("");
     setYearId("");
     setTrimId("");
     setEngineId("");
+    setYearOptions([]);
+    setFitmentOptions([]);
   }
 
   function selectMake(make: MarketplaceVehicleMakeOption) {
@@ -186,21 +358,21 @@ export function VehicleSearch({
       <legend className="sr-only">Choose your vehicle</legend>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="relative">
-          <label className="mb-1.5 block text-xs font-bold text-stone-700" htmlFor="vehicle-make-search">
+          <label className="mb-1.5 block text-xs font-bold text-stone-700" htmlFor={makeInputId}>
             Make
           </label>
           <input
             aria-activedescendant={
               makeOpen && filteredMakes[highlightedMake]
-                ? `vehicle-make-${filteredMakes[highlightedMake].id}`
+                ? `${instanceId}-make-${filteredMakes[highlightedMake].id}`
                 : undefined
             }
             aria-autocomplete="list"
-            aria-controls="vehicle-make-options"
+            aria-controls={makeListId}
             aria-expanded={makeOpen}
             autoComplete="off"
             className={selectClass}
-            id="vehicle-make-search"
+            id={makeInputId}
             onBlur={() => window.setTimeout(() => setMakeOpen(false), 100)}
             onChange={(event) => {
               setMakeQuery(event.target.value);
@@ -215,7 +387,7 @@ export function VehicleSearch({
                 event.preventDefault();
                 setMakeOpen(true);
                 setHighlightedMake((current) =>
-                  Math.min(current + 1, filteredMakes.length - 1),
+                  Math.min(current + 1, Math.max(0, filteredMakes.length - 1)),
                 );
               } else if (event.key === "ArrowUp") {
                 event.preventDefault();
@@ -238,7 +410,7 @@ export function VehicleSearch({
           {makeOpen ? (
             <div
               className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-stone-200 bg-white p-1 shadow-xl"
-              id="vehicle-make-options"
+              id={makeListId}
               role="listbox"
             >
               {filteredMakes.length > 0 ? (
@@ -246,7 +418,7 @@ export function VehicleSearch({
                   <button
                     aria-selected={make.id === makeId}
                     className={`flex min-h-10 w-full items-center justify-between rounded px-3 text-left text-sm ${index === highlightedMake ? "bg-stone-100 text-stone-950" : "text-stone-700"}`}
-                    id={`vehicle-make-${make.id}`}
+                    id={`${instanceId}-make-${make.id}`}
                     key={make.id}
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => selectMake(make)}
@@ -264,7 +436,7 @@ export function VehicleSearch({
                 ))
               ) : (
                 <p className="px-3 py-3 text-sm text-stone-500">
-                  {makeLoading ? "Searching makes..." : "No make found."}
+                  {loading ? "Searching makes..." : "No make found."}
                 </p>
               )}
             </div>
@@ -276,18 +448,19 @@ export function VehicleSearch({
           <select
             aria-label="Vehicle model"
             className={selectClass}
-            disabled={!makeId || models.length === 0}
+            disabled={!makeId || modelOptions.length === 0}
             onChange={(event) => {
               setModelId(event.target.value);
               setYearId("");
               setTrimId("");
               setEngineId("");
+              setFitmentOptions([]);
             }}
             value={modelId}
           >
-            <option value="">Model</option>
-            {models.map((item) => (
-              <option key={item.id} value={item.id}>{item.label}</option>
+            <option value="">{loading && makeId ? "Loading models..." : "Model"}</option>
+            {modelOptions.map((item) => (
+              <option key={item.id} value={item.id}>{item.name}</option>
             ))}
           </select>
         </label>
@@ -297,7 +470,7 @@ export function VehicleSearch({
           <select
             aria-label="Vehicle year"
             className={selectClass}
-            disabled={!modelId}
+            disabled={!modelId || yearOptions.length === 0}
             onChange={(event) => {
               setYearId(event.target.value);
               setTrimId("");
@@ -305,9 +478,9 @@ export function VehicleSearch({
             }}
             value={yearId}
           >
-            <option value="">Year</option>
-            {years.map((item) => (
-              <option key={item.id} value={item.id}>{item.label}</option>
+            <option value="">{loading && modelId ? "Loading years..." : "Year"}</option>
+            {yearOptions.map((item) => (
+              <option key={item.id} value={item.id}>{item.year}</option>
             ))}
           </select>
         </label>
@@ -326,7 +499,7 @@ export function VehicleSearch({
             >
               <option value="">Any trim</option>
               {trims.map((item) => (
-                <option key={item.id} value={item.id}>{item.label}</option>
+                <option key={item.id} value={item.id}>{item.name}</option>
               ))}
             </select>
           </label>
@@ -343,26 +516,22 @@ export function VehicleSearch({
             >
               <option value="">Any engine</option>
               {engines.map((item) => (
-                <option key={item.id} value={item.id}>{item.label}</option>
+                <option key={item.id} value={item.id}>{item.name}</option>
               ))}
             </select>
           </label>
         ) : null}
       </div>
-      <input name="vehicle" type="hidden" value={selected?.id ?? ""} />
-      {makeId && models.length === 0 ? (
+      <input name={inputName} type="hidden" value={selected?.id ?? ""} />
+      {makeId && !loading && modelOptions.length === 0 ? (
         <p className="mt-3 text-xs text-stone-500">
-          Model-level fitment data for this make is not available yet.
+          We do not have models for this make yet. Try another spelling or make.
         </p>
       ) : null}
       {selected ? (
         <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-emerald-700">
           <CircleCheck aria-hidden="true" className="size-4" />
-          {selected.label}
-        </p>
-      ) : yearId && candidates.length > 1 ? (
-        <p className="mt-3 text-sm text-stone-600">
-          Choose a trim or engine to narrow the match.
+          Vehicle selected
         </p>
       ) : null}
     </fieldset>
