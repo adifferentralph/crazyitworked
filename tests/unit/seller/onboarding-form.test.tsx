@@ -51,6 +51,32 @@ describe("seller onboarding category selection", () => {
     expect(new FormData(container.querySelector("form")!).getAll("categoryIds")).toEqual([]);
   });
 
+  it("reaches Finish with optional store details empty", () => {
+    render(<OnboardingForm categories={categories} defaults={defaults} />);
+
+    fireEvent.change(screen.getByLabelText("Business phone"), {
+      target: { value: "+234 801 234 5678" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByText("Step 2 of 5")).toBeInTheDocument();
+
+    expect(screen.getByLabelText("Business Registration Number")).toHaveValue("");
+    expect(screen.getByLabelText("Website")).toHaveValue("");
+    expect(screen.getByLabelText("About your business")).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByText("Step 3 of 5")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Brakes"));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByText("Step 4 of 5")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("State"), { target: { value: "Lagos" } });
+    fireEvent.change(screen.getByLabelText("City"), { target: { value: "Ikeja" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(screen.getByText("Step 5 of 5")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save store profile" })).toBeInTheDocument();
+  });
   it("loads persisted category selections", () => {
     render(
       <OnboardingForm

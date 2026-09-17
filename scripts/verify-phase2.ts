@@ -34,6 +34,7 @@ const requiredTriggers = [
   "seller_verifications_validate_write",
   "vehicle_fitments_validate",
   "products_validate_write",
+  "products_require_primary_fitment",
   "products_record_history",
   "products_record_inventory",
   "product_images_validate_write",
@@ -169,6 +170,31 @@ async function main() {
     assert(seedCounts && seedCounts.categories >= 40, "Category seed data is incomplete.");
     assert(seedCounts && seedCounts.fitments >= 6, "Vehicle fitment seed data is incomplete.");
 
+    const [submissionContract] = await sql<{ definition: string; missingPrimary: number }[]>`
+      select
+        pg_get_functiondef('public.product_submission_ready(uuid, public.product_condition)'::regprocedure)
+          as definition,
+        (
+          select count(*)::int
+          from (
+            select product_id
+            from public.product_fitments
+            where is_active = true
+            group by product_id
+            having not bool_or(is_primary)
+          ) as products_without_primary_fitment
+        ) as "missingPrimary"
+    `;
+    assert(submissionContract, "Product submission readiness verification returned no result.");
+    assert(
+      submissionContract.definition.includes("product_fitments") &&
+        submissionContract.definition.includes("is_primary"),
+      "Product submission readiness must require an active primary fitment.",
+    );
+    assert(
+      submissionContract.missingPrimary === 0,
+      "An existing product has active fitments but no primary fitment.",
+    );
     const [verificationCoverage] = await sql<{ missing: number }[]>`
       select count(*)::int as missing
       from public.seller_profiles
@@ -185,6 +211,7 @@ async function main() {
     console.log(
       `- ${seedCounts.categories} categories and ${seedCounts.fitments} vehicle fitments`,
     );
+    console.log("- primary vehicle fitment required for review submission");
     console.log("- private product-media bucket with immutable seller originals");
   } finally {
     await sql.end();

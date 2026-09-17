@@ -9,28 +9,42 @@ const requiredText = (label: string, minimum: number, maximum: number) =>
     .min(minimum, `${label} must be at least ${minimum} characters.`)
     .max(maximum, `${label} must be ${maximum} characters or fewer.`);
 
+const optionalInput = (value: unknown) => (value === null || value === undefined ? "" : value);
+
 const optionalText = (maximum: number) =>
+  z.preprocess(
+    optionalInput,
+    z
+      .string()
+      .trim()
+      .max(maximum)
+      .transform((value) => value || null),
+  );
+
+const checkbox = z.preprocess(
+  (value) => value === true || value === "on" || value === "true",
+  z.boolean(),
+);
+
+const optionalRegistrationNumber = z.preprocess(
+  optionalInput,
   z
     .string()
     .trim()
-    .max(maximum)
-    .transform((value) => value || null);
-
-const checkbox = z.preprocess((value) => value === "on" || value === "true", z.boolean());
-
-const optionalRegistrationNumber = z
-  .string()
-  .trim()
-  .max(100, "Business registration number must be 100 characters or fewer.")
-  .refine(
-    (value) => !value || /^[A-Za-z0-9][A-Za-z0-9./ -]+$/.test(value),
-    "Enter a valid business registration number.",
-  )
-  .transform((value) => value || null);
+    .max(100, "Business registration number must be 100 characters or fewer.")
+    .refine(
+      (value) => !value || /^[A-Za-z0-9][A-Za-z0-9./ -]+$/.test(value),
+      "Enter a valid business registration number.",
+    )
+    .transform((value) => value || null),
+);
 
 export const sellerOnboardingSchema = z.object({
   businessRegistrationNumber: optionalRegistrationNumber,
-  categoryIds: z.array(z.string().uuid()).min(1, "Choose at least one product category.").max(20),
+  categoryIds: z
+    .array(z.string().uuid())
+    .min(1, "Choose at least one product category.")
+    .max(200, "Choose no more than 200 product categories."),
   city: requiredText("City", 2, 100),
   contactPhone: z
     .string()
@@ -40,12 +54,18 @@ export const sellerOnboardingSchema = z.object({
   description: optionalText(1000),
   state: requiredText("State", 2, 100),
   storeName: requiredText("Store name", 2, 120),
-  websiteUrl: z
-    .string()
-    .trim()
-    .max(300)
-    .refine((value) => !value || z.string().url().safeParse(value).success, "Enter a valid URL.")
-    .transform((value) => value || null),
+  websiteUrl: z.preprocess(
+    optionalInput,
+    z
+      .string()
+      .trim()
+      .max(300)
+      .refine(
+        (value) => !value || z.string().url().safeParse(value).success,
+        "Enter a valid website address.",
+      )
+      .transform((value) => value || null),
+  ),
 });
 
 const priceInput = z
@@ -53,12 +73,22 @@ const priceInput = z
   .trim()
   .regex(/^\d{1,9}(?:\.\d{1,2})?$/, "Enter a valid NGN amount without a currency symbol.");
 
-const crossReferences = z
-  .string()
-  .max(2000)
-  .transform((value) =>
-    [...new Set(value.split(/[\n,]+/).map((item) => item.trim()).filter(Boolean))].slice(0, 30),
-  );
+const crossReferences = z.preprocess(
+  optionalInput,
+  z
+    .string()
+    .max(2000)
+    .transform((value) =>
+      [
+        ...new Set(
+          value
+            .split(/[\n,]+/)
+            .map((item) => item.trim())
+            .filter(Boolean),
+        ),
+      ].slice(0, 30),
+    ),
+);
 
 export const productFormSchema = z
   .object({
@@ -92,9 +122,22 @@ export const productFormSchema = z
     sku: requiredText("SKU", 1, 100),
     state: requiredText("State", 2, 100),
   })
-  .refine((data) => data.pickupAvailable || data.deliveryAvailable, {
-    message: "Choose pickup, delivery, or both.",
-    path: ["deliveryAvailable"],
+  .superRefine((data, context) => {
+    if (!data.pickupAvailable && !data.deliveryAvailable) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Choose pickup, delivery, or both.",
+        path: ["deliveryAvailable"],
+      });
+    }
+
+    if (data.intent === "submit-review" && data.fitmentIds.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Choose at least one car this part fits.",
+        path: ["fitmentIds"],
+      });
+    }
   });
 
 export function getSellerOnboardingValues(formData: FormData) {
@@ -127,7 +170,9 @@ export function getProductFormValues(formData: FormData) {
     crossReferences: formData.get("crossReferences"),
     deliveryAvailable: formData.get("deliveryAvailable"),
     description: formData.get("description"),
-    fitmentIds: formData.getAll("fitmentIds").filter((value): value is string => typeof value === "string"),
+    fitmentIds: formData
+      .getAll("fitmentIds")
+      .filter((value): value is string => typeof value === "string"),
     intent: formData.get("intent"),
     manufacturerPartNumber: formData.get("manufacturerPartNumber"),
     name: formData.get("name"),

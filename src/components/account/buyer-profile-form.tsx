@@ -3,9 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
-import {
-  updateBuyerProfileAction,
-} from "@/app/(protected)/account/actions";
+import { updateBuyerProfileAction } from "@/app/(protected)/account/actions";
 import { initialBuyerActionState } from "@/lib/account/buyer-action-state";
 import { AuthAlert } from "@/components/auth/auth-alert";
 import { Button } from "@/components/ui/button";
@@ -49,7 +47,9 @@ export function BuyerProfileForm({
           name="accountType"
         >
           {accountTypes.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
           ))}
         </select>
       </div>
@@ -65,12 +65,21 @@ export function BuyerProfileForm({
           maxLength={120}
           name="organizationName"
         />
-        <p className="text-xs text-stone-500">Required for garages, fleets, and corporate buyer accounts.</p>
-        {state.fieldErrors?.organizationName?.[0] ? <p className="text-sm font-medium text-primary">{state.fieldErrors.organizationName[0]}</p> : null}
+        <p className="text-xs text-stone-500">
+          Required for garages, fleets, and corporate buyer accounts.
+        </p>
+        {state.fieldErrors?.organizationName?.[0] ? (
+          <p className="text-sm font-medium text-primary">
+            {state.fieldErrors.organizationName[0]}
+          </p>
+        ) : null}
       </div>
       <div className="grid gap-2">
-        <label className="text-sm font-semibold text-stone-800" htmlFor="businessRegistrationNumber">
-          Business registration number (optional)
+        <label
+          className="text-sm font-semibold text-stone-800"
+          htmlFor="businessRegistrationNumber"
+        >
+          Business Registration Number
         </label>
         <input
           aria-invalid={Boolean(state.fieldErrors?.businessRegistrationNumber?.[0])}
@@ -80,10 +89,17 @@ export function BuyerProfileForm({
           maxLength={100}
           name="businessRegistrationNumber"
         />
-        {state.fieldErrors?.businessRegistrationNumber?.[0] ? <p className="text-sm font-medium text-primary">{state.fieldErrors.businessRegistrationNumber[0]}</p> : null}
+        <p className="text-xs text-stone-500">Optional — you can add this later.</p>
+        {state.fieldErrors?.businessRegistrationNumber?.[0] ? (
+          <p className="text-sm font-medium text-primary">
+            {state.fieldErrors.businessRegistrationNumber[0]}
+          </p>
+        ) : null}
       </div>
       <AuthAlert state={state} />
-      <div><SaveButton /></div>
+      <div>
+        <SaveButton />
+      </div>
     </form>
   );
 }

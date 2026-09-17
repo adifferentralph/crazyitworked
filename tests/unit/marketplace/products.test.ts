@@ -30,8 +30,12 @@ describe("seller product rules", () => {
 
   it("rejects mismatched and oversized image uploads", () => {
     expect(validateProductImage(new File(["image"], "part.png", { type: "image/png" }))).toBeNull();
-    expect(validateProductImage(new File(["image"], "part.jpg", { type: "image/png" }))).toMatch(/extension/i);
-    const oversized = new File([new Uint8Array(8 * 1024 * 1024 + 1)], "part.webp", { type: "image/webp" });
+    expect(validateProductImage(new File(["image"], "part.jpg", { type: "image/png" }))).toMatch(
+      /extension/i,
+    );
+    const oversized = new File([new Uint8Array(8 * 1024 * 1024 + 1)], "part.webp", {
+      type: "image/webp",
+    });
     expect(validateProductImage(oversized)).toMatch(/8 MB/i);
   });
 
@@ -62,5 +66,67 @@ describe("seller product rules", () => {
       expect(result.error.flatten().fieldErrors.priceNgn).toBeDefined();
       expect(result.error.flatten().fieldErrors.deliveryAvailable).toBeDefined();
     }
+  });
+
+  it("saves a draft when optional product identifiers are omitted", () => {
+    const result = productFormSchema.safeParse({
+      brand: "Denso",
+      categoryId: "c4769a8e-469b-4fde-a0cd-c3f796269f27",
+      city: "Ikeja",
+      condition: "NEW",
+      country: "Nigeria",
+      deliveryAvailable: false,
+      description: "A clear and sufficiently detailed product description.",
+      fitmentIds: [],
+      intent: "save-draft",
+      name: "Toyota Camry plug coil",
+      pickupAvailable: true,
+      priceNgn: "45000",
+      quantity: 4,
+      sku: "TEST-OPTIONAL-001",
+      state: "Lagos",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.crossReferences).toEqual([]);
+      expect(result.data.manufacturerPartNumber).toBeNull();
+      expect(result.data.oemPartNumber).toBeNull();
+    }
+  });
+
+  it("requires a primary vehicle fitment only when submitting for review", () => {
+    const product = {
+      brand: "Denso",
+      categoryId: "c4769a8e-469b-4fde-a0cd-c3f796269f27",
+      city: "Ikeja",
+      condition: "NEW",
+      country: "Nigeria",
+      deliveryAvailable: true,
+      description: "A clear and sufficiently detailed product description.",
+      fitmentIds: [],
+      intent: "submit-review",
+      name: "Toyota Camry plug coil",
+      pickupAvailable: false,
+      priceNgn: "45000",
+      quantity: 4,
+      sku: "TEST-FITMENT-001",
+      state: "Lagos",
+    } as const;
+
+    const missingFitment = productFormSchema.safeParse(product);
+    expect(missingFitment.success).toBe(false);
+    if (!missingFitment.success) {
+      expect(missingFitment.error.flatten().fieldErrors.fitmentIds).toContain(
+        "Choose at least one car this part fits.",
+      );
+    }
+
+    expect(
+      productFormSchema.safeParse({
+        ...product,
+        fitmentIds: ["11111111-1111-4111-8111-111111111111"],
+      }).success,
+    ).toBe(true);
   });
 });

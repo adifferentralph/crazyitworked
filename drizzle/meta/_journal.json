@@ -1,174 +1,181 @@
 {
-  "version": "7",
-  "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1787221269606,
-      "tag": "0000_silent_skin",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1787240192775,
-      "tag": "0001_tense_eternity",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1787243261634,
-      "tag": "0002_sweet_franklin_storm",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1787300952091,
-      "tag": "0003_ambiguous_colossus",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1787301100782,
-      "tag": "0004_small_thor_girl",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1787310000000,
-      "tag": "0005_storage_owner_read",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1787311000000,
-      "tag": "0006_storage_upload_ownership",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1787314737474,
-      "tag": "0007_curved_shadowcat",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1787316846827,
-      "tag": "0008_typical_peter_parker",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1787320076281,
-      "tag": "0009_conscious_scarecrow",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1787321830733,
-      "tag": "0010_assisted_media_policy_execution",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1787323639197,
-      "tag": "0011_daffy_callisto",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "7",
-      "when": 1787325000000,
-      "tag": "0012_demand_signal_dedupe",
-      "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "7",
-      "when": 1787907600000,
-      "tag": "0013_fitment_delete_audit_owner",
-      "breakpoints": true
-    },
-    {
-      "idx": 14,
-      "version": "7",
-      "when": 1787908200000,
-      "tag": "0014_fitment_delete_audit_reference",
-      "breakpoints": true
-    },
-    {
-      "idx": 15,
-      "version": "7",
-      "when": 1787912381195,
-      "tag": "0015_oauth_seller_role_resolution",
-      "breakpoints": true
-    },
-    {
-      "idx": 16,
-      "version": "7",
-      "when": 1788337637604,
-      "tag": "0016_tired_silver_centurion",
-      "breakpoints": true
-    },
-    {
-      "idx": 17,
-      "version": "7",
-      "when": 1788536997353,
-      "tag": "0017_cloudy_vapor",
-      "breakpoints": true
-    },
-    {
-      "idx": 18,
-      "version": "7",
-      "when": 1789466876692,
-      "tag": "0018_seller_onboarding_contract",
-      "breakpoints": true
-    },
-    {
-      "idx": 19,
-      "version": "7",
-      "when": 1789468754705,
-      "tag": "0019_admin_identity_integrity",
-      "breakpoints": true
-    },
-    {
-      "idx": 20,
-      "version": "7",
-      "when": 1789469834330,
-      "tag": "0020_beta_launch_readiness",
-      "breakpoints": true
-    },
-    {
-      "idx": 21,
-      "version": "7",
-      "when": 1789470855066,
-      "tag": "0021_banner_storage_paths",
-      "breakpoints": true
-    },
-    {
-      "idx": 22,
-      "version": "7",
-      "when": 1789475636203,
-      "tag": "0022_product_fitment_primary",
-      "breakpoints": true
-    },
-    {
-      "idx": 23,
-      "version": "7",
-      "when": 1789520000000,
-      "tag": "0023_buyer_signup_preference_grants",
-      "breakpoints": true
-    }
-  ]
+    "version":  "7",
+    "dialect":  "postgresql",
+    "entries":  [
+                    {
+                        "idx":  0,
+                        "version":  "7",
+                        "when":  1787221269606,
+                        "tag":  "0000_silent_skin",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  1,
+                        "version":  "7",
+                        "when":  1787240192775,
+                        "tag":  "0001_tense_eternity",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  2,
+                        "version":  "7",
+                        "when":  1787243261634,
+                        "tag":  "0002_sweet_franklin_storm",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  3,
+                        "version":  "7",
+                        "when":  1787300952091,
+                        "tag":  "0003_ambiguous_colossus",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  4,
+                        "version":  "7",
+                        "when":  1787301100782,
+                        "tag":  "0004_small_thor_girl",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  5,
+                        "version":  "7",
+                        "when":  1787310000000,
+                        "tag":  "0005_storage_owner_read",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  6,
+                        "version":  "7",
+                        "when":  1787311000000,
+                        "tag":  "0006_storage_upload_ownership",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  7,
+                        "version":  "7",
+                        "when":  1787314737474,
+                        "tag":  "0007_curved_shadowcat",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  8,
+                        "version":  "7",
+                        "when":  1787316846827,
+                        "tag":  "0008_typical_peter_parker",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  9,
+                        "version":  "7",
+                        "when":  1787320076281,
+                        "tag":  "0009_conscious_scarecrow",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  10,
+                        "version":  "7",
+                        "when":  1787321830733,
+                        "tag":  "0010_assisted_media_policy_execution",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  11,
+                        "version":  "7",
+                        "when":  1787323639197,
+                        "tag":  "0011_daffy_callisto",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  12,
+                        "version":  "7",
+                        "when":  1787325000000,
+                        "tag":  "0012_demand_signal_dedupe",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  13,
+                        "version":  "7",
+                        "when":  1787907600000,
+                        "tag":  "0013_fitment_delete_audit_owner",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  14,
+                        "version":  "7",
+                        "when":  1787908200000,
+                        "tag":  "0014_fitment_delete_audit_reference",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  15,
+                        "version":  "7",
+                        "when":  1787912381195,
+                        "tag":  "0015_oauth_seller_role_resolution",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  16,
+                        "version":  "7",
+                        "when":  1788337637604,
+                        "tag":  "0016_tired_silver_centurion",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  17,
+                        "version":  "7",
+                        "when":  1788536997353,
+                        "tag":  "0017_cloudy_vapor",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  18,
+                        "version":  "7",
+                        "when":  1789466876692,
+                        "tag":  "0018_seller_onboarding_contract",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  19,
+                        "version":  "7",
+                        "when":  1789468754705,
+                        "tag":  "0019_admin_identity_integrity",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  20,
+                        "version":  "7",
+                        "when":  1789469834330,
+                        "tag":  "0020_beta_launch_readiness",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  21,
+                        "version":  "7",
+                        "when":  1789470855066,
+                        "tag":  "0021_banner_storage_paths",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  22,
+                        "version":  "7",
+                        "when":  1789475636203,
+                        "tag":  "0022_product_fitment_primary",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  23,
+                        "version":  "7",
+                        "when":  1789520000000,
+                        "tag":  "0023_buyer_signup_preference_grants",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  24,
+                        "version":  "7",
+                        "when":  1789521000000,
+                        "tag":  "0024_optional_fields_primary_fitment",
+                        "breakpoints":  true
+                    }
+                ]
 }

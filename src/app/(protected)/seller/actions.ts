@@ -26,7 +26,6 @@ import {
   sellerOnboardingSchema,
 } from "@/lib/validation/seller";
 
-
 function validationError(error: z.ZodError): SellerActionState {
   return {
     fieldErrors: error.flatten().fieldErrors,
@@ -68,7 +67,7 @@ export async function completeSellerOnboardingAction(
     return databaseError("We could not save the supplier profile. Please try again.");
   }
 
-const { error: clearCategoriesError } = await supabase
+  const { error: clearCategoriesError } = await supabase
     .from("seller_categories")
     .delete()
     .eq("seller_id", principal.id);
@@ -264,7 +263,11 @@ async function replaceProductAssociations({
 
   if (fitmentIds.length > 0) {
     const { error } = await supabase.from("product_fitments").insert(
-      fitmentIds.map((fitmentId) => ({ fitment_id: fitmentId, product_id: productId })),
+      fitmentIds.map((fitmentId, index) => ({
+        fitment_id: fitmentId,
+        is_primary: index === 0,
+        product_id: productId,
+      })),
     );
     if (error) return "Vehicle compatibility could not be saved.";
   }

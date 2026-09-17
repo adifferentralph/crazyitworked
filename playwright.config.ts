@@ -12,7 +12,16 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        ...(process.env.PLAYWRIGHT_MAP_VENDOR_LOCALHOST === "1"
+          ? {
+              launchOptions: {
+                args: ["--host-resolver-rules=MAP vendors.localhost 127.0.0.1"],
+              },
+            }
+          : {}),
+      },
     },
     {
       name: "mobile-chrome",

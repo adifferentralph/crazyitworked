@@ -16,6 +16,25 @@ export const authBotTrapField = "_gotcha" as const;
 
 const honeypot = z.string().max(0, "Unable to submit this form.").optional().default("");
 
+const optionalText = (maximum: number, message: string) =>
+  z.preprocess(
+    (value) => (value === null || value === undefined ? "" : value),
+    z
+      .string()
+      .trim()
+      .max(maximum, message)
+      .transform((value) => value || undefined),
+  );
+
+const optionalCheckbox = z.preprocess(
+  (value) => {
+    if (value === true) return "on";
+    if (value === false || value === null) return undefined;
+    return value;
+  },
+  z.string().optional(),
+);
+
 export const loginSchema = z.object({
   email,
   password: z.string({ required_error: "Enter your password." }).min(1, "Enter your password."),
@@ -66,22 +85,21 @@ export const buyerSignupSchema = z
       .trim()
       .min(1, "Enter your last name.")
       .max(50, "Last name is too long."),
-    marketingOptIn: z.string().optional(),
-    organizationName: z
-      .string()
-      .trim()
-      .max(120, "Organisation name is too long.")
-      .optional(),
+    marketingOptIn: optionalCheckbox,
+    organizationName: optionalText(120, "Organisation name is too long."),
     password,
-    phone: z
-      .string()
-      .trim()
-      .max(30, "Phone number is too long.")
-      .refine(
-        (value) => !value || /^[+0-9().\s-]{7,30}$/.test(value),
-        "Enter a valid phone number.",
-      )
-      .optional(),
+    phone: z.preprocess(
+      (value) => (value === null || value === undefined ? "" : value),
+      z
+        .string()
+        .trim()
+        .max(30, "Phone number is too long.")
+        .refine(
+          (value) => !value || /^[+0-9().\s-]{7,30}$/.test(value),
+          "Enter a valid phone number.",
+        )
+        .transform((value) => value || undefined),
+    ),
     terms: z.string().optional(),
     [authBotTrapField]: honeypot,
   })
@@ -89,9 +107,7 @@ export const buyerSignupSchema = z
     validateSignup(values, context);
 
     if (
-      ["GARAGE_WORKSHOP", "FLEET_OPERATOR", "CORPORATE_BUYER"].includes(
-        values.accountType,
-      ) &&
+      ["GARAGE_WORKSHOP", "FLEET_OPERATOR", "CORPORATE_BUYER"].includes(values.accountType) &&
       !values.organizationName
     ) {
       context.addIssue({

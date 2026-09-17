@@ -119,11 +119,16 @@ async function waitForAuthLink(
 
       const detail = (await detailResponse.json()) as BrevoMessageDetail;
       const body = decodeHtmlAttribute(detail.body ?? "");
+      const labelledAuthLinks = [
+        ...body.matchAll(/<a\b[^>]*href=(?:"([^"]+)"|'([^']+)')[^>]*>([\s\S]*?)<\/a>/gi),
+      ]
+        .filter((match) => /confirm|verify|reset|password/i.test(match[3] ?? ""))
+        .map((match) => match[1] ?? match[2] ?? "");
       const hrefLinks = [...body.matchAll(/href=(?:"([^"]+)"|'([^']+)')/gi)].map(
         (match) => match[1] ?? match[2] ?? "",
       );
       const plainLinks = body.match(/https?:\/\/[^\s<>"']+/gi) ?? [];
-      const links = [...new Set([...hrefLinks, ...plainLinks])];
+      const links = [...new Set([...labelledAuthLinks, ...hrefLinks, ...plainLinks])];
 
       for (const link of links) {
         const authLink = await resolveTrackedAuthLink(link);
@@ -175,13 +180,11 @@ test("live confirmation and password recovery use Brevo links", async ({ page },
     await page.getByLabel("Last name").fill("Email Buyer");
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByLabel("Email address").fill(email);
-    await page.getByLabel("Phone number (optional)").fill("+234 800 000 0000");
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByLabel("Confirm password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByLabel(/I agree to the Terms of Use/i).check();
-    await page.getByLabel(/Email me useful product updates/i).check();
     await page.getByRole("button", { name: "Create buyer account" }).click();
     await expect(page).toHaveURL(/\/verify-email\?email=/, { timeout: 120_000 });
 
@@ -227,13 +230,13 @@ test("live confirmation and password recovery use Brevo links", async ({ page },
     `;
     expect(buyerProfile).toEqual({
       fullName: "Foundation Email Buyer",
-      marketingOptIn: true,
-      phone: "+234 800 000 0000",
+      marketingOptIn: false,
+      phone: null,
     });
 
     await page.reload();
     await expect(page.getByRole("search").first()).toBeVisible();
-    await page.getByRole("button", { name: "Open account menu" }).click();
+    await page.getByLabel("Open account menu").click();
     await page.getByRole("button", { name: "Sign Out" }).click();
     await expect(page).toHaveURL(/\/login$/, { timeout: 120_000 });
 

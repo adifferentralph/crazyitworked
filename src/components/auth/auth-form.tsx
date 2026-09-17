@@ -17,6 +17,7 @@ import { AuthAlert } from "@/components/auth/auth-alert";
 import { AuthField } from "@/components/auth/auth-field";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import { BuyerSignupWizardFields } from "@/components/auth/buyer-signup-wizard-fields";
+import { SellerSignupWizardFields } from "@/components/auth/seller-signup-wizard-fields";
 import { Button } from "@/components/ui/button";
 import type { SocialProviderAvailability } from "@/lib/auth/providers";
 import { initialAuthActionState } from "@/lib/auth/types";
@@ -146,35 +147,11 @@ export function AuthForm({
           />
         </div>
 
-        {variant === "seller-signup" ? (
-          <AuthField
-            autoComplete="name"
-            defaultValue={state.values?.fullName}
-            errors={state.fieldErrors?.fullName}
-            label="Full name"
-            name="fullName"
-            placeholder="Your full name"
-            type="text"
-          />
-        ) : null}
+        {variant === "seller-signup" ? <SellerSignupWizardFields state={state} /> : null}
 
-        {variant === "buyer-signup" ? (
-          <BuyerSignupWizardFields state={state} />
-        ) : null}
+        {variant === "buyer-signup" ? <BuyerSignupWizardFields state={state} /> : null}
 
-        {variant === "seller-signup" ? (
-          <AuthField
-            autoComplete="organization"
-            defaultValue={state.values?.storeName}
-            errors={state.fieldErrors?.storeName}
-            label="Store or business name"
-            name="storeName"
-            placeholder="Your parts business"
-            type="text"
-          />
-        ) : null}
-
-        {variant !== "reset" && variant !== "buyer-signup" ? (
+        {variant !== "reset" && variant !== "buyer-signup" && variant !== "seller-signup" ? (
           <AuthField
             autoComplete="email"
             defaultValue={state.values?.email}
@@ -187,7 +164,7 @@ export function AuthForm({
           />
         ) : null}
 
-        {variant === "login" || variant === "seller-signup" || variant === "reset" ? (
+        {variant === "login" || variant === "reset" ? (
           <AuthField
             autoComplete={variant === "login" ? "current-password" : "new-password"}
             errors={state.fieldErrors?.password}
@@ -198,7 +175,7 @@ export function AuthForm({
           />
         ) : null}
 
-        {variant === "seller-signup" || variant === "reset" ? (
+        {variant === "reset" ? (
           <AuthField
             autoComplete="new-password"
             errors={state.fieldErrors?.confirmPassword}
@@ -207,45 +184,6 @@ export function AuthForm({
             name="confirmPassword"
             type="password"
           />
-        ) : null}
-
-        {variant === "seller-signup" ? (
-          <div>
-            <div className="flex items-start gap-3 text-sm leading-6 text-stone-700">
-              <input
-                aria-describedby={
-                  state.fieldErrors?.terms?.[0] ? `${variant}-terms-error` : undefined
-                }
-                aria-invalid={Boolean(state.fieldErrors?.terms?.[0])}
-                className={`mt-1 size-4 rounded border-stone-300 accent-primary outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  state.fieldErrors?.terms?.[0] ? "ring-2 ring-primary ring-offset-2" : ""
-                }`}
-                defaultChecked={state.values?.terms === "on"}
-                id={`${variant}-terms`}
-                name="terms"
-                type="checkbox"
-              />
-              <span>
-                <label htmlFor={`${variant}-terms`}>
-                  I agree to the Terms of Use and acknowledge the{" "}
-                </label>
-                <Link
-                  className="font-semibold text-primary underline underline-offset-4"
-                  href="/privacy-policy"
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
-                  Privacy Policy
-                </Link>
-                .
-              </span>
-            </div>
-            {state.fieldErrors?.terms?.[0] ? (
-              <p className="mt-2 text-sm font-medium text-primary" id={`${variant}-terms-error`}>
-                {state.fieldErrors.terms[0]}
-              </p>
-            ) : null}
-          </div>
         ) : null}
 
         {variant === "login" ? (
@@ -259,7 +197,7 @@ export function AuthForm({
           </div>
         ) : null}
 
-        {variant !== "buyer-signup" ? (
+        {variant !== "buyer-signup" && variant !== "seller-signup" ? (
           <>
             <AuthAlert state={state} />
             <AuthSubmitButton label={submitLabel.idle} pendingLabel={submitLabel.pending} />

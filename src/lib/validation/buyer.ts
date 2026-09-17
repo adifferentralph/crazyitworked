@@ -1,21 +1,29 @@
 import { z } from "zod";
 
+const optionalInput = (value: unknown) => (value === null || value === undefined ? "" : value);
+
 const optionalText = (maximum: number) =>
+  z.preprocess(
+    optionalInput,
+    z
+      .string()
+      .trim()
+      .max(maximum)
+      .transform((value) => value || null),
+  );
+
+const optionalRegistrationNumber = z.preprocess(
+  optionalInput,
   z
     .string()
     .trim()
-    .max(maximum)
-    .transform((value) => value || null);
-
-const optionalRegistrationNumber = z
-  .string()
-  .trim()
-  .max(100, "Registration number must be 100 characters or fewer.")
-  .refine(
-    (value) => !value || /^[A-Za-z0-9][A-Za-z0-9./ -]+$/.test(value),
-    "Enter a valid registration number.",
-  )
-  .transform((value) => value || null);
+    .max(100, "Registration number must be 100 characters or fewer.")
+    .refine(
+      (value) => !value || /^[A-Za-z0-9][A-Za-z0-9./ -]+$/.test(value),
+      "Enter a valid registration number.",
+    )
+    .transform((value) => value || null),
+);
 
 export const buyerProfileSchema = z
   .object({
@@ -44,7 +52,7 @@ export const buyerProfileSchema = z
 
 export const savedVehicleSchema = z.object({
   fitmentId: z.string().uuid("Choose a valid vehicle."),
-  isDefault: z.preprocess((value) => value === "on" || value === "true", z.boolean()),
+  isDefault: z.preprocess((value) => value === true || value === "on" || value === "true", z.boolean()),
   label: optionalText(80),
   registrationNumber: optionalText(30),
 });

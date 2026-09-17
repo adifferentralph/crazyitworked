@@ -53,11 +53,9 @@ function validateStep(form: HTMLFormElement, step: number) {
   if (step === 1) {
     const accountType = getFormControl(form, "accountType");
     const organizationName = getFormControl(form, "organizationName");
-    const requiresOrganization = [
-      "GARAGE_WORKSHOP",
-      "FLEET_OPERATOR",
-      "CORPORATE_BUYER",
-    ].includes(accountType?.value ?? "");
+    const requiresOrganization = ["GARAGE_WORKSHOP", "FLEET_OPERATOR", "CORPORATE_BUYER"].includes(
+      accountType?.value ?? "",
+    );
 
     if (requiresOrganization && !organizationName?.value.trim()) {
       organizationName?.setCustomValidity("Enter your business or organisation name.");
@@ -93,9 +91,7 @@ export function BuyerSignupWizardFields({ state }: { state: AuthActionState }) {
     const errorStep = getErrorStep(state.fieldErrors);
     setStep(errorStep);
     window.setTimeout(() => {
-      document
-        .querySelector<HTMLElement>('form [aria-invalid="true"]')
-        ?.focus();
+      document.querySelector<HTMLElement>('form [aria-invalid="true"]')?.focus();
     }, 0);
   }, [state]);
 
@@ -111,13 +107,7 @@ export function BuyerSignupWizardFields({ state }: { state: AuthActionState }) {
         <div className="flex items-center justify-between text-xs font-semibold text-stone-600">
           <span>Step {step} of 4</span>
           <span>
-            {step === 1
-              ? "About you"
-              : step === 2
-                ? "Contact"
-                : step === 3
-                  ? "Password"
-                  : "Review"}
+            {step === 1 ? "About you" : step === 2 ? "Contact" : step === 3 ? "Password" : "Review"}
           </span>
         </div>
         <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-stone-200">
@@ -190,12 +180,15 @@ export function BuyerSignupWizardFields({ state }: { state: AuthActionState }) {
           autoComplete="organization"
           defaultValue={state.values?.organizationName}
           errors={state.fieldErrors?.organizationName}
-          label="Business or organisation name (optional for individuals)"
+          label="Business or organisation name"
           maxLength={120}
           name="organizationName"
           placeholder="Your workshop, fleet, or company"
           type="text"
         />
+        <p className="-mt-2 text-xs leading-5 text-stone-500">
+          Required for garages, fleets, and companies. Optional for individuals and mechanics.
+        </p>
       </fieldset>
 
       <fieldset className="grid gap-4 sm:gap-5" hidden={step !== 2}>
@@ -217,7 +210,7 @@ export function BuyerSignupWizardFields({ state }: { state: AuthActionState }) {
           defaultValue={state.values?.phone}
           errors={state.fieldErrors?.phone}
           inputMode="tel"
-          label="Phone number (optional)"
+          label="Phone number — Optional"
           maxLength={30}
           name="phone"
           placeholder="+234 800 000 0000"
@@ -254,7 +247,9 @@ export function BuyerSignupWizardFields({ state }: { state: AuthActionState }) {
         <div>
           <div className="flex items-start gap-3 text-sm leading-6 text-stone-700">
             <input
-              aria-describedby={state.fieldErrors?.terms?.[0] ? "buyer-signup-terms-error" : undefined}
+              aria-describedby={
+                state.fieldErrors?.terms?.[0] ? "buyer-signup-terms-error" : undefined
+              }
               aria-invalid={Boolean(state.fieldErrors?.terms?.[0])}
               className={`mt-1 size-4 rounded border-stone-300 accent-primary outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 state.fieldErrors?.terms?.[0] ? "ring-2 ring-primary ring-offset-2" : ""
@@ -293,7 +288,8 @@ export function BuyerSignupWizardFields({ state }: { state: AuthActionState }) {
             name="marketingOptIn"
             type="checkbox"
           />
-          Email me useful product updates and marketplace offers. You can unsubscribe at any time.
+          Optional — email me useful product updates and marketplace offers. You can unsubscribe at
+          any time.
         </label>
       </fieldset>
 
@@ -301,7 +297,11 @@ export function BuyerSignupWizardFields({ state }: { state: AuthActionState }) {
 
       <div className="grid grid-cols-2 gap-3">
         {step > 1 ? (
-          <Button onClick={() => setStep((current) => Math.max(current - 1, 1))} type="button" variant="outline">
+          <Button
+            onClick={() => setStep((current) => Math.max(current - 1, 1))}
+            type="button"
+            variant="outline"
+          >
             Back
           </Button>
         ) : (

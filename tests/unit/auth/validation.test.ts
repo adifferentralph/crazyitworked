@@ -61,6 +61,21 @@ describe("auth validation", () => {
     expect(result.marketingOptIn).toBe("on");
   });
 
+  it("creates an individual buyer when every optional field is blank or omitted", () => {
+    const result = buyerSignupSchema.safeParse({
+      ...validBuyer,
+      marketingOptIn: null,
+      organizationName: null,
+      phone: null,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.marketingOptIn).toBeUndefined();
+      expect(result.data.organizationName).toBeUndefined();
+      expect(result.data.phone).toBeUndefined();
+    }
+  });
   it("supports professional buyer types and requires organisation details where appropriate", () => {
     const missingOrganisation = buyerSignupSchema.safeParse({
       ...validBuyer,
