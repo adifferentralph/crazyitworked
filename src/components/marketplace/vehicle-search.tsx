@@ -21,6 +21,123 @@ type FitmentDetail = {
   trimId: string | null;
 };
 
+type ComboboxOption = { id: string; label: string };
+
+function SearchableCombobox({
+  disabled,
+  emptyMessage,
+  inputId,
+  label,
+  listId,
+  loading,
+  onQueryChange,
+  onSelect,
+  options,
+  placeholder,
+  query,
+  selectedId,
+}: {
+  disabled: boolean;
+  emptyMessage: string;
+  inputId: string;
+  label: string;
+  listId: string;
+  loading: boolean;
+  onQueryChange: (query: string) => void;
+  onSelect: (option: ComboboxOption) => void;
+  options: ComboboxOption[];
+  placeholder: string;
+  query: string;
+  selectedId: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+
+  return (
+    <div className="relative">
+      <label className="mb-1.5 block text-xs font-bold text-stone-700" htmlFor={inputId}>
+        {label}
+      </label>
+      <input
+        aria-activedescendant={
+          open && options[highlighted] ? `${listId}-${options[highlighted].id}` : undefined
+        }
+        aria-autocomplete="list"
+        aria-controls={listId}
+        aria-expanded={open}
+        autoComplete="off"
+        className={selectClass}
+        disabled={disabled}
+        id={inputId}
+        onBlur={() => window.setTimeout(() => setOpen(false), 100)}
+        onChange={(event) => {
+          onQueryChange(event.target.value);
+          setHighlighted(0);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            setOpen(true);
+            setHighlighted((current) =>
+              Math.min(current + 1, Math.max(0, options.length - 1)),
+            );
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setHighlighted((current) => Math.max(0, current - 1));
+          } else if (event.key === "Enter" && open) {
+            const option = options[highlighted];
+            if (option) {
+              event.preventDefault();
+              onSelect(option);
+              setOpen(false);
+            }
+          } else if (event.key === "Escape") {
+            setOpen(false);
+          }
+        }}
+        placeholder={placeholder}
+        role="combobox"
+        type="search"
+        value={query}
+      />
+      {open && !disabled ? (
+        <div
+          className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-stone-200 bg-white p-1 shadow-xl"
+          id={listId}
+          role="listbox"
+        >
+          {options.length > 0 ? (
+            options.map((option, index) => (
+              <button
+                aria-selected={option.id === selectedId}
+                className={`min-h-10 w-full rounded px-3 text-left text-sm ${index === highlighted ? "bg-stone-100 text-stone-950" : "text-stone-700"}`}
+                id={`${listId}-${option.id}`}
+                key={option.id}
+                onClick={() => {
+                  onSelect(option);
+                  setOpen(false);
+                }}
+                onMouseDown={(event) => event.preventDefault()}
+                role="option"
+                tabIndex={-1}
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))
+          ) : (
+            <p className="px-3 py-3 text-sm text-stone-500">
+              {loading ? `Searching ${label.toLocaleLowerCase()}s...` : emptyMessage}
+            </p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function isMakeOption(value: unknown): value is MarketplaceVehicleMakeOption {
   return (
     typeof value === "object" &&
@@ -109,11 +226,17 @@ export function VehicleSearch({
   const instanceId = useId().replaceAll(":", "");
   const makeInputId = `${instanceId}-make-search`;
   const makeListId = `${instanceId}-make-options`;
+  const modelInputId = `${instanceId}-model-search`;
+  const modelListId = `${instanceId}-model-options`;
+  const yearInputId = `${instanceId}-year-search`;
+  const yearListId = `${instanceId}-year-options`;
   const initial = vehicles.find((vehicle) => vehicle.id === initialVehicle);
   const [makeId, setMakeId] = useState(initial?.makeId ?? "");
   const [makeQuery, setMakeQuery] = useState(initial?.make ?? "");
   const [modelId, setModelId] = useState(initial?.modelId ?? "");
+  const [modelQuery, setModelQuery] = useState(initial?.model ?? "");
   const [yearId, setYearId] = useState(initial?.yearId ?? "");
+  const [yearQuery, setYearQuery] = useState(initial ? String(initial.year) : "");
   const [trimId, setTrimId] = useState(initial?.trimId ?? "");
   const [engineId, setEngineId] = useState(initial?.engineId ?? "");
   const [makeOpen, setMakeOpen] = useState(false);
@@ -159,7 +282,9 @@ export function VehicleSearch({
         setMakeId(fitment.makeId);
         setMakeQuery(fitment.make);
         setModelId(fitment.modelId);
+        setModelQuery(fitment.model);
         setYearId(fitment.yearId);
+        setYearQuery(String(fitment.year));
         setTrimId(fitment.trimId ?? "");
         setEngineId(fitment.engineId ?? "");
         setModelOptions([{ id: fitment.modelId, name: fitment.model }]);
@@ -183,26 +308,34 @@ export function VehicleSearch({
       return;
     }
     const controller = new AbortController();
-    setLoading(true);
-    void fetch("/api/vehicles/options?makeId=" + encodeURIComponent(makeId), {
-      signal: controller.signal,
-    })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload: unknown) => {
-        if (
-          typeof payload === "object" &&
-          payload !== null &&
-          "models" in payload &&
-          Array.isArray(payload.models)
-        ) {
-          setModelOptions(payload.models.filter(isNamedOption));
-        }
+    const timeout = window.setTimeout(() => {
+      setLoading(true);
+      const parameters = new URLSearchParams({ makeId });
+      const query = modelQuery.trim();
+      if (query) parameters.set("q", query);
+      void fetch(`/api/vehicles/options?${parameters.toString()}`, {
+        signal: controller.signal,
       })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [makeId]);
+        .then((response) => (response.ok ? response.json() : null))
+        .then((payload: unknown) => {
+          if (
+            typeof payload === "object" &&
+            payload !== null &&
+            "models" in payload &&
+            Array.isArray(payload.models)
+          ) {
+            setModelOptions(payload.models.filter(isNamedOption));
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false);
+        });
+    }, 250);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [makeId, modelQuery]);
 
   useEffect(() => {
     if (!modelId) {
@@ -299,6 +432,17 @@ export function VehicleSearch({
       .slice(0, 20);
   }, [makeOptions, makeQuery]);
 
+  const searchableModels = useMemo(
+    () => modelOptions.map((model) => ({ id: model.id, label: model.name })),
+    [modelOptions],
+  );
+  const searchableYears = useMemo(() => {
+    const query = yearQuery.trim();
+    return yearOptions
+      .filter((year) => !query || String(year.year).includes(query))
+      .map((year) => ({ id: year.id, label: String(year.year) }));
+  }, [yearOptions, yearQuery]);
+
   const trims = useMemo(
     () => [
       ...new Map(
@@ -339,7 +483,9 @@ export function VehicleSearch({
 
   function clearAfterMake() {
     setModelId("");
+    setModelQuery("");
     setYearId("");
+    setYearQuery("");
     setTrimId("");
     setEngineId("");
     setYearOptions([]);
@@ -443,47 +589,61 @@ export function VehicleSearch({
           ) : null}
         </div>
 
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-bold text-stone-700">Model</span>
-          <select
-            aria-label="Vehicle model"
-            className={selectClass}
-            disabled={!makeId || modelOptions.length === 0}
-            onChange={(event) => {
-              setModelId(event.target.value);
-              setYearId("");
-              setTrimId("");
-              setEngineId("");
-              setFitmentOptions([]);
-            }}
-            value={modelId}
-          >
-            <option value="">{loading && makeId ? "Loading models..." : "Model"}</option>
-            {modelOptions.map((item) => (
-              <option key={item.id} value={item.id}>{item.name}</option>
-            ))}
-          </select>
-        </label>
+        <SearchableCombobox
+          disabled={!makeId}
+          emptyMessage="No model found."
+          inputId={modelInputId}
+          label="Model"
+          listId={modelListId}
+          loading={loading}
+          onQueryChange={(query) => {
+            setModelQuery(query);
+            setModelId("");
+            setYearId("");
+            setYearQuery("");
+            setTrimId("");
+            setEngineId("");
+            setFitmentOptions([]);
+          }}
+          onSelect={(model) => {
+            setModelId(model.id);
+            setModelQuery(model.label);
+            setYearId("");
+            setYearQuery("");
+            setTrimId("");
+            setEngineId("");
+            setFitmentOptions([]);
+          }}
+          options={searchableModels}
+          placeholder={loading && makeId ? "Loading models..." : "Search model..."}
+          query={modelQuery}
+          selectedId={modelId}
+        />
 
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-bold text-stone-700">Year</span>
-          <select
-            aria-label="Vehicle year"
-            className={selectClass}
-            disabled={!modelId || yearOptions.length === 0}
-            onChange={(event) => {
-              setYearId(event.target.value);
-              setTrimId("");
-              setEngineId("");
-            }}
-            value={yearId}
-          >
-            <option value="">{loading && modelId ? "Loading years..." : "Year"}</option>
-            {yearOptions.map((item) => (
-              <option key={item.id} value={item.id}>{item.year}</option>
-            ))}
-          </select>
-        </label>
+        <SearchableCombobox
+          disabled={!modelId}
+          emptyMessage="No year found."
+          inputId={yearInputId}
+          label="Year"
+          listId={yearListId}
+          loading={loading}
+          onQueryChange={(query) => {
+            setYearQuery(query.replace(/\D/g, "").slice(0, 4));
+            setYearId("");
+            setTrimId("");
+            setEngineId("");
+          }}
+          onSelect={(year) => {
+            setYearId(year.id);
+            setYearQuery(year.label);
+            setTrimId("");
+            setEngineId("");
+          }}
+          options={searchableYears}
+          placeholder={loading && modelId ? "Loading years..." : "Search year..."}
+          query={yearQuery}
+          selectedId={yearId}
+        />
 
         {yearId && trims.length > 0 ? (
           <label className="block">

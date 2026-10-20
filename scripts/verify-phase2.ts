@@ -35,6 +35,7 @@ const requiredTriggers = [
   "vehicle_fitments_validate",
   "products_validate_write",
   "products_require_primary_fitment",
+  "products_z_auto_publish_ready",
   "products_record_history",
   "products_record_inventory",
   "product_images_validate_write",
@@ -195,6 +196,104 @@ async function main() {
       submissionContract.missingPrimary === 0,
       "An existing product has active fitments but no primary fitment.",
     );
+    const [automaticPublishing] = await sql<{ definition: string }[]>`
+      select pg_get_functiondef('public.auto_publish_ready_product()'::regprocedure)
+        as definition
+    `;
+    assert(
+      automaticPublishing?.definition.includes("product_submission_ready") &&
+        automaticPublishing.definition.includes("APPROVED"),
+      "Automatic product publishing trigger is incomplete.",
+    );
+    let automaticPublicationTransitionTested = false;
+    await sql`begin`;
+    try {
+      const [eligibleProduct] = await sql<
+        { id: string; published_at: string | null; quantity: number }[]
+      >`
+        select id, quantity, published_at
+        from public.products
+        where status in ('APPROVED', 'OUT_OF_STOCK')
+          and public.product_submission_ready(id, condition)
+        limit 1
+      `;
+      if (eligibleProduct) {
+        const [transitioned] = await sql<
+          { published_at: string | null; status: string }[]
+        >`
+          update public.products
+          set status = 'PENDING_REVIEW'
+          where id = ${eligibleProduct.id}
+          returning status::text, published_at
+        `;
+        assert(
+          transitioned?.status === (eligibleProduct.quantity > 0 ? "APPROVED" : "OUT_OF_STOCK"),
+          "A ready product did not publish automatically.",
+        );
+        assert(transitioned.published_at, "Automatically published product is missing published_at.");
+        automaticPublicationTransitionTested = true;
+      } else {
+        const [fixture] = await sql<
+          { category_id: string; fitment_id: string; seller_id: string }[]
+        >`
+          select
+            (select id from public.product_categories where is_active = true limit 1) as category_id,
+            (select id from public.vehicle_fitments limit 1) as fitment_id,
+            (select user_id from public.seller_profiles limit 1) as seller_id
+        `;
+        if (fixture?.category_id && fixture.fitment_id && fixture.seller_id) {
+          const [temporaryProduct] = await sql<{ id: string }[]>`
+            insert into public.products (
+              seller_id, category_id, name, slug, description, condition, brand, sku,
+              price_minor, quantity, state, city, pickup_available, delivery_available,
+              created_by_user_id, last_modified_by_user_id
+            ) values (
+              ${fixture.seller_id}, ${fixture.category_id}, 'Automatic publication verification part',
+              ${`automatic-publication-verification-${crypto.randomUUID()}`},
+              'Temporary product used inside a rolled-back database verification transaction.',
+              'NEW', 'Verification', ${`VERIFY-${crypto.randomUUID()}`}, 10000, 1,
+              'Lagos', 'Ikeja', false, true, ${fixture.seller_id}, ${fixture.seller_id}
+            )
+            returning id
+          `;
+          assert(temporaryProduct, "Temporary automatic-publication product could not be created.");
+          await sql`
+            insert into public.product_fitments (product_id, fitment_id, claimed_by_user_id, is_primary)
+            values (${temporaryProduct.id}, ${fixture.fitment_id}, ${fixture.seller_id}, true)
+          `;
+          await sql`
+            insert into public.product_images (
+              product_id, storage_path, type, position, is_primary, is_actual_item,
+              uploaded_by, original_filename, mime_type, size_bytes
+            )
+            select
+              ${temporaryProduct.id},
+              ${`verification/${crypto.randomUUID()}/`} || lower(image_type::text) || '.jpg',
+              image_type,
+              ordinal - 1,
+              image_type = 'PRIMARY',
+              false,
+              ${fixture.seller_id},
+              lower(image_type::text) || '.jpg',
+              'image/jpeg',
+              1024
+            from unnest(array['PRIMARY', 'ANGLE', 'DETAIL', 'PART_NUMBER', 'PACKAGING']::public.product_image_type[])
+              with ordinality as required_images(image_type, ordinal)
+          `;
+          const [transitioned] = await sql<{ published_at: string | null; status: string }[]>`
+            update public.products
+            set status = 'PENDING_REVIEW'
+            where id = ${temporaryProduct.id}
+            returning status::text, published_at
+          `;
+          assert(transitioned?.status === "APPROVED", "A ready product did not publish automatically.");
+          assert(transitioned.published_at, "Automatically published product is missing published_at.");
+          automaticPublicationTransitionTested = true;
+        }
+      }
+    } finally {
+      await sql`rollback`;
+    }
     const [verificationCoverage] = await sql<{ missing: number }[]>`
       select count(*)::int as missing
       from public.seller_profiles
@@ -211,7 +310,12 @@ async function main() {
     console.log(
       `- ${seedCounts.categories} categories and ${seedCounts.fitments} vehicle fitments`,
     );
-    console.log("- primary vehicle fitment required for review submission");
+    console.log("- primary vehicle fitment and five images required before automatic publishing");
+    console.log(
+      automaticPublicationTransitionTested
+        ? "- automatic publication transition verified inside a rolled-back transaction"
+        : "- automatic publication trigger verified; no ready live product was available for transition testing",
+    );
     console.log("- private product-media bucket with immutable seller originals");
   } finally {
     await sql.end();

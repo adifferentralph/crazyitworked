@@ -269,7 +269,7 @@ export function ProductForm({
             vehicles={[]}
           />
           <p className="mt-2 text-xs text-stone-500">
-            Required when you submit for review. You can leave this blank while saving a draft.
+            Required when you publish. You can leave this blank while saving a draft.
           </p>
           <FieldError errors={state.fieldErrors?.fitmentIds} />
         </div>
@@ -438,11 +438,11 @@ export function ProductForm({
         {allowSubmitReview ? (
           <SellerSubmitButton
             name="intent"
-            pendingLabel="Submitting for review…"
+            pendingLabel="Publishing…"
             type="submit"
             value="submit-review"
           >
-            Submit for review
+            Publish product
           </SellerSubmitButton>
         ) : null}
       </div>

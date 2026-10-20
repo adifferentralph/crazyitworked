@@ -15,6 +15,7 @@ export async function GET(request: Request) {
   const makeId = uuid(parameters.get("makeId"));
   const modelId = uuid(parameters.get("modelId"));
   const yearId = uuid(parameters.get("yearId"));
+  const query = parameters.get("q")?.trim().slice(0, 100) ?? "";
   const supabase = await createClient();
 
   if (fitmentId) {
@@ -138,13 +139,13 @@ export async function GET(request: Request) {
   }
 
   if (makeId) {
-    const { data, error } = await supabase
+    let modelQuery = supabase
       .from("vehicle_models")
       .select("id, name")
       .eq("make_id", makeId)
-      .eq("is_active", true)
-      .order("name")
-      .limit(500);
+      .eq("is_active", true);
+    if (query) modelQuery = modelQuery.ilike("name", `%${query}%`);
+    const { data, error } = await modelQuery.order("name").limit(query ? 50 : 100);
     return error
       ? NextResponse.json({ message: "Vehicle models could not be loaded." }, { status: 500 })
       : NextResponse.json({ models: data ?? [] });

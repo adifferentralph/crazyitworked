@@ -309,11 +309,11 @@ test("live seller onboarding, product media, workflow, and ownership RLS", async
     await page.getByRole("link", { name: "Edit product" }).click();
     await page.getByLabel("Part name").fill("Toyota Camry genuine front brake pad set");
     await page.getByLabel("Quantity available").fill("9");
-    await page.getByRole("button", { name: "Submit for review", exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`/products/${productId}\\?message=submitted$`), {
+    await page.getByRole("button", { name: "Publish product", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/products/${productId}\\?message=published$`), {
       timeout: 90_000,
     });
-    console.log("[phase2-live] edited product submitted for review");
+    console.log("[phase2-live] edited product published automatically");
 
     const [databaseProduct] = await sql<
       { name: string; quantity: number; status: string }[]
@@ -321,7 +321,7 @@ test("live seller onboarding, product media, workflow, and ownership RLS", async
     expect(databaseProduct).toMatchObject({
       name: "Toyota Camry genuine front brake pad set",
       quantity: 9,
-      status: "PENDING_REVIEW",
+      status: "APPROVED",
     });
     const [mediaCount] = await sql<
       { count: number }[]
@@ -362,7 +362,7 @@ test("live seller onboarding, product media, workflow, and ownership RLS", async
 
     const outsiderRead = await outsider.from("products").select("id").eq("id", productId!);
     expect(outsiderRead.error).toBeNull();
-    expect(outsiderRead.data).toEqual([]);
+    expect(outsiderRead.data).toEqual([{ id: productId }]);
     const outsiderUpdate = await outsider
       .from("products")
       .update({ name: "Unauthorized change" })
@@ -415,8 +415,6 @@ test("live seller onboarding, product media, workflow, and ownership RLS", async
 
     await sql`update public.seller_profiles set status = 'ACTIVE' where user_id = ${sellerOne.id}::uuid`;
     await sql`update public.seller_verifications set status = 'APPROVED', reviewed_at = now() where seller_id = ${sellerOne.id}::uuid`;
-    await sql`update public.products set status = 'APPROVED', published_at = now() where id = ${productId}::uuid`;
-
     const anonymous = publicClient();
     const approvedPublicProduct = await anonymous
       .from("products")

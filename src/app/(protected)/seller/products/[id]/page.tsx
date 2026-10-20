@@ -18,12 +18,12 @@ const notices: Record<string, { message: string; tone: "error" | "success" }> = 
     tone: "error",
   },
   "assisted-submitted": {
-    message: "You confirmed the assisted listing and submitted it for marketplace review.",
+    message: "You confirmed the assisted listing. It is now published in the marketplace.",
     tone: "success",
   },
   "changes-saved": { message: "Product changes saved.", tone: "success" },
   "draft-created": { message: "Draft product created.", tone: "success" },
-  submitted: { message: "Product submitted for marketplace review.", tone: "success" },
+  published: { message: "Product published in the marketplace.", tone: "success" },
 };
 
 export default async function SellerProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ message?: string }> }) {
@@ -48,7 +48,7 @@ export default async function SellerProductPage({ params, searchParams }: { para
           <p className="mt-2 text-sm leading-6 text-stone-700">Platform staff prepared this seller-owned draft. Check the part details, fitment, price, stock, and five genuine images. You can edit anything before confirming.</p>
           <form action={confirmAssistedProductAction} className="mt-4">
             <input name="productId" type="hidden" value={product.id} />
-            <SellerSubmitButton pendingLabel="Confirming and submitting…">Confirm details and submit for review</SellerSubmitButton>
+            <SellerSubmitButton pendingLabel="Confirming and publishing…">Confirm details and publish</SellerSubmitButton>
           </form>
         </section>
       ) : null}

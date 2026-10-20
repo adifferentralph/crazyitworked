@@ -377,7 +377,7 @@ export async function createProductAction(
     if (error) {
       return {
         message:
-          "The product was saved as a draft, but it is not submission-ready. Confirm all required images.",
+          "The product was saved as a draft, but it could not be published. Confirm the vehicle fitment and all required images.",
         productId,
         status: "error",
       };
@@ -385,9 +385,14 @@ export async function createProductAction(
   }
 
   revalidatePath("/seller/products");
+  if (parsed.data.intent === "submit-review") {
+    revalidatePath("/");
+    revalidatePath("/marketplace");
+    revalidatePath("/categories");
+  }
   redirect(
     `/seller/products/${productId}?message=${
-      parsed.data.intent === "submit-review" ? "submitted" : "draft-created"
+      parsed.data.intent === "submit-review" ? "published" : "draft-created"
     }`,
   );
 }
@@ -450,16 +455,21 @@ export async function updateProductAction(
       .eq("seller_id", principal.id);
     if (error) {
       return databaseError(
-        "The draft was saved, but submission requires five active required images and an actual-item image when applicable.",
+        "The draft was saved, but publishing requires a vehicle fitment, five active required images, and an actual-item image when applicable.",
       );
     }
   }
 
   revalidatePath("/seller/products");
   revalidatePath(`/seller/products/${productId}`);
+  if (parsed.data.intent === "submit-review") {
+    revalidatePath("/");
+    revalidatePath("/marketplace");
+    revalidatePath("/categories");
+  }
   redirect(
     `/seller/products/${productId}?message=${
-      parsed.data.intent === "submit-review" ? "submitted" : "changes-saved"
+      parsed.data.intent === "submit-review" ? "published" : "changes-saved"
     }`,
   );
 }

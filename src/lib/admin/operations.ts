@@ -1,8 +1,9 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { getDatabase } from "@/db/client";
+import { products } from "@/db/schema";
 
 function normalizeSearch(value?: string) {
   return value?.trim().slice(0, 100) ?? "";
@@ -180,10 +181,12 @@ export async function getAdminSellers(searchValue?: string): Promise<AdminSeller
 
 export type AdminProduct = {
   createdAt: Date;
+  id: string;
   name: string;
   priceMinor: number;
   quantity: number;
   sku: string;
+  slug: string;
   status: string;
   storeName: string;
 };
@@ -199,7 +202,9 @@ export async function getAdminProducts({
   const like = `%${search}%`;
   return getDatabase().execute(sql<AdminProduct>`
     select
+      products.id,
       products.name,
+      products.slug,
       products.sku,
       products.status::text,
       products.price_minor::int as "priceMinor",
@@ -218,6 +223,35 @@ export async function getAdminProducts({
     order by products.created_at desc
     limit 100
   `);
+}
+
+export async function getAdminProduct(productId: string) {
+  const [product] = await getDatabase()
+    .select({
+      brand: products.brand,
+      categoryId: products.categoryId,
+      city: products.city,
+      condition: products.condition,
+      deliveryAvailable: products.deliveryAvailable,
+      description: products.description,
+      id: products.id,
+      manufacturerPartNumber: products.manufacturerPartNumber,
+      name: products.name,
+      oemPartNumber: products.oemPartNumber,
+      pickupAvailable: products.pickupAvailable,
+      priceMinor: products.priceMinor,
+      quantity: products.quantity,
+      sellerId: products.sellerId,
+      sku: products.sku,
+      slug: products.slug,
+      state: products.state,
+      status: products.status,
+    })
+    .from(products)
+    .where(eq(products.id, productId))
+    .limit(1);
+
+  return product ?? null;
 }
 
 export type AdminOrder = {

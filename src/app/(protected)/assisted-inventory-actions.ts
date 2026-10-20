@@ -373,5 +373,8 @@ export async function confirmAssistedProductAction(formData: FormData) {
   const { error } = await supabase.rpc("confirm_assisted_product", { p_product_id: productId.data });
   if (error) redirect(`/seller/products/${productId.data}?message=assisted-not-ready`);
   revalidatePath("/seller/products");
+  revalidatePath("/");
+  revalidatePath("/marketplace");
+  revalidatePath("/categories");
   redirect(`/seller/products/${productId.data}?message=assisted-submitted`);
 }
