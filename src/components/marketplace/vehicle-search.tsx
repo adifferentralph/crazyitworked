@@ -80,9 +80,7 @@ function SearchableCombobox({
           if (event.key === "ArrowDown") {
             event.preventDefault();
             setOpen(true);
-            setHighlighted((current) =>
-              Math.min(current + 1, Math.max(0, options.length - 1)),
-            );
+            setHighlighted((current) => Math.min(current + 1, Math.max(0, options.length - 1)));
           } else if (event.key === "ArrowUp") {
             event.preventDefault();
             setHighlighted((current) => Math.max(0, current - 1));
@@ -213,11 +211,13 @@ function isVehicleOption(value: unknown): value is MarketplaceVehicleOption {
 }
 
 export function VehicleSearch({
+  error,
   initialVehicle,
   inputName = "vehicle",
   makes,
   vehicles,
 }: {
+  error?: string;
   initialVehicle?: string;
   inputName?: string;
   makes: MarketplaceVehicleMakeOption[];
@@ -250,24 +250,26 @@ export function VehicleSearch({
   );
   const [fitmentOptions, setFitmentOptions] = useState<FitmentDetail[]>(
     initial
-      ? [{
-          engine: initial.engine,
-          engineId: initial.engineId,
-          id: initial.id,
-          trim: initial.trim,
-          trimId: initial.trimId,
-        }]
+      ? [
+          {
+            engine: initial.engine,
+            engineId: initial.engineId,
+            id: initial.id,
+            trim: initial.trim,
+            trimId: initial.trimId,
+          },
+        ]
       : [],
   );
   const [loading, setLoading] = useState(false);
+  const [modelLoadFailed, setModelLoadFailed] = useState(false);
 
   useEffect(() => {
     if (!initialVehicle || initial) return;
     const controller = new AbortController();
-    void fetch(
-      "/api/vehicles/options?fitmentId=" + encodeURIComponent(initialVehicle),
-      { signal: controller.signal },
-    )
+    void fetch("/api/vehicles/options?fitmentId=" + encodeURIComponent(initialVehicle), {
+      signal: controller.signal,
+    })
       .then((response) => (response.ok ? response.json() : null))
       .then((payload: unknown) => {
         if (
@@ -292,10 +294,7 @@ export function VehicleSearch({
         setFitmentOptions([fitment]);
         const make = "make" in payload ? payload.make : null;
         if (isMakeOption(make)) {
-          setMakeOptions((current) => [
-            make,
-            ...current.filter((option) => option.id !== make.id),
-          ]);
+          setMakeOptions((current) => [make, ...current.filter((option) => option.id !== make.id)]);
         }
       })
       .catch(() => undefined);
@@ -310,13 +309,17 @@ export function VehicleSearch({
     const controller = new AbortController();
     const timeout = window.setTimeout(() => {
       setLoading(true);
+      setModelLoadFailed(false);
       const parameters = new URLSearchParams({ makeId });
       const query = modelQuery.trim();
       if (query) parameters.set("q", query);
       void fetch(`/api/vehicles/options?${parameters.toString()}`, {
         signal: controller.signal,
       })
-        .then((response) => (response.ok ? response.json() : null))
+        .then((response) => {
+          if (!response.ok) throw new Error("Vehicle models could not be loaded.");
+          return response.json();
+        })
         .then((payload: unknown) => {
           if (
             typeof payload === "object" &&
@@ -325,6 +328,12 @@ export function VehicleSearch({
             Array.isArray(payload.models)
           ) {
             setModelOptions(payload.models.filter(isNamedOption));
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setModelOptions([]);
+            setModelLoadFailed(true);
           }
         })
         .finally(() => {
@@ -471,14 +480,11 @@ export function VehicleSearch({
   );
   const selected =
     fitmentOptions.find(
-      (fitment) =>
-        fitment.trimId === (trimId || null) &&
-        fitment.engineId === (engineId || null),
+      (fitment) => fitment.trimId === (trimId || null) && fitment.engineId === (engineId || null),
     ) ??
     fitmentOptions.find(
       (fitment) =>
-        (!trimId || fitment.trimId === trimId) &&
-        (!engineId || fitment.engineId === engineId),
+        (!trimId || fitment.trimId === trimId) && (!engineId || fitment.engineId === engineId),
     );
 
   function clearAfterMake() {
@@ -500,7 +506,13 @@ export function VehicleSearch({
   }
 
   return (
-    <fieldset>
+    <fieldset
+      aria-describedby={error ? `${instanceId}-fitment-error` : undefined}
+      aria-invalid={Boolean(error)}
+      className={error ? "rounded-md border border-red-500 p-3" : undefined}
+      data-error-field={error ? inputName : undefined}
+      tabIndex={error ? -1 : undefined}
+    >
       <legend className="sr-only">Choose your vehicle</legend>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="relative">
@@ -591,7 +603,7 @@ export function VehicleSearch({
 
         <SearchableCombobox
           disabled={!makeId}
-          emptyMessage="No model found."
+          emptyMessage={modelLoadFailed ? "Models could not load. Try again." : "No model found."}
           inputId={modelInputId}
           label="Model"
           listId={modelListId}
@@ -659,7 +671,9 @@ export function VehicleSearch({
             >
               <option value="">Any trim</option>
               {trims.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
               ))}
             </select>
           </label>
@@ -676,7 +690,9 @@ export function VehicleSearch({
             >
               <option value="">Any engine</option>
               {engines.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
               ))}
             </select>
           </label>
@@ -684,8 +700,21 @@ export function VehicleSearch({
       </div>
       <input name={inputName} type="hidden" value={selected?.id ?? ""} />
       {makeId && !loading && modelOptions.length === 0 ? (
-        <p className="mt-3 text-xs text-stone-500">
-          We do not have models for this make yet. Try another spelling or make.
+        <p
+          className={
+            modelLoadFailed
+              ? "mt-3 text-xs font-medium text-red-700"
+              : "mt-3 text-xs text-stone-500"
+          }
+        >
+          {modelLoadFailed
+            ? "The model list could not load. Check your connection and choose the make again."
+            : "We do not have models for this make yet. Try another spelling or make."}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="mt-3 text-sm font-medium text-red-700" id={`${instanceId}-fitment-error`}>
+          {error}
         </p>
       ) : null}
       {selected ? (

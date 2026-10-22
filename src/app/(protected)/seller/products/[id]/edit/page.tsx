@@ -20,7 +20,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   const actualImage = detail.images.find((image) => image.is_active && image.is_actual_item);
   const defaults: ProductFormDefaults = {
     actualItemType: actualImage?.type,
-    brand: product.brand,
+    brand: product.brand ?? "",
     categoryId: product.category_id,
     city: product.city,
     condition: product.condition,

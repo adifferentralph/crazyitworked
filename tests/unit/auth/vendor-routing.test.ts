@@ -5,6 +5,7 @@ import {
   getVendorAccessDestination,
   isMarketplaceHostname,
   isVendorHostname,
+  isVendorPassthroughPath,
   sellerPathToVendorPath,
   vendorPathToInternal,
 } from "@/lib/routing/vendor";
@@ -35,6 +36,12 @@ describe("vendor hostname routing", () => {
     expect(sellerPathToVendorPath("/seller/dashboard")).toBe("/dashboard");
     expect(sellerPathToVendorPath("/seller/products/example")).toBe("/products/example");
     expect(sellerPathToVendorPath("/seller/onboarding")).toBe("/settings");
+  });
+
+  it("keeps seller vehicle catalogue requests on the vendor origin", () => {
+    expect(isVendorPassthroughPath("/api/vehicles/makes")).toBe(true);
+    expect(isVendorPassthroughPath("/api/vehicles/options")).toBe(true);
+    expect(isVendorPassthroughPath("/api/orders")).toBe(false);
   });
 
   it("matches only the configured marketplace and vendor hostnames", () => {

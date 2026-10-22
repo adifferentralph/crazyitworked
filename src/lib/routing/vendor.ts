@@ -55,5 +55,5 @@ export function sellerPathToVendorPath(pathname: string) {
 }
 
 export function isVendorPassthroughPath(pathname: string) {
-  return vendorPassthroughPaths.has(pathname);
+  return vendorPassthroughPaths.has(pathname) || pathname.startsWith("/api/vehicles/");
 }

@@ -192,10 +192,25 @@ async function main() {
         submissionContract.definition.includes("is_primary"),
       "Product submission readiness must require an active primary fitment.",
     );
+    const normalizedSubmissionDefinition = submissionContract.definition.toUpperCase();
+    assert(
+      normalizedSubmissionDefinition.includes(">= 5") &&
+        !normalizedSubmissionDefinition.includes("PART_NUMBER") &&
+        !normalizedSubmissionDefinition.includes("PACKAGING"),
+      "Product submission must require five photos without forcing irrelevant image categories.",
+    );
     assert(
       submissionContract.missingPrimary === 0,
       "An existing product has active fitments but no primary fitment.",
     );
+    const [brandColumn] = await sql<{ is_nullable: string }[]>`
+      select is_nullable
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'products'
+        and column_name = 'brand'
+    `;
+    assert(brandColumn?.is_nullable === "YES", "Unbranded products must be accepted.");
     const [automaticPublishing] = await sql<{ definition: string }[]>`
       select pg_get_functiondef('public.auto_publish_ready_product()'::regprocedure)
         as definition

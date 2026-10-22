@@ -19,7 +19,7 @@ const priceSchema = z
 
 const adminProductSchema = z
   .object({
-    brand: z.string().trim().min(2).max(100),
+    brand: z.string().trim().max(100).transform((value) => value || null),
     categoryId: z.string().uuid(),
     city: z.string().trim().min(2).max(100),
     condition: z.enum([

@@ -34,8 +34,12 @@ function validationError(error: z.ZodError): SellerActionState {
   };
 }
 
-function databaseError(message: string): SellerActionState {
-  return { message, status: "error" };
+function databaseError(message: string, field?: string): SellerActionState {
+  return {
+    fieldErrors: field ? { [field]: [message] } : undefined,
+    message,
+    status: "error",
+  };
 }
 
 export async function completeSellerOnboardingAction(
@@ -108,7 +112,11 @@ type ImageUpload = {
   type: ProductImageType;
 };
 
-function collectImageUploads(formData: FormData, actualItemType?: ProductImageType) {
+function collectImageUploads(
+  formData: FormData,
+  condition: ProductCondition,
+  actualItemType?: ProductImageType,
+) {
   const uploads: ImageUpload[] = [];
   const errors: string[] = [];
 
@@ -124,7 +132,9 @@ function collectImageUploads(formData: FormData, actualItemType?: ProductImageTy
 
     uploads.push({
       file: value,
-      isActualItem: actualItemType === slot.type,
+      isActualItem:
+        actualItemType === slot.type ||
+        (!actualItemType && conditionRequiresActualItem(condition) && slot.type === "PRIMARY"),
       type: slot.type,
     });
   }
@@ -282,20 +292,18 @@ function submissionImageError(
 ) {
   if (!isNewProduct) return null;
 
-  const uploadedTypes = new Set(uploads.map((upload) => upload.type));
-  const missing = requiredProductImageSlots.filter((slot) => !uploadedTypes.has(slot.type));
-  if (missing.length > 0) {
-    return "Submission requires all five labelled image categories. Save a draft if images are not ready.";
+  if (uploads.length < 5) {
+    return "Add five genuine photos of this product before publishing. Save a draft if the photos are not ready.";
   }
 
   if (conditionRequiresActualItem(condition) && !uploads.some((upload) => upload.isActualItem)) {
-    return "Choose which uploaded image shows the actual physical item being sold.";
+    return "The main photo must show the actual physical item being sold.";
   }
 
   return null;
 }
 
-function productValues(parsed: z.infer<typeof productFormSchema>) {
+function productValues(parsed: z.infer<typeof productFormSchema>, sku: string) {
   return {
     brand: parsed.brand,
     category_id: parsed.categoryId,
@@ -310,7 +318,7 @@ function productValues(parsed: z.infer<typeof productFormSchema>) {
     pickup_available: parsed.pickupAvailable,
     price_minor: priceInputToMinor(parsed.priceNgn),
     quantity: parsed.quantity,
-    sku: parsed.sku,
+    sku,
     state: parsed.state,
   };
 }
@@ -327,19 +335,24 @@ export async function createProductAction(
     redirect("/seller/onboarding?next=/seller/products/new");
   }
 
-  const { errors, uploads } = collectImageUploads(formData, parsed.data.actualItemType);
-  if (errors.length > 0) return databaseError(errors[0] ?? "An image is invalid.");
+  const { errors, uploads } = collectImageUploads(
+    formData,
+    parsed.data.condition,
+    parsed.data.actualItemType,
+  );
+  if (errors.length > 0) return databaseError(errors[0] ?? "An image is invalid.", "images");
 
   if (parsed.data.intent === "submit-review") {
     const error = submissionImageError(parsed.data.condition, uploads, true);
-    if (error) return databaseError(error);
+    if (error) return databaseError(error, "images");
   }
 
   const supabase = await createClient();
   const productId = randomUUID();
+  const sku = parsed.data.sku ?? `TTP-${productId.slice(0, 8).toUpperCase()}`;
   const slug = `${slugifyProduct(parsed.data.name) || "part"}-${productId.slice(0, 8)}`;
   const { error: productError } = await supabase.from("products").insert({
-    ...productValues(parsed.data),
+    ...productValues(parsed.data, sku),
     created_by_user_id: principal.id,
     creation_source: "SELLER",
     id: productId,
@@ -410,7 +423,7 @@ export async function updateProductAction(
   const supabase = await createClient();
   const { data: existingProduct, error: existingError } = await supabase
     .from("products")
-    .select("id, status")
+    .select("id, sku, status")
     .eq("id", productId)
     .eq("seller_id", principal.id)
     .single();
@@ -420,12 +433,16 @@ export async function updateProductAction(
     return databaseError("Only draft or needs-changes listings can edit product details.");
   }
 
-  const { errors, uploads } = collectImageUploads(formData, parsed.data.actualItemType);
-  if (errors.length > 0) return databaseError(errors[0] ?? "An image is invalid.");
+  const { errors, uploads } = collectImageUploads(
+    formData,
+    parsed.data.condition,
+    parsed.data.actualItemType,
+  );
+  if (errors.length > 0) return databaseError(errors[0] ?? "An image is invalid.", "images");
 
   const { error: updateError } = await supabase
     .from("products")
-    .update(productValues(parsed.data))
+    .update(productValues(parsed.data, parsed.data.sku ?? existingProduct.sku))
     .eq("id", productId)
     .eq("seller_id", principal.id);
 
@@ -456,6 +473,7 @@ export async function updateProductAction(
     if (error) {
       return databaseError(
         "The draft was saved, but publishing requires a vehicle fitment, five active required images, and an actual-item image when applicable.",
+        "images",
       );
     }
   }

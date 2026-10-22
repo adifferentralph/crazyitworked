@@ -7,6 +7,10 @@ const migration = readFileSync(
   resolve(process.cwd(), "drizzle/0024_optional_fields_primary_fitment.sql"),
   "utf8",
 );
+const flexibleListingMigration = readFileSync(
+  resolve(process.cwd(), "drizzle/0028_flexible_product_listing.sql"),
+  "utf8",
+);
 
 describe("product primary fitment submission contract", () => {
   it("backfills one primary fitment for existing products", () => {
@@ -24,5 +28,14 @@ describe("product primary fitment submission contract", () => {
 
   it("keeps the trigger function unavailable to client roles", () => {
     expect(migration).toContain("FROM PUBLIC, anon, authenticated, service_role");
+  });
+
+  it("keeps five real photos without forcing irrelevant photo categories", () => {
+    expect(flexibleListingMigration).toContain("count(*) FILTER (WHERE is_active) >= 5");
+    expect(flexibleListingMigration).not.toContain("type = 'PART_NUMBER'");
+    expect(flexibleListingMigration).not.toContain("type = 'PACKAGING'");
+    expect(flexibleListingMigration).toContain(
+      "ALTER TABLE public.products ALTER COLUMN brand DROP NOT NULL",
+    );
   });
 });

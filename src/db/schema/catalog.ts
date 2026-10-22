@@ -363,7 +363,7 @@ export const products = pgTable(
     slug: text("slug").notNull(),
     description: text("description").notNull(),
     condition: productConditionEnum("condition").notNull(),
-    brand: text("brand").notNull(),
+    brand: text("brand"),
     oemPartNumber: text("oem_part_number"),
     manufacturerPartNumber: text("manufacturer_part_number"),
     sku: text("sku").notNull(),

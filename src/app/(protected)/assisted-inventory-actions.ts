@@ -130,6 +130,16 @@ export async function createAssistedProductAction(
       status: "error",
     };
   }
+  if (!parsed.data.brand || !parsed.data.sku) {
+    return {
+      fieldErrors: {
+        brand: parsed.data.brand ? undefined : ["Enter the brand for assisted inventory."],
+        sku: parsed.data.sku ? undefined : ["Enter the seller SKU for assisted inventory."],
+      },
+      message: "Brand and seller SKU are required for assisted inventory imports.",
+      status: "error",
+    };
+  }
   const sellerId = uuidSchema.safeParse(formData.get("sellerId"));
   if (!sellerId.success) return actionError("Choose an eligible seller before creating a draft.");
   const principal = await requireAdminPermission("assist_seller_inventory", "/admin/inventory-onboarding/new");

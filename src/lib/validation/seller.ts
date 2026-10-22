@@ -95,7 +95,7 @@ export const productFormSchema = z
     actualItemType: z
       .enum(["PRIMARY", "ANGLE", "DETAIL", "PART_NUMBER", "PACKAGING", "OTHER"])
       .optional(),
-    brand: requiredText("Brand", 2, 100),
+    brand: optionalText(100),
     categoryId: z.string().uuid("Choose a valid category."),
     city: requiredText("City", 2, 100),
     condition: z.enum([
@@ -119,7 +119,7 @@ export const productFormSchema = z
     priceNgn: priceInput,
     productId: z.string().uuid().optional(),
     quantity: z.coerce.number().int().min(0).max(1_000_000),
-    sku: requiredText("SKU", 1, 100),
+    sku: optionalText(100),
     state: requiredText("State", 2, 100),
   })
   .superRefine((data, context) => {
@@ -172,7 +172,7 @@ export function getProductFormValues(formData: FormData) {
     description: formData.get("description"),
     fitmentIds: formData
       .getAll("fitmentIds")
-      .filter((value): value is string => typeof value === "string"),
+      .filter((value): value is string => typeof value === "string" && value.length > 0),
     intent: formData.get("intent"),
     manufacturerPartNumber: formData.get("manufacturerPartNumber"),
     name: formData.get("name"),

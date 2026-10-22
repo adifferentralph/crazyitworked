@@ -18,7 +18,6 @@ import {
   ShieldCheck,
   ShoppingCart,
   Star,
-  Store,
   UserRound,
   WalletCards,
   type LucideIcon,
@@ -56,8 +55,6 @@ const sellerLinks: NavigationItem[] = [
   { href: "/seller/inventory", icon: Boxes, label: "Inventory" },
   { href: "/seller/finance", icon: WalletCards, label: "Finance" },
   { href: "/seller/reviews", icon: Star, label: "Reviews" },
-  { href: "/seller/notifications", icon: Bell, label: "Notifications" },
-  { href: "/seller/onboarding", icon: Store, label: "Store Settings" },
 ];
 
 function HeaderSearch({ id }: { id: string }) {
@@ -190,19 +187,29 @@ function SellerHeader({ principal, storeName }: { principal: Principal; storeNam
       <header className="sticky top-0 z-40 border-b border-stone-200 bg-white">
         <div className="container-page flex min-h-16 items-center gap-5">
           <BrandLogo className="shrink-0 [&_span]:hidden xl:[&_span]:inline" href="/seller/dashboard" priority />
-          <nav aria-label="Seller workspace" className="hidden min-w-0 flex-1 items-center gap-1 lg:flex">
+          <nav aria-label="Seller workspace" className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex xl:gap-1">
             {sellerLinks.map(({ href, icon: Icon, label }) => (
               <Link
+                aria-label={label}
                 className="flex items-center gap-1.5 rounded-md px-2 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-primary xl:text-sm"
                 href={href}
                 key={href}
+                title={label}
               >
                 <Icon aria-hidden="true" className="size-4 shrink-0" />
-                {label}
+                <span className="hidden xl:inline">{label}</span>
               </Link>
             ))}
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-2">
+            <Link
+              aria-label="Notifications"
+              className="hidden size-10 items-center justify-center rounded-md text-stone-700 hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-primary lg:flex"
+              href="/seller/notifications"
+              title="Notifications"
+            >
+              <Bell aria-hidden="true" className="size-5" />
+            </Link>
             <Link className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" href="/seller/products/new">
               <Plus aria-hidden="true" className="size-4" />
               <span className="hidden sm:inline">Add Product</span>

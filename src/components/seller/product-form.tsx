@@ -1,6 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { Camera, CarFront, CircleDollarSign, MapPin, PackageCheck, ScanLine } from "lucide-react";
 
 import { createProductAction, updateProductAction } from "@/app/(protected)/seller/actions";
@@ -12,10 +19,16 @@ import {
 } from "@/lib/marketplace/seller-action-state";
 import { SellerSubmitButton } from "@/components/seller/seller-submit-button";
 import { Input } from "@/components/ui/input";
-import { productConditions, requiredProductImageSlots } from "@/lib/marketplace/products";
+import {
+  productConditions,
+  requiredProductImageSlots,
+  validateProductImage,
+} from "@/lib/marketplace/products";
 import type { ProductCategoryOption } from "@/lib/marketplace/seller-data";
 import type { MarketplaceVehicleMakeOption } from "@/lib/marketplace/search-options";
 import type { ProductCondition, ProductImageType } from "@/lib/supabase/database.types";
+import { getProductFormValues, productFormSchema } from "@/lib/validation/seller";
+import { cn } from "@/lib/utils";
 
 export type ProductFormDefaults = {
   actualItemType?: ProductImageType;
@@ -45,8 +58,12 @@ const selectClass =
 const textareaClass =
   "min-h-32 w-full rounded-md border bg-white px-3 py-2 text-sm outline-none transition-colors placeholder:text-stone-400 focus-visible:ring-2 focus-visible:ring-ring";
 
-function FieldError({ errors }: { errors?: string[] }) {
-  return errors?.[0] ? <p className="mt-2 text-sm text-primary">{errors[0]}</p> : null;
+function FieldError({ errors, id }: { errors?: string[]; id?: string }) {
+  return errors?.[0] ? (
+    <p className="mt-2 text-sm font-medium text-red-700" id={id}>
+      {errors[0]}
+    </p>
+  ) : null;
 }
 
 function FormSection({
@@ -80,6 +97,54 @@ type ProductFormAction = (
   formData: FormData,
 ) => Promise<SellerActionState>;
 
+function buildSubmissionData(event: FormEvent<HTMLFormElement>) {
+  const submitter = (event.nativeEvent as SubmitEvent).submitter;
+  return submitter instanceof HTMLButtonElement
+    ? new FormData(event.currentTarget, submitter)
+    : new FormData(event.currentTarget);
+}
+
+function validateImages(
+  formData: FormData,
+  currentImageTypes: ProductImageType[],
+  publishing: boolean,
+) {
+  const selectedTypes: ProductImageType[] = [];
+  for (const slot of requiredProductImageSlots) {
+    const value = formData.get(slot.field);
+    if (!(value instanceof File) || value.size === 0) continue;
+    const error = validateProductImage(value);
+    if (error) return `${slot.label}: ${error}`;
+    selectedTypes.push(slot.type);
+  }
+
+  if (!publishing) return null;
+
+  const currentPrimaryCount = currentImageTypes.filter((type) => type === "PRIMARY").length;
+  const addedCount = selectedTypes.filter(
+    (type) => type !== "PRIMARY" || currentPrimaryCount === 0,
+  ).length;
+  if (currentImageTypes.length + addedCount < 5) {
+    return "Add five genuine photos of this product before publishing.";
+  }
+
+  return null;
+}
+
+function focusFirstError(
+  form: HTMLFormElement | null,
+  fieldErrors: Record<string, string[] | undefined>,
+) {
+  if (!form) return;
+  const firstField = Object.keys(fieldErrors).find((field) => fieldErrors[field]?.[0]);
+  if (!firstField) return;
+  const target = form.querySelector<HTMLElement>(
+    `[data-error-field="${firstField}"], [name="${firstField}"]`,
+  );
+  target?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+  target?.focus({ preventScroll: true });
+}
+
 export function ProductForm({
   actionOverride,
   allowSubmitReview = true,
@@ -104,10 +169,58 @@ export function ProductForm({
   showDraftRecoveryLink?: boolean;
 }) {
   const action = actionOverride ?? (mode === "create" ? createProductAction : updateProductAction);
-  const [state, formAction] = useActionState(action, initialSellerActionState);
+  const [state, formAction, pending] = useActionState(action, initialSellerActionState);
+  const [clientErrors, setClientErrors] = useState<Record<string, string[] | undefined>>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  const submitIntentRef = useRef<"save-draft" | "submit-review">("save-draft");
+  const fieldErrors = { ...state.fieldErrors, ...clientErrors };
+  const hasClientErrors = Object.values(clientErrors).some((errors) => Boolean(errors?.[0]));
+  const visibleState: SellerActionState = hasClientErrors
+    ? {
+        fieldErrors: clientErrors,
+        message: "Check the highlighted fields. Your information has not been cleared.",
+        status: "error",
+      }
+    : state;
+
+  useEffect(() => {
+    if (state.status === "error" && state.fieldErrors) {
+      focusFirstError(formRef.current, state.fieldErrors);
+    }
+  }, [state]);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = buildSubmissionData(event);
+    if (!formData.get("intent")) formData.set("intent", submitIntentRef.current);
+    const parsed = productFormSchema.safeParse(getProductFormValues(formData));
+    const nextErrors: Record<string, string[] | undefined> = parsed.success
+      ? {}
+      : parsed.error.flatten().fieldErrors;
+    const imageError = validateImages(
+      formData,
+      defaults.imageTypes,
+      formData.get("intent") === "submit-review",
+    );
+    if (imageError) nextErrors.images = [imageError];
+
+    setClientErrors(nextErrors);
+    if (Object.values(nextErrors).some((errors) => Boolean(errors?.[0]))) {
+      window.requestAnimationFrame(() => focusFirstError(formRef.current, nextErrors));
+      return;
+    }
+
+    startTransition(() => formAction(formData));
+  }
 
   return (
-    <form action={formAction} className="grid gap-7" noValidate>
+    <form
+      action={formAction}
+      className="grid gap-7"
+      noValidate
+      onSubmit={handleSubmit}
+      ref={formRef}
+    >
       {defaults.productId ? (
         <input name="productId" type="hidden" value={defaults.productId} />
       ) : null}
@@ -120,25 +233,33 @@ export function ProductForm({
         icon={PackageCheck}
         title="Part details"
       >
-        <div className="sm:col-span-2">
+        <div className="sm:col-span-2" data-error-field="name" tabIndex={-1}>
           <label className={labelClass} htmlFor="name">
-            Part name
+            Part name <span className="text-primary">*</span>
           </label>
           <Input
+            aria-describedby={fieldErrors.name?.[0] ? "name-error" : undefined}
+            aria-invalid={Boolean(fieldErrors.name?.[0])}
+            className={cn(fieldErrors.name?.[0] && "border-red-500 ring-1 ring-red-200")}
             defaultValue={defaults.name}
             id="name"
             name="name"
             placeholder="Toyota Camry front brake pad set"
             required
           />
-          <FieldError errors={state.fieldErrors?.name} />
+          <FieldError errors={fieldErrors.name} id="name-error" />
         </div>
-        <div>
+        <div data-error-field="categoryId" tabIndex={-1}>
           <label className={labelClass} htmlFor="categoryId">
-            Category
+            Category <span className="text-primary">*</span>
           </label>
           <select
-            className={selectClass}
+            aria-describedby={fieldErrors.categoryId?.[0] ? "category-error" : undefined}
+            aria-invalid={Boolean(fieldErrors.categoryId?.[0])}
+            className={cn(
+              selectClass,
+              fieldErrors.categoryId?.[0] && "border-red-500 ring-1 ring-red-200",
+            )}
             defaultValue={defaults.categoryId}
             id="categoryId"
             name="categoryId"
@@ -153,14 +274,18 @@ export function ProductForm({
               </option>
             ))}
           </select>
-          <FieldError errors={state.fieldErrors?.categoryId} />
+          <FieldError errors={fieldErrors.categoryId} id="category-error" />
         </div>
-        <div>
+        <div data-error-field="condition" tabIndex={-1}>
           <label className={labelClass} htmlFor="condition">
-            Condition
+            Condition <span className="text-primary">*</span>
           </label>
           <select
-            className={selectClass}
+            aria-invalid={Boolean(fieldErrors.condition?.[0])}
+            className={cn(
+              selectClass,
+              fieldErrors.condition?.[0] && "border-red-500 ring-1 ring-red-200",
+            )}
             defaultValue={defaults.condition}
             id="condition"
             name="condition"
@@ -172,44 +297,49 @@ export function ProductForm({
               </option>
             ))}
           </select>
-          <FieldError errors={state.fieldErrors?.condition} />
+          <FieldError errors={fieldErrors.condition} />
         </div>
         <div>
           <label className={labelClass} htmlFor="brand">
-            Brand
+            Brand <span className="font-normal text-stone-500">- Optional</span>
           </label>
           <Input
             defaultValue={defaults.brand}
             id="brand"
             name="brand"
-            placeholder="Toyota, Bosch, Denso…"
+            placeholder="Toyota, Bosch, Denso..."
           />
-          <FieldError errors={state.fieldErrors?.brand} />
+          <FieldError errors={fieldErrors.brand} />
         </div>
-        <div className="sm:col-span-2">
+        <div className="sm:col-span-2" data-error-field="description" tabIndex={-1}>
           <label className={labelClass} htmlFor="description">
-            Description
+            Description <span className="text-primary">*</span>
           </label>
           <textarea
-            className={textareaClass}
+            aria-describedby={fieldErrors.description?.[0] ? "description-error" : undefined}
+            aria-invalid={Boolean(fieldErrors.description?.[0])}
+            className={cn(
+              textareaClass,
+              fieldErrors.description?.[0] && "border-red-500 ring-1 ring-red-200",
+            )}
             defaultValue={defaults.description}
             id="description"
             name="description"
             required
             placeholder="Include material, condition details, what is in the box, and anything a buyer should know."
           />
-          <FieldError errors={state.fieldErrors?.description} />
+          <FieldError errors={fieldErrors.description} id="description-error" />
         </div>
       </FormSection>
 
       <FormSection
-        description="Add any part numbers printed on the part or its packaging."
+        description="Add these only if they help you manage or identify this product."
         icon={ScanLine}
-        title="Identification"
+        title="Part numbers and stock code (optional)"
       >
         <div>
           <label className={labelClass} htmlFor="oemPartNumber">
-            OEM part number <span className="font-normal text-stone-500">— Optional</span>
+            OEM part number <span className="font-normal text-stone-500">- Optional</span>
           </label>
           <Input
             className="font-mono"
@@ -217,11 +347,11 @@ export function ProductForm({
             id="oemPartNumber"
             name="oemPartNumber"
           />
-          <FieldError errors={state.fieldErrors?.oemPartNumber} />
+          <FieldError errors={fieldErrors.oemPartNumber} />
         </div>
         <div>
           <label className={labelClass} htmlFor="manufacturerPartNumber">
-            Manufacturer part number <span className="font-normal text-stone-500">— Optional</span>
+            Manufacturer part number <span className="font-normal text-stone-500">- Optional</span>
           </label>
           <Input
             className="font-mono"
@@ -229,18 +359,21 @@ export function ProductForm({
             id="manufacturerPartNumber"
             name="manufacturerPartNumber"
           />
-          <FieldError errors={state.fieldErrors?.manufacturerPartNumber} />
+          <FieldError errors={fieldErrors.manufacturerPartNumber} />
         </div>
         <div>
           <label className={labelClass} htmlFor="sku">
-            Your SKU
+            Your SKU <span className="font-normal text-stone-500">- Optional</span>
           </label>
           <Input className="font-mono" defaultValue={defaults.sku} id="sku" name="sku" />
-          <FieldError errors={state.fieldErrors?.sku} />
+          <p className="mt-2 text-xs text-stone-500">
+            We will create a stock code if you leave this blank.
+          </p>
+          <FieldError errors={fieldErrors.sku} />
         </div>
         <div className="sm:col-span-2">
           <label className={labelClass} htmlFor="crossReferences">
-            Cross-reference numbers <span className="font-normal text-stone-500">— Optional</span>
+            Cross-reference numbers <span className="font-normal text-stone-500">- Optional</span>
           </label>
           <textarea
             className={textareaClass}
@@ -249,7 +382,7 @@ export function ProductForm({
             name="crossReferences"
             placeholder="One per line or separated by commas"
           />
-          <FieldError errors={state.fieldErrors?.crossReferences} />
+          <FieldError errors={fieldErrors.crossReferences} />
         </div>
       </FormSection>
 
@@ -263,6 +396,7 @@ export function ProductForm({
             <input key={fitmentId} name="fitmentIds" type="hidden" value={fitmentId} />
           ))}
           <VehicleSearch
+            error={fieldErrors.fitmentIds?.[0]}
             initialVehicle={defaults.fitmentIds[0]}
             inputName="fitmentIds"
             makes={makes}
@@ -271,7 +405,6 @@ export function ProductForm({
           <p className="mt-2 text-xs text-stone-500">
             Required when you publish. You can leave this blank while saving a draft.
           </p>
-          <FieldError errors={state.fieldErrors?.fitmentIds} />
         </div>
       </FormSection>
 
@@ -280,11 +413,14 @@ export function ProductForm({
         icon={CircleDollarSign}
         title="Price and inventory"
       >
-        <div>
+        <div data-error-field="priceNgn" tabIndex={-1}>
           <label className={labelClass} htmlFor="priceNgn">
-            Price (NGN)
+            Price (NGN) <span className="text-primary">*</span>
           </label>
           <Input
+            aria-describedby={fieldErrors.priceNgn?.[0] ? "price-error" : undefined}
+            aria-invalid={Boolean(fieldErrors.priceNgn?.[0])}
+            className={cn(fieldErrors.priceNgn?.[0] && "border-red-500 ring-1 ring-red-200")}
             defaultValue={defaults.priceNgn}
             id="priceNgn"
             inputMode="decimal"
@@ -292,13 +428,16 @@ export function ProductForm({
             placeholder="45000.00"
             required
           />
-          <FieldError errors={state.fieldErrors?.priceNgn} />
+          <FieldError errors={fieldErrors.priceNgn} id="price-error" />
         </div>
-        <div>
+        <div data-error-field="quantity" tabIndex={-1}>
           <label className={labelClass} htmlFor="quantity">
-            Quantity available
+            Quantity available <span className="text-primary">*</span>
           </label>
           <Input
+            aria-describedby={fieldErrors.quantity?.[0] ? "quantity-error" : undefined}
+            aria-invalid={Boolean(fieldErrors.quantity?.[0])}
+            className={cn(fieldErrors.quantity?.[0] && "border-red-500 ring-1 ring-red-200")}
             defaultValue={defaults.quantity}
             id="quantity"
             inputMode="numeric"
@@ -307,7 +446,7 @@ export function ProductForm({
             required
             type="number"
           />
-          <FieldError errors={state.fieldErrors?.quantity} />
+          <FieldError errors={fieldErrors.quantity} id="quantity-error" />
         </div>
       </FormSection>
 
@@ -322,27 +461,41 @@ export function ProductForm({
           </label>
           <Input defaultValue="Nigeria" id="country" name="country" readOnly />
         </div>
-        <div>
+        <div data-error-field="state" tabIndex={-1}>
           <label className={labelClass} htmlFor="state">
-            State
+            State <span className="text-primary">*</span>
           </label>
           <Input
+            aria-invalid={Boolean(fieldErrors.state?.[0])}
+            className={cn(fieldErrors.state?.[0] && "border-red-500 ring-1 ring-red-200")}
             defaultValue={defaults.state}
             id="state"
             name="state"
             placeholder="Lagos"
             required
           />
-          <FieldError errors={state.fieldErrors?.state} />
+          <FieldError errors={fieldErrors.state} />
         </div>
-        <div>
+        <div data-error-field="city" tabIndex={-1}>
           <label className={labelClass} htmlFor="city">
-            City
+            City <span className="text-primary">*</span>
           </label>
-          <Input defaultValue={defaults.city} id="city" name="city" placeholder="Ikeja" required />
-          <FieldError errors={state.fieldErrors?.city} />
+          <Input
+            aria-invalid={Boolean(fieldErrors.city?.[0])}
+            className={cn(fieldErrors.city?.[0] && "border-red-500 ring-1 ring-red-200")}
+            defaultValue={defaults.city}
+            id="city"
+            name="city"
+            placeholder="Ikeja"
+            required
+          />
+          <FieldError errors={fieldErrors.city} />
         </div>
-        <div className="grid gap-3 sm:col-span-2">
+        <div
+          className="grid gap-3 sm:col-span-2"
+          data-error-field="deliveryAvailable"
+          tabIndex={-1}
+        >
           <label className="flex items-center gap-3 text-sm text-stone-700">
             <input
               className="size-4 accent-primary"
@@ -361,58 +514,53 @@ export function ProductForm({
             />
             Delivery is available
           </label>
-          <FieldError errors={state.fieldErrors?.deliveryAvailable} />
+          <FieldError errors={fieldErrors.deliveryAvailable} />
         </div>
       </FormSection>
 
-      <FormSection description={imageDescription} icon={Camera} title="Product images">
-        {requiredProductImageSlots.map((slot) => {
-          const current = defaults.imageTypes.includes(slot.type);
-          return (
-            <div className="rounded-md border border-stone-200 bg-[#fffdf9] p-4" key={slot.type}>
-              <label className={labelClass} htmlFor={slot.field}>
-                {slot.label}
-              </label>
-              <p className="mb-3 text-xs leading-5 text-stone-500">{slot.description}</p>
-              {current ? (
-                <p className="mb-3 text-xs font-semibold text-emerald-700">
-                  Current image saved. Choose a file only to add a replacement.
-                </p>
-              ) : null}
-              <input
-                accept="image/jpeg,image/png,image/webp"
-                className="block w-full text-sm text-stone-700 file:mr-3 file:rounded-md file:border-0 file:bg-stone-950 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
-                id={slot.field}
-                name={slot.field}
-                type="file"
-              />
-            </div>
-          );
-        })}
-        <div className="sm:col-span-2">
-          <label className={labelClass} htmlFor="actualItemType">
-            Actual physical item shown{" "}
-            <span className="font-normal text-stone-500">
-              (required for used, refurbished, reconditioned, and OEM take-off parts)
-            </span>
-          </label>
-          <select
-            className={selectClass}
-            defaultValue={defaults.actualItemType ?? ""}
-            id="actualItemType"
-            name="actualItemType"
-          >
-            <option value="">Not applicable / choose an image</option>
-            {requiredProductImageSlots.map((slot) => (
-              <option key={slot.type} value={slot.type}>
-                {slot.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </FormSection>
+      <div data-error-field="images" tabIndex={-1}>
+        <FormSection description={imageDescription} icon={Camera} title="Product images">
+          {requiredProductImageSlots.map((slot) => {
+            const current = defaults.imageTypes.includes(slot.type);
+            return (
+              <div
+                className={cn(
+                  "rounded-md border bg-[#fffdf9] p-4",
+                  fieldErrors.images?.[0] ? "border-red-300" : "border-stone-200",
+                )}
+                key={slot.type}
+              >
+                <label className={labelClass} htmlFor={slot.field}>
+                  {slot.label}
+                </label>
+                <p className="mb-3 text-xs leading-5 text-stone-500">{slot.description}</p>
+                {current ? (
+                  <p className="mb-3 text-xs font-semibold text-emerald-700">
+                    Current image saved. Choose a file only to add a replacement.
+                  </p>
+                ) : null}
+                <input
+                  accept="image/jpeg,image/png,image/webp"
+                  className="block w-full text-sm text-stone-700 file:mr-3 file:rounded-md file:border-0 file:bg-stone-950 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+                  id={slot.field}
+                  name={slot.field}
+                  type="file"
+                />
+              </div>
+            );
+          })}
+          <input name="actualItemType" type="hidden" value={defaults.actualItemType ?? ""} />
+          <p className="sm:col-span-2 text-xs leading-5 text-stone-500">
+            For used, refurbished, reconditioned, or OEM take-off products, the main photo must show
+            the actual item being sold.
+          </p>
+          <div className="sm:col-span-2">
+            <FieldError errors={fieldErrors.images} id="images-error" />
+          </div>
+        </FormSection>
+      </div>
 
-      <SellerFormAlert state={state} />
+      <SellerFormAlert state={visibleState} />
       {state.productId && showDraftRecoveryLink ? (
         <p className="text-sm text-stone-600">
           The draft was created. You can continue from product{" "}
@@ -428,7 +576,11 @@ export function ProductForm({
       <div className="flex flex-col-reverse gap-3 border-t border-stone-200 pt-6 sm:flex-row sm:justify-end">
         <SellerSubmitButton
           name="intent"
-          pendingLabel="Saving draft…"
+          onClick={() => {
+            submitIntentRef.current = "save-draft";
+          }}
+          pending={pending}
+          pendingLabel="Saving draft..."
           type="submit"
           value="save-draft"
           variant="outline"
@@ -438,7 +590,11 @@ export function ProductForm({
         {allowSubmitReview ? (
           <SellerSubmitButton
             name="intent"
-            pendingLabel="Publishing…"
+            onClick={() => {
+              submitIntentRef.current = "submit-review";
+            }}
+            pending={pending}
+            pendingLabel="Publishing..."
             type="submit"
             value="submit-review"
           >

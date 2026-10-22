@@ -564,7 +564,7 @@ seller_categories: Table<
       products: Table<
         TimestampColumns & {
           assisted_onboarding: boolean;
-          brand: string;
+          brand: string | null;
           category_id: string;
           city: string;
           condition: ProductCondition;
@@ -595,7 +595,7 @@ seller_categories: Table<
         },
         {
           assisted_onboarding?: boolean;
-          brand: string;
+          brand?: string | null;
           category_id: string;
           city: string;
           condition: ProductCondition;
@@ -623,7 +623,7 @@ seller_categories: Table<
         },
         {
           assisted_onboarding?: boolean;
-          brand?: string;
+          brand?: string | null;
           category_id?: string;
           city?: string;
           condition?: ProductCondition;

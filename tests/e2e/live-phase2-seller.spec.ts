@@ -267,17 +267,19 @@ test("live seller onboarding, product media, workflow, and ownership RLS", async
     await page.getByLabel("Part name").fill("Toyota Camry genuine brake pad set");
     await page.getByLabel("Category").selectOption(categoryId!);
     await page.getByLabel("Condition", { exact: true }).selectOption("USED");
-    await page.getByLabel("Brand").fill("Toyota");
     await page
       .getByLabel("Description")
       .fill(
         "Genuine used Toyota brake pad set inspected for the live seller workflow test. Includes visible markings and packaging evidence.",
       );
-    await page.getByLabel("Your SKU").fill(`LIVE-${suffix}`);
-    await page.getByLabel("Cars this part fits").selectOption([fitmentId!]);
+    await page.getByRole("combobox", { name: "Make" }).fill("Toyota");
+    await page.getByRole("option", { name: "Toyota", exact: true }).click();
+    await page.getByRole("combobox", { name: "Model" }).click();
+    await page.getByRole("option").first().click();
+    await page.getByRole("combobox", { name: "Year" }).click();
+    await page.getByRole("option").first().click();
     await page.getByLabel("Price (NGN)").fill("45000.00");
     await page.getByLabel("Quantity available").fill("7");
-    await page.getByLabel("Actual physical item shown").selectOption("PRIMARY");
 
     const imageBytes = Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
@@ -287,16 +289,14 @@ test("live seller onboarding, product media, workflow, and ownership RLS", async
       "Main product image",
       "Additional product angle",
       "Detail image",
-      "Part-number or marking image",
-      "Packaging or verification image",
+      "Extra product photo",
+      "Another product photo",
     ]) {
-      await page
-        .getByLabel(label, { exact: true })
-        .setInputFiles({
-          buffer: imageBytes,
-          mimeType: "image/png",
-          name: `${label.toLowerCase().replaceAll(/[^a-z]+/g, "-")}.png`,
-        });
+      await page.getByLabel(label, { exact: true }).setInputFiles({
+        buffer: imageBytes,
+        mimeType: "image/png",
+        name: `${label.toLowerCase().replaceAll(/[^a-z]+/g, "-")}.png`,
+      });
     }
     await page.getByRole("button", { name: "Save draft", exact: true }).click();
     await expect(page).toHaveURL(/\/products\/[0-9a-f-]+\?message=draft-created$/, {
@@ -329,25 +329,31 @@ test("live seller onboarding, product media, workflow, and ownership RLS", async
     expect(mediaCount?.count).toBe(5);
     const [optionalProductData] = await sql<
       {
+        brand: string | null;
         crossReferences: number;
         manufacturerPartNumber: string | null;
         oemPartNumber: string | null;
         primaryFitments: number;
+        sku: string;
       }[]
     >`
       select
+        products.brand,
         products.manufacturer_part_number as "manufacturerPartNumber",
         products.oem_part_number as "oemPartNumber",
+        products.sku,
         (select count(*)::int from public.product_cross_references where product_id = products.id) as "crossReferences",
         (select count(*)::int from public.product_fitments where product_id = products.id and is_active and is_primary) as "primaryFitments"
       from public.products
       where products.id = ${productId}::uuid
     `;
     expect(optionalProductData).toEqual({
+      brand: null,
       crossReferences: 0,
       manufacturerPartNumber: null,
       oemPartNumber: null,
       primaryFitments: 1,
+      sku: expect.stringMatching(/^TTP-[0-9A-F]{8}$/),
     });
     const [historyCount] = await sql<
       { inventory: number; modifications: number }[]

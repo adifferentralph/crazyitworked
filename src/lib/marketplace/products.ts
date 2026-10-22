@@ -41,15 +41,15 @@ export const requiredProductImageSlots: ReadonlyArray<{
     type: "DETAIL",
   },
   {
-    description: "The OEM number, manufacturer marking, stamp, or casting.",
+    description: "Another clear view that helps a buyer understand the item.",
     field: "partNumberImage",
-    label: "Part-number or marking image",
+    label: "Extra product photo",
     type: "PART_NUMBER",
   },
   {
-    description: "Packaging, label, or another useful verification view.",
+    description: "A final useful angle, close-up, label, or packaging view.",
     field: "packagingImage",
-    label: "Packaging or verification image",
+    label: "Another product photo",
     type: "PACKAGING",
   },
 ];

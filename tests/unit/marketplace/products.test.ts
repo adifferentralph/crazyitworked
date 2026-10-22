@@ -68,9 +68,9 @@ describe("seller product rules", () => {
     }
   });
 
-  it("saves a draft when optional product identifiers are omitted", () => {
+  it("saves a draft when optional brand, stock code, and identifiers are omitted", () => {
     const result = productFormSchema.safeParse({
-      brand: "Denso",
+      brand: "",
       categoryId: "c4769a8e-469b-4fde-a0cd-c3f796269f27",
       city: "Ikeja",
       condition: "NEW",
@@ -83,15 +83,17 @@ describe("seller product rules", () => {
       pickupAvailable: true,
       priceNgn: "45000",
       quantity: 4,
-      sku: "TEST-OPTIONAL-001",
+      sku: "",
       state: "Lagos",
     });
 
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.crossReferences).toEqual([]);
+      expect(result.data.brand).toBeNull();
       expect(result.data.manufacturerPartNumber).toBeNull();
       expect(result.data.oemPartNumber).toBeNull();
+      expect(result.data.sku).toBeNull();
     }
   });
 

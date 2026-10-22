@@ -85,8 +85,8 @@ export default async function AdminEditProductPage({
           </select>
         </div>
         <div>
-          <label className={labelClass} htmlFor="brand">Brand</label>
-          <Input defaultValue={product.brand} id="brand" name="brand" required />
+          <label className={labelClass} htmlFor="brand">Brand <span className="font-normal text-stone-500">— Optional</span></label>
+          <Input defaultValue={product.brand ?? ""} id="brand" name="brand" />
         </div>
         <div>
           <label className={labelClass} htmlFor="sku">SKU</label>

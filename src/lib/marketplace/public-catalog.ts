@@ -117,7 +117,7 @@ export const getMarketplaceOptions = cache(async function getMarketplaceOptions(
   const vehicles: MarketplaceVehicleOption[] = [];
 
   return {
-    brands: [...new Set((productsResult.data ?? []).map((row) => row.brand))].sort(),
+    brands: [...new Set((productsResult.data ?? []).map((row) => row.brand).filter((brand): brand is string => Boolean(brand)))].sort(),
     categories,
     locations: [...new Set((productsResult.data ?? []).map((row) => row.state))].sort(),
     makes: (makesResult.data ?? []).map((make) => ({

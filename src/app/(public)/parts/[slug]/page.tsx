@@ -68,7 +68,7 @@ export default async function PartDetailPage({ params }: { params: Promise<{ slu
           {
             "@context": "https://schema.org",
             "@type": "Product",
-            brand: { "@type": "Brand", name: product.brand },
+            brand: product.brand ? { "@type": "Brand", name: product.brand } : undefined,
             category: detail.categoryName,
             description: product.description,
             itemCondition: product.condition === "NEW"
@@ -130,7 +130,7 @@ export default async function PartDetailPage({ params }: { params: Promise<{ slu
               <p className="flex items-center gap-2"><Truck className="size-4 text-primary" aria-hidden="true" />{[product.pickup_available ? "Pickup" : null, product.delivery_available ? "Delivery" : null].filter(Boolean).join(" and ")} available</p>
             </div>
             <dl className="mt-6 grid gap-3 border-y border-stone-200 py-5 text-sm">
-              <div className="flex justify-between gap-4"><dt className="text-stone-500">Brand</dt><dd className="font-semibold">{product.brand}</dd></div>
+              {product.brand ? <div className="flex justify-between gap-4"><dt className="text-stone-500">Brand</dt><dd className="font-semibold">{product.brand}</dd></div> : null}
               <div className="flex justify-between gap-4"><dt className="text-stone-500">Quantity available</dt><dd className="font-semibold">{product.quantity}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-stone-500">OEM number</dt><dd className="font-mono">{product.oem_part_number ?? "Not provided"}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-stone-500">Manufacturer number</dt><dd className="font-mono">{product.manufacturer_part_number ?? "Not provided"}</dd></div>

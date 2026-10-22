@@ -78,7 +78,7 @@ export default async function SellerProductPage({ params, searchParams }: { para
             <dl className="mt-5 grid gap-3 text-sm">
               <div className="flex justify-between gap-4"><dt className="text-stone-500">SKU</dt><dd className="font-mono">{product.sku}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-stone-500">Condition</dt><dd>{product.condition.replaceAll("_", " ").toLowerCase()}</dd></div>
-              <div className="flex justify-between gap-4"><dt className="text-stone-500">Brand</dt><dd>{product.brand}</dd></div>
+              {product.brand ? <div className="flex justify-between gap-4"><dt className="text-stone-500">Brand</dt><dd>{product.brand}</dd></div> : null}
               <div className="flex justify-between gap-4"><dt className="text-stone-500">Stock</dt><dd>{product.quantity}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-stone-500">Created through</dt><dd>{product.creation_source === "SELLER" ? "Seller" : product.creation_source === "BULK_IMPORT" ? "Bulk import" : "Platform assistance"}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-stone-500">Location</dt><dd>{product.city}, {product.state}</dd></div>
