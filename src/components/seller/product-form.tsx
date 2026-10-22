@@ -155,6 +155,7 @@ export function ProductForm({
   hiddenFields = [],
   imageDescription = "Upload five clear, seller-original images. Accepted: JPEG, PNG, or WebP, up to 8 MB each. Original uploads are preserved.",
   mode,
+  published = false,
   showDraftRecoveryLink = true,
 }: {
   actionOverride?: ProductFormAction;
@@ -166,6 +167,7 @@ export function ProductForm({
   hiddenFields?: Array<{ name: string; value: string }>;
   imageDescription?: string;
   mode: "create" | "edit";
+  published?: boolean;
   showDraftRecoveryLink?: boolean;
 }) {
   const action = actionOverride ?? (mode === "create" ? createProductAction : updateProductAction);
@@ -574,33 +576,50 @@ export function ProductForm({
         </p>
       ) : null}
       <div className="flex flex-col-reverse gap-3 border-t border-stone-200 pt-6 sm:flex-row sm:justify-end">
-        <SellerSubmitButton
-          name="intent"
-          onClick={() => {
-            submitIntentRef.current = "save-draft";
-          }}
-          pending={pending}
-          pendingLabel="Saving draft..."
-          type="submit"
-          value="save-draft"
-          variant="outline"
-        >
-          Save draft
-        </SellerSubmitButton>
-        {allowSubmitReview ? (
+        {published ? (
           <SellerSubmitButton
             name="intent"
             onClick={() => {
               submitIntentRef.current = "submit-review";
             }}
             pending={pending}
-            pendingLabel="Publishing..."
+            pendingLabel="Saving changes..."
             type="submit"
             value="submit-review"
           >
-            Publish product
+            Save changes
           </SellerSubmitButton>
-        ) : null}
+        ) : (
+          <>
+            <SellerSubmitButton
+              name="intent"
+              onClick={() => {
+                submitIntentRef.current = "save-draft";
+              }}
+              pending={pending}
+              pendingLabel="Saving draft..."
+              type="submit"
+              value="save-draft"
+              variant="outline"
+            >
+              Save draft
+            </SellerSubmitButton>
+            {allowSubmitReview ? (
+              <SellerSubmitButton
+                name="intent"
+                onClick={() => {
+                  submitIntentRef.current = "submit-review";
+                }}
+                pending={pending}
+                pendingLabel="Publishing..."
+                type="submit"
+                value="submit-review"
+              >
+                Publish product
+              </SellerSubmitButton>
+            ) : null}
+          </>
+        )}
       </div>
     </form>
   );

@@ -3,7 +3,11 @@ import { notFound } from "next/navigation";
 import { ProductForm, type ProductFormDefaults } from "@/components/seller/product-form";
 import { SellerShell } from "@/components/seller/seller-shell";
 import { requireRole } from "@/lib/auth/principal";
-import { priceMinorToInput } from "@/lib/marketplace/products";
+import {
+  canSellerEditProduct,
+  isPublishedSellerProduct,
+  priceMinorToInput,
+} from "@/lib/marketplace/products";
 import { getProductFormOptions, getSellerProduct } from "@/lib/marketplace/seller-data";
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
@@ -14,9 +18,10 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     getProductFormOptions(),
   ]);
   if (!detail) notFound();
-  if (detail.product.status !== "DRAFT" && detail.product.status !== "NEEDS_CHANGES") notFound();
+  if (!canSellerEditProduct(detail.product.status)) notFound();
 
   const { product } = detail;
+  const published = isPublishedSellerProduct(product.status);
   const actualImage = detail.images.find((image) => image.is_active && image.is_actual_item);
   const defaults: ProductFormDefaults = {
     actualItemType: actualImage?.type,
@@ -41,13 +46,21 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   };
 
   return (
-    <SellerShell description="Update this private draft. Existing seller originals stay preserved when you add replacement images." title="Edit product">
+    <SellerShell
+      description={
+        published
+          ? "Update your published listing. Replacement photos preserve the original media history."
+          : "Update this private draft. Replacement photos preserve the original media history."
+      }
+      title="Edit product"
+    >
       <ProductForm
         allowSubmitReview={product.creation_source === "SELLER" || Boolean(product.seller_acknowledged_at)}
         categories={options.categories}
         defaults={defaults}
         makes={options.makes}
         mode="edit"
+        published={published}
       />
     </SellerShell>
   );

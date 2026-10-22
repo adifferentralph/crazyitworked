@@ -8,6 +8,23 @@ afterEach(() => {
 });
 
 describe("vehicle search", () => {
+  it("keeps a saved fitment while its edit-form labels are loading", () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => undefined)));
+
+    const { container } = render(
+      <VehicleSearch
+        initialVehicle="saved-fitment-id"
+        inputName="fitmentIds"
+        makes={[]}
+        vehicles={[]}
+      />,
+    );
+
+    expect(container.querySelector<HTMLInputElement>('input[name="fitmentIds"]')).toHaveValue(
+      "saved-fitment-id",
+    );
+  });
+
   it("searches the cached server catalogue without loading every make initially", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       json: async () => ({

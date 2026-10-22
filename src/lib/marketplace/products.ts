@@ -65,6 +65,21 @@ export const productStatusLabels: Record<ProductStatus, string> = {
   SUSPENDED: "Suspended",
 };
 
+const sellerEditableProductStatuses: readonly ProductStatus[] = [
+  "DRAFT",
+  "NEEDS_CHANGES",
+  "APPROVED",
+  "OUT_OF_STOCK",
+];
+
+export function canSellerEditProduct(status: ProductStatus) {
+  return sellerEditableProductStatuses.includes(status);
+}
+
+export function isPublishedSellerProduct(status: ProductStatus) {
+  return status === "APPROVED" || status === "OUT_OF_STOCK";
+}
+
 const mimeExtensions: Record<string, readonly string[]> = {
   "image/jpeg": ["jpg", "jpeg"],
   "image/png": ["png"],

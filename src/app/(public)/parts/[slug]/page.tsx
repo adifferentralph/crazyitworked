@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, BadgeCheck, Box, CarFront, CircleAlert, Heart, MapPin, PackageCheck, ScanLine, ShieldCheck, ShoppingCart, Star, Truck } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { addToCartAction, toggleSavedPartAction } from "@/app/(protected)/commerce-actions";
+import { ProductImageGallery } from "@/components/marketplace/product-image-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getCurrentPrincipal } from "@/lib/auth/principal";
@@ -111,10 +111,11 @@ export default async function PartDetailPage({ params }: { params: Promise<{ slu
 
         <div className="mt-6 grid gap-10 lg:grid-cols-[1.15fr_0.85fr]">
           <div>
-            <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-stone-200 bg-stone-100">
-              {primary?.signedUrl ? <Image alt={`${product.name} main product image`} className="object-contain" fill priority sizes="(max-width: 1024px) 100vw, 58vw" src={primary.signedUrl} unoptimized /> : <div className="grid size-full place-items-center text-sm text-stone-500">No marketplace image available</div>}
-            </div>
-            {images.length > 1 ? <div className="mt-3 grid grid-cols-4 gap-3 sm:grid-cols-5">{images.map((image) => image.signedUrl ? <figure className="overflow-hidden rounded-md border border-stone-200" key={image.id}><div className="relative aspect-square bg-stone-100"><Image alt={`${product.name} ${image.type.toLowerCase().replaceAll("_", " ")} image`} className="object-cover" fill sizes="160px" src={image.signedUrl} unoptimized /></div><figcaption className="px-2 py-1.5 text-[11px] font-semibold capitalize text-stone-600">{image.type.replaceAll("_", " ").toLowerCase()}</figcaption></figure> : null)}</div> : null}
+            <ProductImageGallery
+              images={images}
+              initialImageId={primary?.id}
+              productName={product.name}
+            />
           </div>
 
           <aside>

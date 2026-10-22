@@ -1,7 +1,16 @@
 import { cache } from "react";
-import { sql } from "drizzle-orm";
+import { and, desc, eq, notInArray, sql } from "drizzle-orm";
 
 import { getDatabase } from "@/db/client";
+import {
+  engines,
+  productFitments,
+  vehicleFitments,
+  vehicleMakes,
+  vehicleModels,
+  vehicleTrims,
+  vehicleYears,
+} from "@/db/schema/catalog";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductCondition } from "@/lib/supabase/database.types";
 import type { MarketplaceSearch, MarketplaceVehicleOption } from "@/lib/marketplace/search-options";
@@ -279,39 +288,69 @@ export const getMarketplaceStore = cache(async function getMarketplaceStore(slug
 
   return error ? null : data;
 });
+
+async function getPublicProductFitments(productId: string) {
+  const database = getDatabase();
+  const rows = await database
+    .select({
+      engine: engines.name,
+      engineId: vehicleFitments.engineId,
+      evidenceMetadata: productFitments.evidenceMetadata,
+      evidenceType: productFitments.evidenceType,
+      id: vehicleFitments.id,
+      make: vehicleMakes.name,
+      makeId: vehicleFitments.makeId,
+      model: vehicleModels.name,
+      modelId: vehicleFitments.modelId,
+      trim: vehicleTrims.name,
+      trimId: vehicleFitments.trimId,
+      year: vehicleYears.year,
+      yearId: vehicleFitments.yearId,
+    })
+    .from(productFitments)
+    .innerJoin(vehicleFitments, eq(vehicleFitments.id, productFitments.fitmentId))
+    .innerJoin(vehicleMakes, eq(vehicleMakes.id, vehicleFitments.makeId))
+    .innerJoin(vehicleModels, eq(vehicleModels.id, vehicleFitments.modelId))
+    .innerJoin(vehicleYears, eq(vehicleYears.id, vehicleFitments.yearId))
+    .leftJoin(vehicleTrims, eq(vehicleTrims.id, vehicleFitments.trimId))
+    .leftJoin(engines, eq(engines.id, vehicleFitments.engineId))
+    .where(
+      and(
+        eq(productFitments.productId, productId),
+        eq(productFitments.isActive, true),
+        notInArray(productFitments.evidenceType, ["DISPUTED", "KNOWN_INCORRECT"]),
+      ),
+    )
+    .orderBy(desc(productFitments.isPrimary), desc(vehicleYears.year));
+
+  return rows.map((row) => ({
+    ...row,
+    label: [row.year, row.make, row.model, row.trim, row.engine].filter(Boolean).join(" · "),
+  }));
+}
+
 export const getMarketplaceProduct = cache(async function getMarketplaceProduct(slug: string) {
   const supabase = await createClient();
   const { data: product, error } = await supabase.from("products").select("*").eq("slug", slug).eq("status", "APPROVED").single();
   if (error || !product) return null;
 
-  const [imagesResult, sellerResult, categoryResult, crossReferencesResult, fitmentsResult, options] = await Promise.all([
+  const [imagesResult, sellerResult, categoryResult, crossReferencesResult, fitments] = await Promise.all([
     supabase.from("product_images").select("*").eq("product_id", product.id).eq("is_active", true).order("position"),
     supabase.from("marketplace_sellers").select("*").eq("seller_id", product.seller_id).single(),
     supabase.from("product_categories").select("name, slug").eq("id", product.category_id).single(),
     supabase.from("product_cross_references").select("reference_number").eq("product_id", product.id).order("reference_number"),
-    supabase.from("product_fitments").select("fitment_id, evidence_type, evidence_metadata").eq("product_id", product.id).eq("is_active", true).not("evidence_type", "in", "(DISPUTED,KNOWN_INCORRECT)"),
-    getMarketplaceOptions(),
+    getPublicProductFitments(product.id),
   ]);
   const paths = (imagesResult.data ?? []).map((image) => image.storage_path);
   const { data: signed } = paths.length
     ? await supabase.storage.from("product-media").createSignedUrls(paths, 3600)
     : { data: [] };
   const urls = new Map((signed ?? []).map((item, index) => [paths[index], item.signedUrl ?? null]));
-  const evidenceByFitment = new Map(
-    (fitmentsResult.data ?? []).map((row) => [row.fitment_id, {
-      evidenceMetadata: row.evidence_metadata,
-      evidenceType: row.evidence_type,
-    }]),
-  );
-
   return {
     categoryName: categoryResult.data?.name ?? "Automotive part",
     categorySlug: categoryResult.data?.slug ?? null,
     crossReferences: (crossReferencesResult.data ?? []).map((row) => row.reference_number),
-    fitments: options.vehicles.flatMap((vehicle) => {
-      const evidence = evidenceByFitment.get(vehicle.id);
-      return evidence ? [{ ...vehicle, ...evidence }] : [];
-    }),
+    fitments,
     images: (imagesResult.data ?? []).map((image) => ({ ...image, signedUrl: urls.get(image.storage_path) ?? null })),
     product,
     seller: sellerResult.data,

@@ -204,6 +204,13 @@
                         "when":  1792630800000,
                         "tag":  "0028_flexible_product_listing",
                         "breakpoints":  true
+                    },
+                    {
+                        "idx":  29,
+                        "version":  "7",
+                        "when":  1792641600000,
+                        "tag":  "0029_seller_published_product_editing",
+                        "breakpoints":  true
                     }
                 ]
 }

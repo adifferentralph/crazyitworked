@@ -80,4 +80,29 @@ describe("seller product form", () => {
     expect(submitted?.get("brand")).toBe("");
     expect(submitted?.get("sku")).toBe("");
   });
+
+  it("saves a published product through the readiness-checked update action", async () => {
+    const action = vi.fn<ProductFormAction>(async () => ({ status: "success" }));
+    render(
+      <ProductForm
+        actionOverride={action}
+        categories={[{ id: defaults.categoryId, label: "Wheels and rims" }]}
+        defaults={{
+          ...defaults,
+          fitmentIds: ["36696eaa-8990-456b-a97d-173445398ae1"],
+          imageTypes: ["PRIMARY", "ANGLE", "DETAIL", "PART_NUMBER", "PACKAGING"],
+          productId: "6fae1e05-ea63-4cb2-a46b-0e73b879e50b",
+        }}
+        makes={[]}
+        mode="edit"
+        published
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Save draft" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    expect(action.mock.calls[0]?.[1].get("intent")).toBe("submit-review");
+  });
 });

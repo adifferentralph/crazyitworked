@@ -239,6 +239,7 @@ export function VehicleSearch({
   const [yearQuery, setYearQuery] = useState(initial ? String(initial.year) : "");
   const [trimId, setTrimId] = useState(initial?.trimId ?? "");
   const [engineId, setEngineId] = useState(initial?.engineId ?? "");
+  const [selectedFitmentId, setSelectedFitmentId] = useState(initialVehicle ?? "");
   const [makeOpen, setMakeOpen] = useState(false);
   const [highlightedMake, setHighlightedMake] = useState(0);
   const [makeOptions, setMakeOptions] = useState(makes);
@@ -289,6 +290,7 @@ export function VehicleSearch({
         setYearQuery(String(fitment.year));
         setTrimId(fitment.trimId ?? "");
         setEngineId(fitment.engineId ?? "");
+        setSelectedFitmentId(fitment.id);
         setModelOptions([{ id: fitment.modelId, name: fitment.model }]);
         setYearOptions([{ id: fitment.yearId, year: fitment.year }]);
         setFitmentOptions([fitment]);
@@ -487,6 +489,10 @@ export function VehicleSearch({
         (!trimId || fitment.trimId === trimId) && (!engineId || fitment.engineId === engineId),
     );
 
+  useEffect(() => {
+    if (selected?.id) setSelectedFitmentId(selected.id);
+  }, [selected?.id]);
+
   function clearAfterMake() {
     setModelId("");
     setModelQuery("");
@@ -494,6 +500,7 @@ export function VehicleSearch({
     setYearQuery("");
     setTrimId("");
     setEngineId("");
+    setSelectedFitmentId("");
     setYearOptions([]);
     setFitmentOptions([]);
   }
@@ -615,6 +622,7 @@ export function VehicleSearch({
             setYearQuery("");
             setTrimId("");
             setEngineId("");
+            setSelectedFitmentId("");
             setFitmentOptions([]);
           }}
           onSelect={(model) => {
@@ -624,6 +632,7 @@ export function VehicleSearch({
             setYearQuery("");
             setTrimId("");
             setEngineId("");
+            setSelectedFitmentId("");
             setFitmentOptions([]);
           }}
           options={searchableModels}
@@ -644,12 +653,14 @@ export function VehicleSearch({
             setYearId("");
             setTrimId("");
             setEngineId("");
+            setSelectedFitmentId("");
           }}
           onSelect={(year) => {
             setYearId(year.id);
             setYearQuery(year.label);
             setTrimId("");
             setEngineId("");
+            setSelectedFitmentId("");
           }}
           options={searchableYears}
           placeholder={loading && modelId ? "Loading years..." : "Search year..."}
@@ -666,6 +677,7 @@ export function VehicleSearch({
               onChange={(event) => {
                 setTrimId(event.target.value);
                 setEngineId("");
+                setSelectedFitmentId("");
               }}
               value={trimId}
             >
@@ -685,7 +697,10 @@ export function VehicleSearch({
             <select
               aria-label="Vehicle engine"
               className={selectClass}
-              onChange={(event) => setEngineId(event.target.value)}
+              onChange={(event) => {
+                setEngineId(event.target.value);
+                setSelectedFitmentId("");
+              }}
               value={engineId}
             >
               <option value="">Any engine</option>
@@ -698,7 +713,7 @@ export function VehicleSearch({
           </label>
         ) : null}
       </div>
-      <input name={inputName} type="hidden" value={selected?.id ?? ""} />
+      <input name={inputName} type="hidden" value={selectedFitmentId} />
       {makeId && !loading && modelOptions.length === 0 ? (
         <p
           className={
@@ -717,7 +732,7 @@ export function VehicleSearch({
           {error}
         </p>
       ) : null}
-      {selected ? (
+      {selectedFitmentId ? (
         <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-emerald-700">
           <CircleCheck aria-hidden="true" className="size-4" />
           Vehicle selected

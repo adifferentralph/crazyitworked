@@ -9,7 +9,7 @@ import { SellerSubmitButton } from "@/components/seller/seller-submit-button";
 import { SellerShell } from "@/components/seller/seller-shell";
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth/principal";
-import { formatNgn, productStatusLabels } from "@/lib/marketplace/products";
+import { canSellerEditProduct, formatNgn, productStatusLabels } from "@/lib/marketplace/products";
 import { getSellerProduct } from "@/lib/marketplace/seller-data";
 
 const notices: Record<string, { message: string; tone: "error" | "success" }> = {
@@ -33,11 +33,11 @@ export default async function SellerProductPage({ params, searchParams }: { para
   const detail = await getSellerProduct(id, principal.id);
   if (!detail) notFound();
   const { product, images, inventory, crossReferences } = detail;
-  const editable = product.status === "DRAFT" || product.status === "NEEDS_CHANGES";
+  const editable = canSellerEditProduct(product.status);
   const notice = query.message ? notices[query.message] : null;
   const assistedAwaitingConfirmation = product.creation_source !== "SELLER"
     && !product.seller_acknowledged_at
-    && editable;
+    && (product.status === "DRAFT" || product.status === "NEEDS_CHANGES");
 
   return (
     <SellerShell description={`Private supplier view · ${productStatusLabels[product.status]}`} title={product.name}>

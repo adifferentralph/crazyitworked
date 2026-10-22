@@ -9,8 +9,10 @@ import type { z } from "zod";
 import { requireRole } from "@/lib/auth/principal";
 import type { SellerActionState } from "@/lib/marketplace/seller-action-state";
 import {
+  canSellerEditProduct,
   conditionRequiresActualItem,
   getSafeImageExtension,
+  isPublishedSellerProduct,
   priceInputToMinor,
   PRODUCT_MEDIA_BUCKET,
   requiredProductImageSlots,
@@ -167,7 +169,7 @@ async function uploadProductImages({
   const supabase = await createClient();
   const { data: currentImages, error: currentImagesError } = await supabase
     .from("product_images")
-    .select("id, is_active, is_primary, position")
+    .select("id, is_active, is_primary, position, type")
     .eq("product_id", productId)
     .order("position", { ascending: false });
 
@@ -193,20 +195,18 @@ async function uploadProductImages({
       return `Image upload failed: ${storageError.message}`;
     }
 
-    let previousPrimaryId: string | null = null;
-    if (upload.type === "PRIMARY") {
-      previousPrimaryId =
-        currentImages?.find((image) => image.is_active && image.is_primary)?.id ?? null;
+    const previousImageIds = (currentImages ?? [])
+      .filter((image) => image.is_active && image.type === upload.type)
+      .map((image) => image.id);
 
-      if (previousPrimaryId) {
-        const { error: deactivateError } = await supabase
-          .from("product_images")
-          .update({ is_active: false })
-          .eq("id", previousPrimaryId)
-          .eq("product_id", productId);
+    if (previousImageIds.length > 0) {
+      const { error: deactivateError } = await supabase
+        .from("product_images")
+        .update({ is_active: false })
+        .eq("product_id", productId)
+        .in("id", previousImageIds);
 
-        if (deactivateError) return "The previous primary image could not be preserved.";
-      }
+      if (deactivateError) return "The previous image could not be preserved.";
     }
 
     const { error: metadataError } = await supabase.from("product_images").insert({
@@ -226,12 +226,12 @@ async function uploadProductImages({
     });
 
     if (metadataError) {
-      if (previousPrimaryId) {
+      if (previousImageIds.length > 0) {
         await supabase
           .from("product_images")
           .update({ is_active: true })
-          .eq("id", previousPrimaryId)
-          .eq("product_id", productId);
+          .eq("product_id", productId)
+          .in("id", previousImageIds);
       }
       return "Image metadata could not be saved. The listing remains a draft.";
     }
@@ -429,8 +429,14 @@ export async function updateProductAction(
     .single();
 
   if (existingError || !existingProduct) return databaseError("Product not found.");
-  if (!["DRAFT", "NEEDS_CHANGES"].includes(existingProduct.status)) {
-    return databaseError("Only draft or needs-changes listings can edit product details.");
+  if (!canSellerEditProduct(existingProduct.status)) {
+    return databaseError("This product cannot be edited while it is under marketplace action.");
+  }
+
+  const shouldPublish =
+    isPublishedSellerProduct(existingProduct.status) || parsed.data.intent === "submit-review";
+  if (shouldPublish && parsed.data.fitmentIds.length === 0) {
+    return databaseError("Choose at least one car this part fits.", "fitmentIds");
   }
 
   const { errors, uploads } = collectImageUploads(
@@ -439,20 +445,6 @@ export async function updateProductAction(
     parsed.data.actualItemType,
   );
   if (errors.length > 0) return databaseError(errors[0] ?? "An image is invalid.", "images");
-
-  const { error: updateError } = await supabase
-    .from("products")
-    .update(productValues(parsed.data, parsed.data.sku ?? existingProduct.sku))
-    .eq("id", productId)
-    .eq("seller_id", principal.id);
-
-  if (updateError) {
-    return databaseError(
-      updateError.code === "23505"
-        ? "That seller SKU is already used by another product."
-        : "The product changes could not be saved.",
-    );
-  }
 
   const associationError = await replaceProductAssociations({
     crossReferences: parsed.data.crossReferences,
@@ -464,30 +456,39 @@ export async function updateProductAction(
   const imageError = await uploadProductImages({ productId, sellerId: principal.id, uploads });
   if (imageError) return databaseError(imageError);
 
-  if (parsed.data.intent === "submit-review") {
-    const { error } = await supabase
-      .from("products")
-      .update({ status: "PENDING_REVIEW" })
-      .eq("id", productId)
-      .eq("seller_id", principal.id);
-    if (error) {
+  const { error: updateError } = await supabase
+    .from("products")
+    .update({
+      ...productValues(parsed.data, parsed.data.sku ?? existingProduct.sku),
+      last_modified_by_user_id: principal.id,
+      ...(shouldPublish ? { status: "PENDING_REVIEW" as const } : {}),
+    })
+    .eq("id", productId)
+    .eq("seller_id", principal.id);
+
+  if (updateError) {
+    if (updateError.code === "23505") {
+      return databaseError("That seller SKU is already used by another product.", "sku");
+    }
+    if (updateError.code === "23514") {
       return databaseError(
-        "The draft was saved, but publishing requires a vehicle fitment, five active required images, and an actual-item image when applicable.",
+        "Keep one vehicle fitment and five active product photos before saving a published listing.",
         "images",
       );
     }
+    return databaseError("The product changes could not be saved.");
   }
 
   revalidatePath("/seller/products");
   revalidatePath(`/seller/products/${productId}`);
-  if (parsed.data.intent === "submit-review") {
+  if (shouldPublish) {
     revalidatePath("/");
     revalidatePath("/marketplace");
     revalidatePath("/categories");
   }
   redirect(
     `/seller/products/${productId}?message=${
-      parsed.data.intent === "submit-review" ? "published" : "changes-saved"
+      shouldPublish ? "published" : "changes-saved"
     }`,
   );
 }
