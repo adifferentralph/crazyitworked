@@ -16,6 +16,7 @@ const defaults: ProductFormDefaults = {
   condition: "USED",
   crossReferences: "",
   deliveryAvailable: true,
+  deliveryFeeNgn: "0.00",
   description: "A clean alloy rim in good working condition.",
   fitmentIds: [],
   imageTypes: [],

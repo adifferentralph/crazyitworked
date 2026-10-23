@@ -38,6 +38,7 @@ export type ProductFormDefaults = {
   condition: ProductCondition;
   crossReferences: string;
   deliveryAvailable: boolean;
+  deliveryFeeNgn: string;
   description: string;
   fitmentIds: string[];
   imageTypes: ProductImageType[];
@@ -517,6 +518,25 @@ export function ProductForm({
             Delivery is available
           </label>
           <FieldError errors={fieldErrors.deliveryAvailable} />
+        </div>
+        <div className="sm:col-span-2" data-error-field="deliveryFeeNgn" tabIndex={-1}>
+          <label className={labelClass} htmlFor="deliveryFeeNgn">
+            Delivery fee (NGN)
+          </label>
+          <Input
+            aria-describedby="delivery-fee-help"
+            aria-invalid={Boolean(fieldErrors.deliveryFeeNgn?.[0])}
+            className={cn(fieldErrors.deliveryFeeNgn?.[0] && "border-red-500 ring-1 ring-red-200")}
+            defaultValue={defaults.deliveryFeeNgn}
+            id="deliveryFeeNgn"
+            inputMode="decimal"
+            name="deliveryFeeNgn"
+            placeholder="0.00"
+          />
+          <p className="mt-2 text-xs leading-5 text-stone-500" id="delivery-fee-help">
+            Enter the flat fee a buyer pays for delivery of this listing. Enter 0.00 for free delivery. This is ignored when delivery is turned off.
+          </p>
+          <FieldError errors={fieldErrors.deliveryFeeNgn} />
         </div>
       </FormSection>
 

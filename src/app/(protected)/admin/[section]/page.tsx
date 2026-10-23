@@ -5,7 +5,7 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { requireRole } from "@/lib/auth/principal";
 import { getAdminSectionMetrics } from "@/lib/admin/operations";
 
-const money = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
+const money = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default async function AdminOperationalSectionPage({ params }: { params: Promise<{ section: string }> }) {
   const { section } = await params;

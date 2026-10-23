@@ -86,6 +86,7 @@ export default async function SellerProductPage({ params, searchParams }: { para
           </div>
           <div className="rounded-lg border border-stone-200 bg-[#fffdf9] p-5 text-sm text-stone-700">
             <div className="flex gap-2"><Truck className="mt-0.5 size-4 text-primary" aria-hidden="true" /><span>{[product.pickup_available ? "Pickup" : null, product.delivery_available ? "Delivery" : null].filter(Boolean).join(" and ")} available</span></div>
+            {product.delivery_available ? <div className="flex items-center justify-between gap-3"><span>Buyer delivery fee</span><strong>{formatNgn(product.delivery_fee_minor)}</strong></div> : null}
             <div className="mt-3 flex gap-2"><Box className="mt-0.5 size-4 text-primary" aria-hidden="true" /><span>OEM: {product.oem_part_number ?? "Not provided"}</span></div>
             {crossReferences.length ? <p className="mt-3 font-mono text-xs">Cross refs: {crossReferences.join(", ")}</p> : null}
           </div>

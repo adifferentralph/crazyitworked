@@ -60,9 +60,19 @@ export default async function SellerOrdersPage() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin aria-hidden="true" className="size-3.5 text-primary" />
-                  Pickup in {order.pickupCity}, {order.pickupState}
+                  {order.fulfillmentMethod === "DELIVERY"
+                    ? `Deliver to ${order.deliveryCity}, ${order.deliveryState}`
+                    : `Pickup in ${order.pickupCity}, ${order.pickupState}`}
                 </span>
               </div>
+              {order.fulfillmentMethod === "DELIVERY" ? (
+                <div className="mt-4 grid gap-2 rounded-lg bg-stone-50 p-4 text-sm text-stone-700">
+                  <p><span className="font-semibold text-stone-950">Delivery fee:</span> {formatNgn(order.deliveryFeeMinor)}</p>
+                  <p><span className="font-semibold text-stone-950">Recipient:</span> {order.deliveryRecipientName}</p>
+                  <p><span className="font-semibold text-stone-950">Phone:</span> {order.deliveryPhone}</p>
+                  <p><span className="font-semibold text-stone-950">Address:</span> {[order.deliveryAddressLine1, order.deliveryAddressLine2, order.deliveryCity, order.deliveryState].filter(Boolean).join(", ")}</p>
+                </div>
+              ) : null}
             </article>
           ))}
         </div>

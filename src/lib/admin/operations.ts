@@ -147,9 +147,13 @@ export type AdminSeller = {
   joinedAt: Date | string | null;
   onboardingCompletedAt: Date | string | null;
   productCount: number;
+  rejectionReason: string | null;
+  reviewedAt: Date | string | null;
+  sellerId: string;
   state: string | null;
   status: string;
   storeName: string;
+  verificationStatus: string;
 };
 
 export async function getAdminSellers(searchValue?: string): Promise<AdminSeller[]> {
@@ -157,6 +161,7 @@ export async function getAdminSellers(searchValue?: string): Promise<AdminSeller
   const like = `%${search}%`;
   return getDatabase().execute(sql<AdminSeller>`
     select
+      seller_profiles.user_id as "sellerId",
       seller_profiles.store_name as "storeName",
       profiles.email,
       seller_profiles.status::text,
@@ -164,17 +169,23 @@ export async function getAdminSellers(searchValue?: string): Promise<AdminSeller
       seller_profiles.city,
       profiles.created_at as "joinedAt",
       seller_profiles.onboarding_completed_at as "onboardingCompletedAt",
+      coalesce(seller_verifications.status::text, 'DRAFT') as "verificationStatus",
+      seller_verifications.reviewed_at as "reviewedAt",
+      seller_verifications.rejection_reason as "rejectionReason",
       count(products.id)::int as "productCount"
     from public.seller_profiles
     join public.profiles on profiles.id = seller_profiles.user_id
+    left join public.seller_verifications on seller_verifications.seller_id = seller_profiles.user_id
     left join public.products on products.seller_id = seller_profiles.user_id
     where (
       ${search} = ''
       or seller_profiles.store_name ilike ${like}
       or profiles.email ilike ${like}
     )
-    group by seller_profiles.user_id, profiles.id
-    order by profiles.created_at desc
+    group by seller_profiles.user_id, profiles.id, seller_verifications.seller_id
+    order by
+      case when coalesce(seller_verifications.status::text, 'DRAFT') in ('DRAFT', 'SUBMITTED') then 0 else 1 end,
+      profiles.created_at desc
     limit 100
   `);
 }

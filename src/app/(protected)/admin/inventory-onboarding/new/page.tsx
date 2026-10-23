@@ -41,6 +41,7 @@ export default async function NewAssistedListingPage({ searchParams }: { searchP
     condition: "NEW",
     crossReferences: "",
     deliveryAvailable: true,
+    deliveryFeeNgn: "0.00",
     description: "",
     fitmentIds: [],
     imageTypes: [],

@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { and, desc, eq, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, notInArray } from "drizzle-orm";
 
 import { getDatabase } from "@/db/client";
 import {
@@ -225,20 +225,20 @@ export async function searchMarketplaceProducts(
   const productIds = products.map((product) => product.id);
   const sellerIds = [...new Set(products.map((product) => product.seller_id))];
   const categoryIds = [...new Set(products.map((product) => product.category_id))];
+  const now = new Date().toISOString();
   const [imagesResult, sellersResult, categoriesResult, fitmentsResult, options, sponsorships] = await Promise.all([
     supabase.from("product_images").select("product_id, storage_path").in("product_id", productIds).eq("is_active", true).eq("is_primary", true),
     supabase.from("marketplace_sellers").select("*").in("seller_id", sellerIds),
     supabase.from("product_categories").select("id, name").in("id", categoryIds),
     supabase.from("product_fitments").select("product_id, fitment_id, is_primary").in("product_id", productIds).eq("is_active", true).order("is_primary", { ascending: false }),
     getMarketplaceOptions(),
-    getDatabase().execute(sql<{ productId: string }>`
-      select distinct product_id as "productId"
-      from public.product_sponsorships
-      where product_id in ${productIds}
-        and is_active
-        and starts_at <= now()
-        and (ends_at is null or ends_at > now())
-    `),
+    supabase
+      .from("product_sponsorships")
+      .select("product_id")
+      .in("product_id", productIds)
+      .eq("is_active", true)
+      .lte("starts_at", now)
+      .or(`ends_at.is.null,ends_at.gt.${now}`),
   ]);
   const paths = (imagesResult.data ?? []).map((image) => image.storage_path);
   const { data: signed } = paths.length
@@ -249,7 +249,7 @@ export async function searchMarketplaceProducts(
   const sellerById = new Map((sellersResult.data ?? []).map((seller) => [seller.seller_id, seller]));
   const categoryById = new Map((categoriesResult.data ?? []).map((category) => [category.id, category.name]));
   const vehicleByFitment = new Map(options.vehicles.map((vehicle) => [vehicle.id, vehicle]));
-  const sponsoredProductIds = new Set(sponsorships.map((item) => item.productId));
+  const sponsoredProductIds = new Set((sponsorships.data ?? []).map((item) => item.product_id));
   const primaryVehicleByProduct = new Map<string, MarketplaceVehicleOption>();
   for (const fitment of fitmentsResult.data ?? []) {
     const vehicle = vehicleByFitment.get(fitment.fitment_id);
@@ -283,7 +283,6 @@ export const getMarketplaceStore = cache(async function getMarketplaceStore(slug
     .from("marketplace_sellers")
     .select("seller_id, store_name, slug, seller_status, verification_status, country, state, city")
     .eq("slug", normalizedSlug)
-    .eq("seller_status", "ACTIVE")
     .maybeSingle();
 
   return error ? null : data;

@@ -31,17 +31,17 @@ export default async function SavedVehiclesPage() {
       icon={CarFront}
       title="Saved Vehicles"
     >
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
-        <div className="grid content-start gap-3">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
+        <div className="grid min-w-0 content-start gap-3">
           <h2 className="text-xl font-semibold text-stone-950">Your vehicles</h2>
           {savedVehicles?.length ? savedVehicles.map((saved) => {
             const vehicle = optionById.get(saved.fitment_id);
             return (
-              <article className="rounded-xl border border-stone-200 bg-white p-5" key={saved.id}>
+              <article className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 sm:p-5" key={saved.id}>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-body text-lg font-bold text-stone-950">{saved.label || vehicle?.label || "Saved vehicle"}</h3>
+                      <h3 className="min-w-0 break-words font-body text-lg font-bold text-stone-950">{saved.label || vehicle?.label || "Saved vehicle"}</h3>
                       {saved.is_default ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800"><CircleCheck className="size-3.5" aria-hidden="true" />Default</span> : null}
                     </div>
                     {saved.label && vehicle ? <p className="mt-2 text-sm text-stone-600">{vehicle.label}</p> : null}

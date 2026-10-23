@@ -44,7 +44,13 @@ export type KoraVerification = {
 };
 
 export function hasKoraEnvironment() {
-  return Boolean(process.env.KORA_SECRET_KEY);
+  const environment = environmentSchema.safeParse({
+    KORA_ENVIRONMENT: process.env.KORA_ENVIRONMENT,
+    KORA_SECRET_KEY: process.env.KORA_SECRET_KEY,
+  });
+
+  if (!environment.success) return false;
+  return process.env.NODE_ENV !== "production" || environment.data.KORA_ENVIRONMENT === "live";
 }
 
 export function getKoraEnvironment() {

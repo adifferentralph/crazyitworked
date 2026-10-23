@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   initializeKoraCharge,
+  hasKoraEnvironment,
   koraAmountToMinor,
   minorToKoraAmount,
   verifyKoraCharge,
@@ -20,6 +21,7 @@ describe("Kora server adapter", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     delete process.env.KORA_ENVIRONMENT;
     delete process.env.KORA_SECRET_KEY;
   });
@@ -28,6 +30,14 @@ describe("Kora server adapter", () => {
     expect(minorToKoraAmount(12_345)).toBe(123.45);
     expect(koraAmountToMinor("123.45")).toBe(12_345);
     expect(() => minorToKoraAmount(0)).toThrow();
+  });
+
+  it("does not enable test checkout in a production runtime", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    expect(hasKoraEnvironment()).toBe(false);
+
+    process.env.KORA_ENVIRONMENT = "live";
+    expect(hasKoraEnvironment()).toBe(true);
   });
 
   it("validates the official data-object HMAC without leaking the secret", () => {

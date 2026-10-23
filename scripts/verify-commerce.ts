@@ -82,8 +82,11 @@ async function main() {
       "orders_delivery_total_exact",
       "orders_buyer_total_exact",
       "orders_pickup_has_no_delivery_charge",
+      "orders_delivery_has_destination",
       "order_items_product_total_exact",
+      "order_items_delivery_fee_nonnegative",
       "order_items_seller_gets_full_product_price",
+      "products_delivery_fee_nonnegative",
     ];
     const constraints = await sql<{ constraint_name: string }[]>`
       select constraint_name
@@ -95,6 +98,21 @@ async function main() {
       constraints.length === requiredConstraints.length,
       "A commerce financial or idempotency constraint is missing.",
     );
+
+    const deliveryColumns = await sql<{ column_name: string; table_name: string }[]>`
+      select table_name, column_name
+      from information_schema.columns
+      where table_schema = 'public'
+        and (
+          (table_name = 'products' and column_name = 'delivery_fee_minor')
+          or (table_name = 'order_items' and column_name = 'delivery_fee_minor')
+          or (table_name = 'orders' and column_name in (
+            'delivery_recipient_name', 'delivery_phone', 'delivery_address_line_1',
+            'delivery_address_line_2', 'delivery_city', 'delivery_state'
+          ))
+        )
+    `;
+    assert(deliveryColumns.length === 8, "A delivery fee or destination column is missing.");
 
     const requiredIndexes = [
       "commerce_payments_provider_reference_unique",
@@ -164,6 +182,68 @@ async function main() {
       from public.products
     `;
 
+    const [buyer] = await sql<{ id: string }[]>`
+      select buyer_profiles.user_id as id
+      from public.buyer_profiles
+      left join public.cart_items on cart_items.buyer_id = buyer_profiles.user_id
+      group by buyer_profiles.user_id
+      order by count(cart_items.id) desc
+      limit 1
+    `;
+    assert(buyer, "A buyer identity is required for authenticated marketplace verification.");
+
+    const [expectedMarketplace] = await sql<{ product_count: number }[]>`
+      select count(products.id)::int as product_count
+      from public.products
+      join public.seller_profiles on seller_profiles.user_id = products.seller_id
+      where products.status = 'APPROVED'
+        and seller_profiles.status in ('PENDING_VERIFICATION', 'ACTIVE')
+    `;
+
+    let authenticatedMarketplaceCount = 0;
+    let authenticatedCartCount = 0;
+    let authenticatedVisibleCartCount = 0;
+    await sql.begin(async (transaction) => {
+      await transaction.unsafe("set local role authenticated");
+      await transaction.unsafe("set local row_security = on");
+      await transaction`
+        select set_config(
+          'request.jwt.claims',
+          ${JSON.stringify({ role: "authenticated", sub: buyer.id })},
+          true
+        )
+      `;
+
+      const [marketplace] = await transaction<{ product_count: number }[]>`
+        select count(*)::int as product_count
+        from public.products
+        where status = 'APPROVED'
+      `;
+      authenticatedMarketplaceCount = marketplace?.product_count ?? 0;
+
+      const [cart] = await transaction<{ cart_count: number; visible_count: number }[]>`
+        select
+          count(cart_items.id)::int as cart_count,
+          count(products.id)::int as visible_count
+        from public.cart_items
+        left join public.products
+          on products.id = cart_items.product_id
+          and products.status = 'APPROVED'
+        where cart_items.buyer_id = ${buyer.id}::uuid
+      `;
+      authenticatedCartCount = cart?.cart_count ?? 0;
+      authenticatedVisibleCartCount = cart?.visible_count ?? 0;
+    });
+
+    assert(
+      authenticatedMarketplaceCount === (expectedMarketplace?.product_count ?? 0),
+      "Authenticated buyers cannot see the same eligible marketplace inventory as guests.",
+    );
+    assert(
+      authenticatedVisibleCartCount <= authenticatedCartCount,
+      "Authenticated cart visibility returned an impossible count.",
+    );
+
     const anonymousOrders = await anonymous.from("orders").select("id").limit(1);
     assert(
       anonymousOrders.error,
@@ -189,6 +269,9 @@ async function main() {
     );
     console.log(
       `- marketplace: ${counts?.approved_products ?? 0} approved products across ${counts?.approved_sellers ?? 0} sellers; ${counts?.pending_products ?? 0} pending review`,
+    );
+    console.log(
+      `- authenticated buyer: ${authenticatedMarketplaceCount} marketplace products; ${authenticatedVisibleCartCount}/${authenticatedCartCount} cart lines currently visible`,
     );
     console.log(`- Kora secret: ${environment.KORA_SECRET_KEY ? "configured" : "not configured"}`);
   } finally {

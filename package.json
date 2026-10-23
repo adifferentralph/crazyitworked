@@ -26,6 +26,7 @@
     "db:verify:commerce": "tsx scripts/verify-commerce.ts",
     "db:verify:notifications": "tsx scripts/verify-notifications.ts",
     "db:verify:admin": "tsx scripts/verify-admin-identities.ts",
+    "db:verify:sellers": "tsx scripts/verify-seller-verification.ts",
     "admin:create": "tsx scripts/create-admin.ts",
     "admin:retire": "tsx scripts/retire-admin.ts",
     "db:import:vehicles": "tsx scripts/import-global-vehicles.ts",

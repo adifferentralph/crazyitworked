@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, Box, CarFront, CircleAlert, Heart, MapPin, PackageCheck, ScanLine, ShieldCheck, ShoppingCart, Star, Truck } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Box, CarFront, CircleAlert, Heart, MapPin, PackageCheck, ScanLine, ShieldCheck, Star, Truck } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import { addToCartAction, toggleSavedPartAction } from "@/app/(protected)/commerce-actions";
+import { toggleSavedPartAction } from "@/app/(protected)/commerce-actions";
+import { AddToCartControl } from "@/components/commerce/add-to-cart-control";
 import { ProductImageGallery } from "@/components/marketplace/product-image-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,15 +51,25 @@ export default async function PartDetailPage({ params }: { params: Promise<{ slu
   const principal = await getCurrentPrincipal();
   const canPurchase = principal?.role === "BUYER" && principal.status === "ACTIVE";
   let isSaved = false;
+  let cartQuantity = 0;
   if (canPurchase) {
     const supabase = await createClient();
-    const { data } = await supabase
-      .from("saved_parts")
-      .select("product_id")
-      .eq("buyer_id", principal.id)
-      .eq("product_id", product.id)
-      .maybeSingle();
-    isSaved = Boolean(data);
+    const [{ data: saved }, { data: cartItem }] = await Promise.all([
+      supabase
+        .from("saved_parts")
+        .select("product_id")
+        .eq("buyer_id", principal.id)
+        .eq("product_id", product.id)
+        .maybeSingle(),
+      supabase
+        .from("cart_items")
+        .select("quantity")
+        .eq("buyer_id", principal.id)
+        .eq("product_id", product.id)
+        .maybeSingle(),
+    ]);
+    isSaved = Boolean(saved);
+    cartQuantity = cartItem?.quantity ?? 0;
   }
 
   return (
@@ -129,6 +140,8 @@ export default async function PartDetailPage({ params }: { params: Promise<{ slu
               <p className="flex items-center gap-2"><Star className="size-4 text-primary" aria-hidden="true" />No reviews yet</p>
               <p className="flex items-center gap-2"><MapPin className="size-4 text-primary" aria-hidden="true" />{product.city}, {product.state}, Nigeria</p>
               <p className="flex items-center gap-2"><Truck className="size-4 text-primary" aria-hidden="true" />{[product.pickup_available ? "Pickup" : null, product.delivery_available ? "Delivery" : null].filter(Boolean).join(" and ")} available</p>
+              {product.pickup_available ? <p className="flex items-center justify-between gap-4"><span>Pickup fee</span><strong>{formatNgn(0)}</strong></p> : null}
+              {product.delivery_available ? <p className="flex items-center justify-between gap-4"><span>Flat delivery fee</span><strong>{formatNgn(product.delivery_fee_minor)}</strong></p> : null}
             </div>
             <dl className="mt-6 grid gap-3 border-y border-stone-200 py-5 text-sm">
               {product.brand ? <div className="flex justify-between gap-4"><dt className="text-stone-500">Brand</dt><dd className="font-semibold">{product.brand}</dd></div> : null}
@@ -138,14 +151,11 @@ export default async function PartDetailPage({ params }: { params: Promise<{ slu
             </dl>
             {canPurchase ? (
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <form action={addToCartAction}>
-                  <input name="productId" type="hidden" value={product.id} />
-                  <input name="quantity" type="hidden" value="1" />
-                  <Button className="w-full" disabled={product.quantity < 1} size="lg" type="submit">
-                    <ShoppingCart className="size-5" aria-hidden="true" />
-                    Add to cart
-                  </Button>
-                </form>
+                <AddToCartControl
+                  available={product.quantity}
+                  initialQuantity={cartQuantity}
+                  productId={product.id}
+                />
                 <form action={toggleSavedPartAction}>
                   <input name="productId" type="hidden" value={product.id} />
                   <Button className="w-full" size="lg" type="submit" variant="outline">

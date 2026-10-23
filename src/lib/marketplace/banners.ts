@@ -1,50 +1,43 @@
 import "server-only";
 
-import {
-  and,
-  asc,
-  eq,
-  gt,
-  isNull,
-  lte,
-  or,
-  type InferSelectModel,
-} from "drizzle-orm";
+import { createClient } from "@/lib/supabase/server";
 
-import { getDatabase } from "@/db/client";
-import { marketplaceBanners } from "@/db/schema";
+type MarketplaceBannerPlacement = "CATEGORY" | "HOME_HERO" | "HOME_MID";
 
-type MarketplaceBanner = InferSelectModel<typeof marketplaceBanners>;
-
-export type PublicMarketplaceBanner = Pick<
-  MarketplaceBanner,
-  "ctaLabel" | "ctaUrl" | "id" | "imageUrl" | "mobileImageUrl" | "subtitle" | "title"
->;
+export type PublicMarketplaceBanner = {
+  ctaLabel: string | null;
+  ctaUrl: string | null;
+  id: string;
+  imageUrl: string;
+  mobileImageUrl: string | null;
+  subtitle: string | null;
+  title: string;
+};
 
 export async function getActiveMarketplaceBanners(
-  placement: MarketplaceBanner["placement"],
+  placement: MarketplaceBannerPlacement,
 ): Promise<PublicMarketplaceBanner[]> {
-  const now = new Date();
-
-  return getDatabase()
-    .select({
-      ctaLabel: marketplaceBanners.ctaLabel,
-      ctaUrl: marketplaceBanners.ctaUrl,
-      id: marketplaceBanners.id,
-      imageUrl: marketplaceBanners.imageUrl,
-      mobileImageUrl: marketplaceBanners.mobileImageUrl,
-      subtitle: marketplaceBanners.subtitle,
-      title: marketplaceBanners.title,
-    })
-    .from(marketplaceBanners)
-    .where(
-      and(
-        eq(marketplaceBanners.placement, placement),
-        eq(marketplaceBanners.status, "ACTIVE"),
-        or(isNull(marketplaceBanners.startAt), lte(marketplaceBanners.startAt, now)),
-        or(isNull(marketplaceBanners.endAt), gt(marketplaceBanners.endAt, now)),
-      ),
-    )
-    .orderBy(asc(marketplaceBanners.displayOrder), asc(marketplaceBanners.createdAt))
+  const supabase = await createClient();
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("marketplace_banners")
+    .select("cta_label, cta_url, id, image_url, mobile_image_url, subtitle, title")
+    .eq("placement", placement)
+    .eq("status", "ACTIVE")
+    .or(`start_at.is.null,start_at.lte.${now}`)
+    .or(`end_at.is.null,end_at.gt.${now}`)
+    .order("display_order")
+    .order("created_at")
     .limit(20);
+
+  if (error) return [];
+  return (data ?? []).map((banner) => ({
+    ctaLabel: banner.cta_label,
+    ctaUrl: banner.cta_url,
+    id: banner.id,
+    imageUrl: banner.image_url,
+    mobileImageUrl: banner.mobile_image_url,
+    subtitle: banner.subtitle,
+    title: banner.title,
+  }));
 }

@@ -31,6 +31,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     condition: product.condition,
     crossReferences: detail.crossReferences.join("\n"),
     deliveryAvailable: product.delivery_available,
+    deliveryFeeNgn: priceMinorToInput(product.delivery_fee_minor),
     description: product.description,
     fitmentIds: detail.fitmentIds,
     imageTypes: detail.images.filter((image) => image.is_active).map((image) => image.type),

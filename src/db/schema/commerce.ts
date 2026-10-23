@@ -84,6 +84,12 @@ export const orders = pgTable(
     customerName: text("customer_name").notNull(),
     customerEmail: text("customer_email").notNull(),
     customerPhone: text("customer_phone"),
+    deliveryRecipientName: text("delivery_recipient_name"),
+    deliveryPhone: text("delivery_phone"),
+    deliveryAddressLine1: text("delivery_address_line_1"),
+    deliveryAddressLine2: text("delivery_address_line_2"),
+    deliveryCity: text("delivery_city"),
+    deliveryState: text("delivery_state"),
     cartFingerprint: text("cart_fingerprint").notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     paidAt: timestamp("paid_at", { withTimezone: true }),
@@ -120,6 +126,16 @@ export const orders = pgTable(
       "orders_pickup_has_no_delivery_charge",
       sql`${table.fulfillmentMethod} <> 'PICKUP' or ${table.deliveryTotalMinor} = 0`,
     ),
+    check(
+      "orders_delivery_has_destination",
+      sql`${table.fulfillmentMethod} <> 'DELIVERY' or (
+        nullif(trim(${table.deliveryRecipientName}), '') is not null
+        and nullif(trim(${table.deliveryPhone}), '') is not null
+        and nullif(trim(${table.deliveryAddressLine1}), '') is not null
+        and nullif(trim(${table.deliveryCity}), '') is not null
+        and nullif(trim(${table.deliveryState}), '') is not null
+      )`,
+    ),
     pgPolicy("orders_select_buyer_or_admin", {
       for: "select",
       to: authenticatedRole,
@@ -147,6 +163,7 @@ export const orderItems = pgTable(
     unitPriceMinor: bigint("unit_price_minor", { mode: "number" }).notNull(),
     quantity: integer("quantity").notNull(),
     productTotalMinor: bigint("product_total_minor", { mode: "number" }).notNull(),
+    deliveryFeeMinor: bigint("delivery_fee_minor", { mode: "number" }).default(0).notNull(),
     sellerEntitlementMinor: bigint("seller_entitlement_minor", { mode: "number" }).notNull(),
     pickupCountry: text("pickup_country").notNull(),
     pickupState: text("pickup_state").notNull(),
@@ -159,6 +176,7 @@ export const orderItems = pgTable(
     index("order_items_product_idx").on(table.productId),
     check("order_items_quantity_positive", sql`${table.quantity} > 0`),
     check("order_items_unit_price_positive", sql`${table.unitPriceMinor} > 0`),
+    check("order_items_delivery_fee_nonnegative", sql`${table.deliveryFeeMinor} >= 0`),
     check(
       "order_items_product_total_exact",
       sql`${table.productTotalMinor} = ${table.unitPriceMinor} * ${table.quantity}`,

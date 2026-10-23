@@ -50,7 +50,7 @@ export default async function SellerDashboardPage() {
 
   return (
     <SellerShell
-      description="Manage your store, real product catalogue, inventory, and listing review status."
+      description="Manage your store, products, and inventory."
       title={seller?.store_name ?? "Supplier account"}
     >
       {!seller?.onboarding_completed_at ? (
@@ -74,7 +74,7 @@ export default async function SellerDashboardPage() {
         {[
           { icon: Store, label: "Total products", value: products.length },
           { icon: BadgeCheck, label: "Approved", value: approved },
-          { icon: Clock3, label: "Pending review", value: pending },
+          { icon: Clock3, label: "Publishing", value: pending },
           { icon: Boxes, label: "Needs attention", value: needsAttention },
         ].map(({ icon: Icon, label, value }) => (
           <div className="rounded-lg border border-stone-200 bg-white p-5" key={label}>
@@ -108,8 +108,8 @@ export default async function SellerDashboardPage() {
             <div>
               <h2 className="text-2xl font-semibold text-stone-950">Catalogue workflow</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">
-                Drafts are private. A listing becomes public only after it has five required
-                seller-original images, is submitted, and receives marketplace approval.
+                Drafts are private. A listing becomes public after you add the required details,
+                vehicle fitment, five genuine photos, and publish it.
               </p>
             </div>
           </div>

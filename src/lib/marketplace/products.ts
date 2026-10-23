@@ -110,7 +110,8 @@ export function getSafeImageExtension(mimeType: string) {
 export function formatNgn(priceMinor: number) {
   return new Intl.NumberFormat("en-NG", {
     currency: "NGN",
-    maximumFractionDigits: priceMinor % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
     style: "currency",
   }).format(priceMinor / 100);
 }
@@ -118,7 +119,7 @@ export function formatNgn(priceMinor: number) {
 export function priceMinorToInput(priceMinor: number) {
   const naira = Math.floor(priceMinor / 100);
   const kobo = priceMinor % 100;
-  return kobo === 0 ? String(naira) : `${naira}.${String(kobo).padStart(2, "0")}`;
+  return `${naira}.${String(kobo).padStart(2, "0")}`;
 }
 
 export function priceInputToMinor(value: string) {

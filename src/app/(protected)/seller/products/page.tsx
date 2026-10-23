@@ -14,12 +14,12 @@ export default async function SellerProductsPage() {
   const products = await getSellerProducts(principal.id);
 
   return (
-    <SellerShell description="Manage draft, review, approved, and inventory states from one real-time catalogue." title="My products">
+    <SellerShell description="Manage drafts, published products, and inventory from one real-time catalogue." title="My products">
       {products.length === 0 ? (
         <div className="rounded-lg border border-dashed border-stone-300 bg-[#fffdf9] px-6 py-16 text-center">
           <Package className="mx-auto size-10 text-stone-400" aria-hidden="true" />
           <h2 className="mt-4 text-2xl font-semibold text-stone-950">Your catalogue is empty</h2>
-          <p className="mx-auto mt-2 max-w-lg text-sm text-stone-600">Add the first real product as a draft. It stays private until you submit it and an administrator approves it.</p>
+          <p className="mx-auto mt-2 max-w-lg text-sm text-stone-600">Add the first real product as a draft. It becomes public when you publish it with the required details, vehicle fitment, and photos.</p>
           <Button asChild className="mt-6">
             <Link href="/seller/products/new"><Plus className="size-4" aria-hidden="true" />Add product</Link>
           </Button>

@@ -27,6 +27,7 @@ import { signOutAction } from "@/app/(auth)/actions";
 import { LetterAvatar } from "@/components/account/letter-avatar";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { MobileMarketplaceNavigation } from "@/components/marketplace/mobile-marketplace-navigation";
+import { ThemeSelector } from "@/components/theme/theme-selector";
 import type { Principal } from "@/lib/auth/types";
 import { cn } from "@/lib/utils";
 
@@ -147,6 +148,7 @@ function BuyerHeader({ cartCount, principal }: { cartCount: number; principal: P
               <HeaderSearch id="commerce-header-search-desktop" />
             </div>
             <nav aria-label="Buyer shortcuts" className="ml-auto flex shrink-0 items-center gap-1">
+              <ThemeSelector compact />
               <Link className="hidden items-center gap-2 rounded-md px-2 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-primary xl:flex" href="/account/vehicles">
                 <CarFront aria-hidden="true" className="size-5" />
                 My Vehicle
@@ -202,6 +204,7 @@ function SellerHeader({ principal, storeName }: { principal: Principal; storeNam
             ))}
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-2">
+            <ThemeSelector compact />
             <Link
               aria-label="Notifications"
               className="hidden size-10 items-center justify-center rounded-md text-stone-700 hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-primary lg:flex"
@@ -252,6 +255,7 @@ function AdminHeader({ principal }: { principal: Principal }) {
       <div className="container-page flex min-h-16 items-center gap-5">
         <BrandLogo href="/admin" inverse priority />
         <nav aria-label="Admin workspace" className="ml-auto flex items-center gap-2">
+          <ThemeSelector compact inverse />
           <Link className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold hover:bg-white/10" href="/admin">
             <ShieldCheck aria-hidden="true" className="size-4 text-accent" />
             Operations

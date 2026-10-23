@@ -73,6 +73,14 @@ const priceInput = z
   .trim()
   .regex(/^\d{1,9}(?:\.\d{1,2})?$/, "Enter a valid NGN amount without a currency symbol.");
 
+const optionalMoneyInput = z.preprocess(
+  (value) =>
+    value === null || value === undefined || (typeof value === "string" && value.trim() === "")
+      ? "0"
+      : value,
+  priceInput,
+);
+
 const crossReferences = z.preprocess(
   optionalInput,
   z
@@ -109,6 +117,7 @@ export const productFormSchema = z
     country: z.literal("Nigeria"),
     crossReferences,
     deliveryAvailable: checkbox,
+    deliveryFeeNgn: optionalMoneyInput,
     description: requiredText("Description", 20, 5000),
     fitmentIds: z.array(z.string().uuid()).max(50),
     intent: z.enum(["save-draft", "submit-review"]),
@@ -169,6 +178,7 @@ export function getProductFormValues(formData: FormData) {
     country: formData.get("country"),
     crossReferences: formData.get("crossReferences"),
     deliveryAvailable: formData.get("deliveryAvailable"),
+    deliveryFeeNgn: formData.get("deliveryFeeNgn"),
     description: formData.get("description"),
     fitmentIds: formData
       .getAll("fitmentIds")

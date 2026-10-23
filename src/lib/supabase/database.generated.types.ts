@@ -492,6 +492,84 @@ seller_categories: Table<
         { seller_id: string; status?: SellerVerificationStatus; submitted_at?: string | null },
         { status?: SellerVerificationStatus; submitted_at?: string | null }
       >;
+      marketplace_banners: Table<
+        {
+          created_at: string;
+          created_by: string;
+          cta_label: string | null;
+          cta_url: string | null;
+          display_order: number;
+          end_at: string | null;
+          id: string;
+          image_path: string;
+          image_url: string;
+          mobile_image_path: string | null;
+          mobile_image_url: string | null;
+          placement: "CATEGORY" | "HOME_HERO" | "HOME_MID";
+          start_at: string | null;
+          status: "ACTIVE" | "DRAFT" | "PAUSED" | "ARCHIVED";
+          subtitle: string | null;
+          title: string;
+          updated_at: string;
+        },
+        {
+          created_by: string;
+          cta_label?: string | null;
+          cta_url?: string | null;
+          display_order?: number;
+          end_at?: string | null;
+          id?: string;
+          image_path: string;
+          image_url: string;
+          mobile_image_path?: string | null;
+          mobile_image_url?: string | null;
+          placement: "CATEGORY" | "HOME_HERO" | "HOME_MID";
+          start_at?: string | null;
+          status?: "ACTIVE" | "DRAFT" | "PAUSED" | "ARCHIVED";
+          subtitle?: string | null;
+          title: string;
+        },
+        {
+          cta_label?: string | null;
+          cta_url?: string | null;
+          display_order?: number;
+          end_at?: string | null;
+          image_path?: string;
+          image_url?: string;
+          mobile_image_path?: string | null;
+          mobile_image_url?: string | null;
+          placement?: "CATEGORY" | "HOME_HERO" | "HOME_MID";
+          start_at?: string | null;
+          status?: "ACTIVE" | "DRAFT" | "PAUSED" | "ARCHIVED";
+          subtitle?: string | null;
+          title?: string;
+        }
+      >;
+      product_sponsorships: Table<
+        {
+          created_at: string;
+          created_by: string;
+          ends_at: string | null;
+          id: string;
+          is_active: boolean;
+          product_id: string;
+          starts_at: string;
+          updated_at: string;
+        },
+        {
+          created_by: string;
+          ends_at?: string | null;
+          id?: string;
+          is_active?: boolean;
+          product_id: string;
+          starts_at?: string;
+        },
+        {
+          ends_at?: string | null;
+          is_active?: boolean;
+          starts_at?: string;
+        }
+      >;
       product_categories: Table<
         CatalogRecord & {
           description: string | null;
@@ -573,6 +651,7 @@ seller_categories: Table<
           creation_source: ProductCreationSource;
           currency: "NGN";
           delivery_available: boolean;
+          delivery_fee_minor: number;
           description: string;
           id: string;
           last_modified_by_user_id: string;
@@ -604,6 +683,7 @@ seller_categories: Table<
           creation_source?: ProductCreationSource;
           currency?: "NGN";
           delivery_available: boolean;
+          delivery_fee_minor?: number;
           description: string;
           id?: string;
           last_modified_by_user_id: string;
@@ -631,6 +711,7 @@ seller_categories: Table<
           created_by_user_id?: string;
           creation_source?: ProductCreationSource;
           delivery_available?: boolean;
+          delivery_fee_minor?: number;
           description?: string;
           last_modified_by_user_id?: string;
           manufacturer_part_number?: string | null;

@@ -26,12 +26,12 @@ export function AccountSectionPage({
   return (
     <section className="min-h-[70vh] bg-stone-50 py-8 font-body sm:py-12">
       <div className="container-page">
-        <div className="flex items-start gap-4 border-b border-stone-200 pb-7">
+        <div className="flex min-w-0 items-start gap-3 border-b border-stone-200 pb-7 sm:gap-4">
           <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-black text-white">
             <Icon aria-hidden="true" className="size-5" />
           </span>
-          <div>
-            <h1 className="font-body text-3xl font-bold text-stone-950 sm:text-4xl">{title}</h1>
+          <div className="min-w-0">
+            <h1 className="break-words font-body text-3xl font-bold text-stone-950 sm:text-4xl">{title}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600 sm:text-base">{description}</p>
           </div>
         </div>

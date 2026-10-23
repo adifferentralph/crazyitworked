@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Playfair_Display, Space_Mono } from "next/font/google";
+import { Suspense } from "react";
 import { CookieConsentManager } from "@/components/privacy/cookie-consent-manager";
 
 import "@/app/globals.css";
 import { PwaClient } from "@/components/pwa/pwa-client";
+import { RouteProgress } from "@/components/navigation/route-progress";
 import { siteConfig } from "@/config/site";
 import { defaultOgImage } from "@/lib/seo/metadata";
 
@@ -82,13 +84,32 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  colorScheme: "light",
-  themeColor: "#e30613",
+  colorScheme: "light dark",
+  themeColor: [
+    { color: "#ffffff", media: "(prefers-color-scheme: light)" },
+    { color: "#171717", media: "(prefers-color-scheme: dark)" },
+  ],
 };
+
+const themeInitializer = `
+  (function () {
+    try {
+      var saved = localStorage.getItem("twenty-two-parts-theme");
+      var preference = saved === "light" || saved === "dark" || saved === "system" ? saved : "system";
+      var dark = preference === "dark" || (preference === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.classList.toggle("dark", dark);
+      document.documentElement.dataset.theme = preference;
+      document.documentElement.style.colorScheme = dark ? "dark" : "light";
+    } catch {}
+  })();
+`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitializer }} />
+      </head>
       <body className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable}`}>
         <a
           href="#main-content"
@@ -97,6 +118,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           Skip to content
         </a>
         <PwaClient />
+        <Suspense fallback={null}>
+          <RouteProgress />
+        </Suspense>
         {children}
         <CookieConsentManager />
       </body>

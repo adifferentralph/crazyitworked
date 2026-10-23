@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, LockKeyhole } from "lucide-react";
+import { ArrowRight, LoaderCircle } from "lucide-react";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,9 @@ export function CheckoutSubmitButton({ disabled = false }: { disabled?: boolean 
       {pending ? (
         <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
       ) : (
-        <LockKeyhole aria-hidden="true" className="size-4" />
+        <ArrowRight aria-hidden="true" className="size-4" />
       )}
-      {pending ? "Opening secure payment…" : "Pay securely with Kora"}
+      {pending ? "Processing..." : "Proceed"}
     </Button>
   );
 }

@@ -130,7 +130,13 @@ export function MarketplaceSearchForm({
   }, [query]);
 
   return (
-    <form action={actionPath} className="flex flex-col gap-3 sm:flex-row" method="get" role="search">
+    <form
+      action={actionPath}
+      className="flex flex-col gap-3 sm:flex-row"
+      method="get"
+      onSubmit={() => setOpen(false)}
+      role="search"
+    >
       {preserveCategory && search.category ? <input name="category" type="hidden" value={search.category} /> : null}
       {preserveVehicle && search.vehicle ? <input name="vehicle" type="hidden" value={search.vehicle} /> : null}
       <div className="relative flex-1">
@@ -154,7 +160,7 @@ export function MarketplaceSearchForm({
           />
         </label>
         {open ? (
-          <div className="absolute inset-x-0 z-40 mt-1 max-h-96 overflow-y-auto rounded-lg border border-stone-200 bg-white p-2 shadow-xl" id={listId} role="listbox">
+          <div className="relative z-40 mt-1 max-h-96 overflow-y-auto rounded-lg border border-stone-200 bg-white p-2 shadow-xl sm:absolute sm:inset-x-0" id={listId} role="listbox">
             {suggestions.stores.length > 0 ? (
               <SuggestionGroup label="Stores">
                 {suggestions.stores.map((store) => (

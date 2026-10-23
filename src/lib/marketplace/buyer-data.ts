@@ -13,7 +13,7 @@ export async function getBuyerCart(buyerId: string) {
   const { data: products } = await supabase
     .from("products")
     .select(
-      "id, slug, name, price_minor, quantity, reserved_quantity, seller_id, city, state, pickup_available, delivery_available",
+      "id, slug, name, price_minor, quantity, reserved_quantity, seller_id, city, state, pickup_available, delivery_available, delivery_fee_minor",
     )
     .in("id", productIds)
     .eq("status", "APPROVED");
@@ -69,11 +69,20 @@ export async function getBuyerCart(buyerId: string) {
 
 export async function getBuyerCartCount(buyerId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data: cartItems, error: cartError } = await supabase
     .from("cart_items")
-    .select("quantity")
+    .select("product_id")
     .eq("buyer_id", buyerId);
-  return (data ?? []).reduce((sum, item) => sum + item.quantity, 0);
+  if (cartError || !cartItems?.length) return 0;
+
+  const productIds = [...new Set(cartItems.map((item) => item.product_id))];
+  const { data: visibleProducts, error: productError } = await supabase
+    .from("products")
+    .select("id")
+    .in("id", productIds)
+    .eq("status", "APPROVED");
+
+  return productError ? 0 : new Set((visibleProducts ?? []).map((product) => product.id)).size;
 }
 
 export async function getBuyerSavedProducts(buyerId: string) {

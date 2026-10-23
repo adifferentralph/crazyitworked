@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { ThemeSelector } from "@/components/theme/theme-selector";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
 
@@ -33,6 +34,7 @@ export function Header() {
         </nav>
 
         <div className="hidden items-center gap-2 lg:flex">
+          <ThemeSelector compact />
           <Button asChild variant="ghost">
             <Link href={siteConfig.auth.suppliers}>
               <Store aria-hidden="true" className="size-4" />
@@ -54,6 +56,7 @@ export function Header() {
           aria-label="Mobile account shortcuts"
           className="ml-auto flex shrink-0 items-center gap-1 lg:hidden"
         >
+          <ThemeSelector compact />
           <Link
             aria-label="Search marketplace"
             className="grid size-10 place-items-center rounded-md text-stone-700 focus-visible:ring-2 focus-visible:ring-primary"

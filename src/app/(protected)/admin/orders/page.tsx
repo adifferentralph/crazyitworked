@@ -3,7 +3,7 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { requireRole } from "@/lib/auth/principal";
 import { getAdminOrders } from "@/lib/admin/operations";
 
-const money = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
+const money = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   await requireRole(["ADMIN"], "/admin/orders");

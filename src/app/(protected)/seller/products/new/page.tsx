@@ -20,6 +20,7 @@ export default async function NewProductPage() {
     condition: "NEW",
     crossReferences: "",
     deliveryAvailable: true,
+    deliveryFeeNgn: "0.00",
     description: "",
     fitmentIds: [],
     imageTypes: [],
@@ -34,7 +35,7 @@ export default async function NewProductPage() {
   };
 
   return (
-    <SellerShell description="Create an accurate listing, preserve your original media, and save as a draft until every review requirement is ready." title="Add product">
+    <SellerShell description="Create an accurate listing, preserve your original photos, or save a draft until the required details are ready." title="Add product">
       <ProductForm categories={categories} defaults={defaults} makes={makes} mode="create" />
     </SellerShell>
   );

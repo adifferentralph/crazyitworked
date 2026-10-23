@@ -55,7 +55,7 @@ export default async function CheckoutReturnPage({
 
   return (
     <AccountSectionPage
-      description="Kora's redirect is never treated as payment proof. This page checks the payment directly with Kora."
+      description="We verify the payment before confirming your order."
       icon={ReceiptText}
       title="Payment status"
     >
@@ -82,7 +82,7 @@ export default async function CheckoutReturnPage({
             ? "Your order is confirmed and the suppliers can now see their paid order items."
             : verificationState === "ERROR"
               ? "We could not safely match this return to your order. Check your orders before trying another payment."
-              : "Do not pay again yet. Kora may still be sending the final payment notification."}
+              : "Do not pay again yet. The final payment confirmation may still be processing."}
         </p>
 
         {order ? (

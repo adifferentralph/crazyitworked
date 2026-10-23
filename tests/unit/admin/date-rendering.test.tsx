@@ -14,6 +14,10 @@ vi.mock("@/lib/auth/principal", () => ({
   requireRole: vi.fn().mockResolvedValue({ id: "admin-id", role: "ADMIN", status: "ACTIVE" }),
 }));
 
+vi.mock("@/lib/auth/permissions", () => ({
+  requireAdminPermission: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@/lib/admin/operations", () => ({
   getAdminCustomers,
   getAdminSellers,
@@ -40,9 +44,13 @@ describe("admin date rendering", () => {
         joinedAt: "2026-09-01T08:00:00.000Z",
         onboardingCompletedAt: value,
         productCount: 2,
+        rejectionReason: null,
+        reviewedAt: null,
+        sellerId: "seller-id",
         state: "Lagos",
         status: "ACTIVE",
         storeName: "Raven Express",
+        verificationStatus: "SUBMITTED",
       },
     ]);
 

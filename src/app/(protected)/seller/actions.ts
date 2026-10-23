@@ -175,26 +175,73 @@ async function uploadProductImages({
 
   if (currentImagesError) return "Existing product images could not be checked.";
 
-  let nextPosition = (currentImages?.[0]?.position ?? -1) + 1;
-
-  for (const upload of uploads) {
+  const nextPosition = (currentImages?.[0]?.position ?? -1) + 1;
+  const preparedUploads = uploads.map((upload, index) => {
     const extension = getSafeImageExtension(upload.file.type);
-    if (!extension) return "An uploaded image has an unsupported file type.";
+    if (!extension) return null;
 
     const imageId = randomUUID();
     const storagePath = `${sellerId}/${productId}/${imageId}.${extension}`;
-    const { error: storageError } = await supabase.storage
-      .from(PRODUCT_MEDIA_BUCKET)
-      .upload(storagePath, upload.file, {
-        cacheControl: "31536000",
-        contentType: upload.file.type,
-        upsert: false,
-      });
+    return {
+      imageId,
+      position: nextPosition + index,
+      storagePath,
+      upload,
+    };
+  });
 
-    if (storageError) {
-      return `Image upload failed: ${storageError.message}`;
+  if (preparedUploads.some((upload) => upload === null)) {
+    return "An uploaded image has an unsupported file type.";
+  }
+
+  const readyUploads = preparedUploads.filter((upload) => upload !== null);
+  const storageResults = await Promise.all(
+    readyUploads.map(async ({ storagePath, upload }) => {
+      const { error } = await supabase.storage
+        .from(PRODUCT_MEDIA_BUCKET)
+        .upload(storagePath, upload.file, {
+          cacheControl: "31536000",
+          contentType: upload.file.type,
+          upsert: false,
+        });
+      return { error, storagePath };
+    }),
+  );
+  const failedUpload = storageResults.find(({ error }) => error);
+
+  if (failedUpload?.error) {
+    const uploadedPaths = storageResults
+      .filter(({ error }) => !error)
+      .map(({ storagePath }) => storagePath);
+    if (uploadedPaths.length > 0) {
+      await supabase.storage.from(PRODUCT_MEDIA_BUCKET).remove(uploadedPaths);
     }
+    return `Image upload failed: ${failedUpload.error.message}`;
+  }
 
+  const insertedImageIds: string[] = [];
+  const deactivatedImageIds: string[] = [];
+  const rollbackImageChanges = async () => {
+    if (insertedImageIds.length > 0) {
+      await supabase
+        .from("product_images")
+        .delete()
+        .eq("product_id", productId)
+        .in("id", insertedImageIds);
+    }
+    if (deactivatedImageIds.length > 0) {
+      await supabase
+        .from("product_images")
+        .update({ is_active: true })
+        .eq("product_id", productId)
+        .in("id", deactivatedImageIds);
+    }
+    await supabase.storage
+      .from(PRODUCT_MEDIA_BUCKET)
+      .remove(readyUploads.map((prepared) => prepared.storagePath));
+  };
+
+  for (const { imageId, position, storagePath, upload } of readyUploads) {
     const previousImageIds = (currentImages ?? [])
       .filter((image) => image.is_active && image.type === upload.type)
       .map((image) => image.id);
@@ -206,7 +253,11 @@ async function uploadProductImages({
         .eq("product_id", productId)
         .in("id", previousImageIds);
 
-      if (deactivateError) return "The previous image could not be preserved.";
+      if (deactivateError) {
+        await rollbackImageChanges();
+        return "The previous image could not be preserved.";
+      }
+      deactivatedImageIds.push(...previousImageIds);
     }
 
     const { error: metadataError } = await supabase.from("product_images").insert({
@@ -215,7 +266,7 @@ async function uploadProductImages({
       is_primary: upload.type === "PRIMARY",
       mime_type: upload.file.type,
       original_filename: upload.file.name.slice(0, 255),
-      position: nextPosition,
+      position,
       product_id: productId,
       size_bytes: upload.file.size,
       source: "SELLER_ORIGINAL",
@@ -226,17 +277,10 @@ async function uploadProductImages({
     });
 
     if (metadataError) {
-      if (previousImageIds.length > 0) {
-        await supabase
-          .from("product_images")
-          .update({ is_active: true })
-          .eq("product_id", productId)
-          .in("id", previousImageIds);
-      }
+      await rollbackImageChanges();
       return "Image metadata could not be saved. The listing remains a draft.";
     }
-
-    nextPosition += 1;
+    insertedImageIds.push(imageId);
   }
 
   return null;
@@ -311,6 +355,7 @@ function productValues(parsed: z.infer<typeof productFormSchema>, sku: string) {
     condition: parsed.condition,
     country: parsed.country,
     delivery_available: parsed.deliveryAvailable,
+    delivery_fee_minor: parsed.deliveryAvailable ? priceInputToMinor(parsed.deliveryFeeNgn) : 0,
     description: parsed.description,
     manufacturer_part_number: parsed.manufacturerPartNumber,
     name: parsed.name,

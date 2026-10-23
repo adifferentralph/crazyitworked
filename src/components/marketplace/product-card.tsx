@@ -1,9 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ImageOff, ShoppingCart } from "lucide-react";
+import { ImageOff } from "lucide-react";
 
-import { addToCartAction } from "@/app/(protected)/commerce-actions";
-import { Button } from "@/components/ui/button";
+import { AddToCartControl } from "@/components/commerce/add-to-cart-control";
 import { formatNgn } from "@/lib/marketplace/products";
 import type {
   MarketplaceVehicleOption,
@@ -49,13 +48,7 @@ export function ProductCard({
           {product.quantity > 0 ? "In stock" : "Out of stock"}
         </p>
         {canPurchase ? (
-          <form action={addToCartAction} className="mt-auto pt-3">
-            <input name="productId" type="hidden" value={product.id} />
-            <input name="quantity" type="hidden" value="1" />
-            <Button className="w-full px-2" disabled={product.quantity < 1} size="sm" type="submit">
-              <ShoppingCart className="size-4" aria-hidden="true" /> Add
-            </Button>
-          </form>
+          <AddToCartControl available={product.quantity} compact productId={product.id} />
         ) : null}
       </div>
     </article>

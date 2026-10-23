@@ -20,7 +20,7 @@ export function SavedVehicleForm({ vehicles }: { vehicles: MarketplaceVehicleOpt
   return (
     <form
       action={action}
-      className="grid gap-5 rounded-xl border border-stone-200 bg-white p-5"
+      className="grid min-w-0 gap-5 rounded-xl border border-stone-200 bg-white p-4 sm:p-5"
       noValidate
     >
       <div>
@@ -33,7 +33,7 @@ export function SavedVehicleForm({ vehicles }: { vehicles: MarketplaceVehicleOpt
         </label>
         <select
           aria-invalid={Boolean(state.fieldErrors?.fitmentId?.[0])}
-          className="min-h-12 rounded-md border border-stone-300 bg-white px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          className="min-h-12 w-full min-w-0 max-w-full rounded-md border border-stone-300 bg-white px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           id="fitmentId"
           name="fitmentId"
           required
@@ -55,7 +55,7 @@ export function SavedVehicleForm({ vehicles }: { vehicles: MarketplaceVehicleOpt
             Label — Optional
           </label>
           <input
-            className="h-12 rounded-md border border-stone-300 px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="h-12 w-full min-w-0 rounded-md border border-stone-300 px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             id="vehicle-label"
             maxLength={80}
             name="label"
@@ -67,7 +67,7 @@ export function SavedVehicleForm({ vehicles }: { vehicles: MarketplaceVehicleOpt
             Registration number — Optional
           </label>
           <input
-            className="h-12 rounded-md border border-stone-300 px-3 uppercase outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="h-12 w-full min-w-0 rounded-md border border-stone-300 px-3 uppercase outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             id="registrationNumber"
             maxLength={30}
             name="registrationNumber"

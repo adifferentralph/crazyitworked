@@ -21,6 +21,7 @@ import {
   verifyKoraCharge,
   verifyKoraWebhookSignature,
 } from "@/lib/commerce/kora";
+import { calculateCheckoutTotals } from "@/lib/commerce/pricing";
 import { notifyOrderPaid } from "@/lib/notifications/push";
 
 const CHECKOUT_LIFETIME_MS = 30 * 60 * 1000;
@@ -28,6 +29,7 @@ const MAX_EXPIRED_ORDERS_PER_SWEEP = 50;
 
 export type CheckoutErrorCode =
   | "CART_EMPTY"
+  | "DELIVERY_UNAVAILABLE"
   | "KORA_NOT_CONFIGURED"
   | "PAYMENT_INITIALIZATION_FAILED"
   | "PAYMENT_MISMATCH"
@@ -50,6 +52,18 @@ type BuyerIdentity = {
   id: string;
 };
 
+export type CheckoutFulfillmentInput =
+  | { fulfillmentMethod: "PICKUP" }
+  | {
+      deliveryAddressLine1: string;
+      deliveryAddressLine2: string | null;
+      deliveryCity: string;
+      deliveryPhone: string;
+      deliveryRecipientName: string;
+      deliveryState: string;
+      fulfillmentMethod: "DELIVERY";
+    };
+
 type CheckoutRecord = {
   checkoutUrl: string | null;
   orderId: string;
@@ -68,14 +82,27 @@ function buildReference() {
 
 export function calculateCheckoutFingerprint(
   buyerId: string,
-  items: Array<{ priceMinor: number; productId: string; quantity: number; version: number }>,
+  items: Array<{
+    deliveryFeeMinor: number;
+    priceMinor: number;
+    productId: string;
+    quantity: number;
+    version: number;
+  }>,
+  fulfillment: CheckoutFulfillmentInput,
 ) {
   const canonicalItems = [...items]
     .sort((left, right) => left.productId.localeCompare(right.productId))
-    .map((item) => [item.productId, item.quantity, item.priceMinor, item.version]);
+    .map((item) => [
+      item.productId,
+      item.quantity,
+      item.priceMinor,
+      item.deliveryFeeMinor,
+      item.version,
+    ]);
 
   return createHash("sha256")
-    .update(JSON.stringify({ buyerId, fulfillmentMethod: "PICKUP", items: canonicalItems }))
+    .update(JSON.stringify({ buyerId, fulfillment, items: canonicalItems }))
     .digest("hex");
 }
 
@@ -169,13 +196,18 @@ export async function releaseExpiredCheckoutReservations() {
   }
 }
 
-async function prepareCheckout(identity: BuyerIdentity): Promise<CheckoutRecord> {
+async function prepareCheckout(
+  identity: BuyerIdentity,
+  fulfillment: CheckoutFulfillmentInput,
+): Promise<CheckoutRecord> {
   const database = getDatabase();
 
   return database.transaction(async (transaction) => {
     const cart = await transaction
       .select({
         cartId: cartItems.id,
+        deliveryAvailable: products.deliveryAvailable,
+        deliveryFeeMinor: products.deliveryFeeMinor,
         pickupAvailable: products.pickupAvailable,
         priceMinor: products.priceMinor,
         productCity: products.city,
@@ -207,10 +239,20 @@ async function prepareCheckout(identity: BuyerIdentity): Promise<CheckoutRecord>
       );
     }
 
-    if (cart.some((item) => !item.pickupAvailable)) {
+    if (fulfillment.fulfillmentMethod === "PICKUP" && cart.some((item) => !item.pickupAvailable)) {
       throw new CheckoutError(
         "PICKUP_UNAVAILABLE",
         "Pickup is not available for every part in this cart.",
+      );
+    }
+
+    if (
+      fulfillment.fulfillmentMethod === "DELIVERY" &&
+      cart.some((item) => !item.deliveryAvailable)
+    ) {
+      throw new CheckoutError(
+        "DELIVERY_UNAVAILABLE",
+        "Delivery is not available for every part in this cart.",
       );
     }
 
@@ -228,11 +270,13 @@ async function prepareCheckout(identity: BuyerIdentity): Promise<CheckoutRecord>
     const fingerprint = calculateCheckoutFingerprint(
       identity.id,
       cart.map((item) => ({
+        deliveryFeeMinor: item.deliveryFeeMinor,
         priceMinor: item.priceMinor,
         productId: item.productId,
         quantity: item.quantity,
         version: item.version,
       })),
+      fulfillment,
     );
 
     const [existing] = await transaction
@@ -263,7 +307,20 @@ async function prepareCheckout(identity: BuyerIdentity): Promise<CheckoutRecord>
     const orderId = randomUUID();
     const paymentId = randomUUID();
     const orderNumber = buildReference();
-    const totalMinor = cart.reduce((sum, item) => sum + item.priceMinor * item.quantity, 0);
+    const {
+      actualDeliveryCostMinor,
+      deliveryTotalMinor,
+      platformServiceComponentMinor,
+      productSubtotalMinor,
+      totalMinor,
+    } = calculateCheckoutTotals(
+      cart.map((item) => ({
+        deliveryFeeMinor: item.deliveryFeeMinor,
+        priceMinor: item.priceMinor,
+        quantity: item.quantity,
+      })),
+      fulfillment.fulfillmentMethod,
+    );
     const expiresAt = new Date(Date.now() + CHECKOUT_LIFETIME_MS);
 
     if (!Number.isSafeInteger(totalMinor) || totalMinor <= 0) {
@@ -281,7 +338,9 @@ async function prepareCheckout(identity: BuyerIdentity): Promise<CheckoutRecord>
           and(
             eq(products.id, item.productId),
             eq(products.status, "APPROVED"),
-            eq(products.pickupAvailable, true),
+            fulfillment.fulfillmentMethod === "DELIVERY"
+              ? eq(products.deliveryAvailable, true)
+              : eq(products.pickupAvailable, true),
             sql`${products.quantity} - ${products.reservedQuantity} >= ${item.quantity}`,
           ),
         )
@@ -303,7 +362,7 @@ async function prepareCheckout(identity: BuyerIdentity): Promise<CheckoutRecord>
         quantityAfter: reservedProduct.quantity,
         quantityBefore: reservedProduct.quantity,
         quantityDelta: 0,
-        reason: "Reserved for Kora checkout.",
+        reason: "Reserved for checkout.",
         reservedAfter: reservedProduct.reservedAfter,
         reservedBefore: reservedProduct.reservedAfter - item.quantity,
         reservedDelta: item.quantity,
@@ -312,18 +371,25 @@ async function prepareCheckout(identity: BuyerIdentity): Promise<CheckoutRecord>
     }
 
     await transaction.insert(orders).values({
-      actualDeliveryCostMinor: 0,
+      actualDeliveryCostMinor,
       buyerId: identity.id,
       cartFingerprint: fingerprint,
       customerEmail: identity.email,
       customerName: identity.fullName,
-      deliveryTotalMinor: 0,
+      customerPhone: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryPhone : null,
+      deliveryAddressLine1: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryAddressLine1 : null,
+      deliveryAddressLine2: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryAddressLine2 : null,
+      deliveryCity: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryCity : null,
+      deliveryPhone: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryPhone : null,
+      deliveryRecipientName: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryRecipientName : null,
+      deliveryState: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryState : null,
+      deliveryTotalMinor,
       expiresAt,
-      fulfillmentMethod: "PICKUP",
+      fulfillmentMethod: fulfillment.fulfillmentMethod,
       id: orderId,
       orderNumber,
-      platformServiceComponentMinor: 0,
-      productSubtotalMinor: totalMinor,
+      platformServiceComponentMinor,
+      productSubtotalMinor,
       totalMinor,
     });
 
@@ -333,6 +399,8 @@ async function prepareCheckout(identity: BuyerIdentity): Promise<CheckoutRecord>
 
         return {
           id: randomUUID(),
+          deliveryFeeMinor:
+            fulfillment.fulfillmentMethod === "DELIVERY" ? item.deliveryFeeMinor : 0,
           orderId,
           pickupCity: item.productCity,
           pickupCountry: item.productCountry,
@@ -369,13 +437,16 @@ async function prepareCheckout(identity: BuyerIdentity): Promise<CheckoutRecord>
   });
 }
 
-export async function createKoraCheckout(identity: BuyerIdentity) {
+export async function createKoraCheckout(
+  identity: BuyerIdentity,
+  fulfillment: CheckoutFulfillmentInput,
+) {
   if (!hasKoraEnvironment()) {
     throw new CheckoutError("KORA_NOT_CONFIGURED", "Secure payment is not configured yet.");
   }
 
   await releaseExpiredCheckoutReservations();
-  const checkout = await prepareCheckout(identity);
+  const checkout = await prepareCheckout(identity, fulfillment);
 
   if (checkout.checkoutUrl) return checkout;
 
@@ -440,7 +511,7 @@ export async function createKoraCheckout(identity: BuyerIdentity) {
       checkoutUrl: initialized.checkoutUrl,
     };
   } catch {
-    await releaseOrderReservations(checkout.orderId, "Kora checkout initialization failed.");
+    await releaseOrderReservations(checkout.orderId, "Checkout initialization failed.");
     throw new CheckoutError(
       "PAYMENT_INITIALIZATION_FAILED",
       "We could not start secure payment. No charge was made; please try again.",
@@ -604,7 +675,7 @@ export async function verifyAndFulfillKoraPayment(reference: string) {
         quantityAfter: updatedProduct.quantityAfter,
         quantityBefore: updatedProduct.quantityAfter + item.quantity,
         quantityDelta: -item.quantity,
-        reason: "Kora payment verified.",
+        reason: "Payment verified.",
         reservedAfter: updatedProduct.reservedAfter,
         reservedBefore: updatedProduct.reservedAfter + item.quantity,
         reservedDelta: -item.quantity,
@@ -790,6 +861,13 @@ export async function getSellerOrders(sellerId: string) {
   return database
     .select({
       createdAt: orders.createdAt,
+      deliveryAddressLine1: orders.deliveryAddressLine1,
+      deliveryAddressLine2: orders.deliveryAddressLine2,
+      deliveryCity: orders.deliveryCity,
+      deliveryFeeMinor: orderItems.deliveryFeeMinor,
+      deliveryPhone: orders.deliveryPhone,
+      deliveryRecipientName: orders.deliveryRecipientName,
+      deliveryState: orders.deliveryState,
       fulfillmentMethod: orders.fulfillmentMethod,
       orderNumber: orders.orderNumber,
       orderStatus: orders.status,

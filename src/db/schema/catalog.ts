@@ -15,7 +15,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { authenticatedRole, authUid } from "drizzle-orm/supabase";
+import { anonRole, authenticatedRole, authUid } from "drizzle-orm/supabase";
 
 import { profiles, sellerProfiles } from "@/db/schema/identity";
 import {
@@ -63,13 +63,21 @@ export const sellerVerifications = pgTable(
     pgPolicy("seller_verifications_insert_own", {
       for: "insert",
       to: authenticatedRole,
-      withCheck: sql`${authUid} = ${table.sellerId}`,
+      withCheck: sql`${authUid} = ${table.sellerId}
+        and ${table.status} in ('DRAFT', 'SUBMITTED')
+        and ${table.reviewedAt} is null
+        and ${table.reviewedBy} is null
+        and ${table.rejectionReason} is null`,
     }),
     pgPolicy("seller_verifications_update_own", {
       for: "update",
       to: authenticatedRole,
       using: sql`${authUid} = ${table.sellerId}`,
-      withCheck: sql`${authUid} = ${table.sellerId}`,
+      withCheck: sql`${authUid} = ${table.sellerId}
+        and ${table.status} in ('DRAFT', 'SUBMITTED')
+        and ${table.reviewedAt} is null
+        and ${table.reviewedBy} is null
+        and ${table.rejectionReason} is null`,
     }),
   ],
 ).enableRLS();
@@ -376,6 +384,7 @@ export const products = pgTable(
     city: text("city").notNull(),
     pickupAvailable: boolean("pickup_available").default(false).notNull(),
     deliveryAvailable: boolean("delivery_available").default(true).notNull(),
+    deliveryFeeMinor: bigint("delivery_fee_minor", { mode: "number" }).default(0).notNull(),
     status: productStatusEnum("status").default("DRAFT").notNull(),
     creationSource: productCreationSourceEnum("creation_source").default("SELLER").notNull(),
     createdByUserId: uuid("created_by_user_id")
@@ -405,6 +414,7 @@ export const products = pgTable(
     check("products_quantity_nonnegative", sql`${table.quantity} >= 0`),
     check("products_reserved_nonnegative", sql`${table.reservedQuantity} >= 0`),
     check("products_reserved_within_quantity", sql`${table.reservedQuantity} <= ${table.quantity}`),
+    check("products_delivery_fee_nonnegative", sql`${table.deliveryFeeMinor} >= 0`),
     check(
       "products_fulfilment_available",
       sql`${table.pickupAvailable} = true or ${table.deliveryAvailable} = true`,
@@ -412,7 +422,16 @@ export const products = pgTable(
     pgPolicy("products_select_seller_or_approved", {
       for: "select",
       to: authenticatedRole,
-      using: sql`${authUid} = ${table.sellerId} or ${table.status} = 'APPROVED'`,
+      using: sql`${authUid} = ${table.sellerId} or (
+        ${table.status} = 'APPROVED'
+        and public.seller_is_marketplace_visible(${table.sellerId})
+      )`,
+    }),
+    pgPolicy("products_select_approved_anon", {
+      for: "select",
+      to: anonRole,
+      using: sql`${table.status} = 'APPROVED'
+        and public.seller_is_marketplace_visible(${table.sellerId})`,
     }),
     pgPolicy("products_insert_own", {
       for: "insert",
@@ -463,6 +482,7 @@ export const marketplaceSellers = pgView("marketplace_sellers", {
   left join ${sellerVerifications} as seller_verifications
     on seller_verifications.seller_id = seller_profiles.user_id
   where products.status = 'APPROVED'
+    and seller_profiles.status in ('PENDING_VERIFICATION', 'ACTIVE')
 `);
 export const productCrossReferences = pgTable(
   "product_cross_references",
@@ -727,6 +747,6 @@ export const marketplaceProductSearch = pgView("marketplace_product_search", {
   left join ${transmissions} as transmissions on transmissions.id = vehicle_fitments.transmission_id
   left join ${drivetrains} as drivetrains on drivetrains.id = vehicle_fitments.drivetrain_id
   where products.status = 'APPROVED'
-    and seller_profiles.status = 'ACTIVE'
+    and seller_profiles.status in ('PENDING_VERIFICATION', 'ACTIVE')
   group by products.id, product_categories.name, seller_profiles.store_name
 `);

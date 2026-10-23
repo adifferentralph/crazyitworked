@@ -14,7 +14,8 @@ describe("seller product rules", () => {
   it("converts NGN input to exact minor units and back", () => {
     expect(priceInputToMinor("45000.25")).toBe(4_500_025);
     expect(priceMinorToInput(4_500_025)).toBe("45000.25");
-    expect(formatNgn(4_500_000)).toContain("45,000");
+    expect(priceMinorToInput(4_500_000)).toBe("45000.00");
+    expect(formatNgn(4_500_000)).toMatch(/45,000\.00/);
   });
 
   it("uses stable, URL-safe product slugs", () => {
