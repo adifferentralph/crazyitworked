@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
-import { AlertTriangle, MapPin, Minus, Plus, Truck, X } from "lucide-react";
+import { AlertTriangle, MapPin, Minus, Plus, X } from "lucide-react";
 
 import {
   removeCartItemAction,
@@ -120,11 +120,6 @@ export function CartContents({ initialItems }: { initialItems: CartDisplayItem[]
     (sum, item) => sum + item.product.price_minor * (quantities[item.id] ?? item.quantity),
     0,
   );
-  const delivery = initialItems.reduce(
-    (sum, item) => sum + (item.product.delivery_available ? item.product.delivery_fee_minor : 0),
-    0,
-  );
-
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="grid content-start gap-4">
@@ -163,12 +158,6 @@ export function CartContents({ initialItems }: { initialItems: CartDisplayItem[]
                       <MapPin aria-hidden="true" className="size-3.5 text-primary" />
                       {item.product.city}, {item.product.state}
                     </p>
-                    {item.product.delivery_available ? (
-                      <p className="mt-1 flex items-center gap-1.5 text-xs text-stone-500">
-                        <Truck aria-hidden="true" className="size-3.5 text-primary" />
-                        Delivery {formatNgn(item.product.delivery_fee_minor)}
-                      </p>
-                    ) : null}
                   </div>
                   <p className="text-lg font-semibold text-stone-950">
                     {formatNgn(item.product.price_minor * quantity)}
@@ -212,17 +201,10 @@ export function CartContents({ initialItems }: { initialItems: CartDisplayItem[]
         <h2 className="font-body text-lg font-bold text-stone-950">Cart summary</h2>
         <dl className="mt-4 grid gap-3 border-y border-stone-200 py-4">
           <div className="flex items-center justify-between gap-4">
-            <dt className="text-sm text-stone-600">Product Price</dt>
+            <dt className="text-sm text-stone-600">Products total</dt>
             <dd className="text-lg font-semibold text-stone-950">{formatNgn(subtotal)}</dd>
           </div>
-          <div className="flex items-center justify-between gap-4">
-            <dt className="text-sm text-stone-600">Delivery if selected</dt>
-            <dd className="font-semibold text-stone-950">{formatNgn(delivery)}</dd>
-          </div>
         </dl>
-        <p className="mt-4 text-xs leading-5 text-stone-500">
-          Choose pickup or delivery at checkout. Stock, prices, and delivery availability are checked again before payment.
-        </p>
         <Button asChild className="mt-5 w-full">
           <Link href="/checkout">Proceed to checkout</Link>
         </Button>

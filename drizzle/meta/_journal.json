@@ -246,6 +246,20 @@
       "when": 1792759272653,
       "tag": "0034_sour_magdalene",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793178659560,
+      "tag": "0035_huge_tana_nile",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793273318677,
+      "tag": "0036_giant_johnny_storm",
+      "breakpoints": true
     }
   ]
 }

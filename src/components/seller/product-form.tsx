@@ -8,7 +8,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { Camera, CarFront, CircleDollarSign, MapPin, PackageCheck, ScanLine } from "lucide-react";
+import { Camera, CarFront, CircleDollarSign, MapPin, PackageCheck, Ruler, ScanLine } from "lucide-react";
 
 import { createProductAction, updateProductAction } from "@/app/(protected)/seller/actions";
 import { SellerFormAlert } from "@/components/seller/seller-form-alert";
@@ -41,16 +41,32 @@ export type ProductFormDefaults = {
   deliveryFeeNgn: string;
   description: string;
   fitmentIds: string[];
+  heightCm?: string;
   imageTypes: ProductImageType[];
   manufacturerPartNumber: string;
   name: string;
   oemPartNumber: string;
   pickupAvailable: boolean;
+  pickupLocationId?: string;
+  packagingWeightGrams?: number;
   priceNgn: string;
   productId?: string;
   quantity: number;
   sku: string;
   state: string;
+  isBulky?: boolean;
+  isFragile?: boolean;
+  lengthCm?: string;
+  weightKg?: string;
+  widthCm?: string;
+};
+
+export type PickupLocationOption = {
+  id: string;
+  isDefault: boolean;
+  label: string;
+  lga: string;
+  town: string;
 };
 
 const labelClass = "mb-2 block text-sm font-semibold text-stone-800";
@@ -153,6 +169,7 @@ export function ProductForm({
   defaults,
   draftHrefPrefix = "/seller/products",
   makes,
+  pickupLocations = [],
   hiddenFields = [],
   imageDescription = "Upload five clear, seller-original images. Accepted: JPEG, PNG, or WebP, up to 8 MB each. Original uploads are preserved.",
   mode,
@@ -165,6 +182,7 @@ export function ProductForm({
   defaults: ProductFormDefaults;
   draftHrefPrefix?: string;
   makes: MarketplaceVehicleMakeOption[];
+  pickupLocations?: PickupLocationOption[];
   hiddenFields?: Array<{ name: string; value: string }>;
   imageDescription?: string;
   mode: "create" | "edit";
@@ -519,24 +537,54 @@ export function ProductForm({
           </label>
           <FieldError errors={fieldErrors.deliveryAvailable} />
         </div>
-        <div className="sm:col-span-2" data-error-field="deliveryFeeNgn" tabIndex={-1}>
-          <label className={labelClass} htmlFor="deliveryFeeNgn">
-            Delivery fee (NGN)
-          </label>
-          <Input
-            aria-describedby="delivery-fee-help"
-            aria-invalid={Boolean(fieldErrors.deliveryFeeNgn?.[0])}
-            className={cn(fieldErrors.deliveryFeeNgn?.[0] && "border-red-500 ring-1 ring-red-200")}
-            defaultValue={defaults.deliveryFeeNgn}
-            id="deliveryFeeNgn"
-            inputMode="decimal"
-            name="deliveryFeeNgn"
-            placeholder="0.00"
-          />
-          <p className="mt-2 text-xs leading-5 text-stone-500" id="delivery-fee-help">
-            Enter the flat fee a buyer pays for delivery of this listing. Enter 0.00 for free delivery. This is ignored when delivery is turned off.
-          </p>
-          <FieldError errors={fieldErrors.deliveryFeeNgn} />
+      </FormSection>
+
+      <FormSection
+        description="Choose where this product leaves from and add the details used to calculate delivery. Buyers cannot see your private pickup contact."
+        icon={Ruler}
+        title="Delivery details"
+      >
+        <div className="sm:col-span-2" data-error-field="pickupLocationId" tabIndex={-1}>
+          <label className={labelClass} htmlFor="pickupLocationId">Dispatch location <span className="text-primary">*</span></label>
+          <select
+            aria-invalid={Boolean(fieldErrors.pickupLocationId?.[0])}
+            className={cn(selectClass, fieldErrors.pickupLocationId?.[0] && "border-red-500 ring-1 ring-red-200")}
+            defaultValue={defaults.pickupLocationId ?? pickupLocations.find((location) => location.isDefault)?.id ?? ""}
+            id="pickupLocationId"
+            name="pickupLocationId"
+          >
+            <option value="">Choose a pickup location</option>
+            {pickupLocations.map((location) => <option key={location.id} value={location.id}>{location.label} - {location.town}, {location.lga}</option>)}
+          </select>
+          {!pickupLocations.length ? <p className="mt-2 text-sm font-semibold text-red-700">Add a pickup location in Store Settings before publishing.</p> : null}
+          <FieldError errors={fieldErrors.pickupLocationId} />
+        </div>
+        <div data-error-field="weightKg" tabIndex={-1}>
+          <label className={labelClass} htmlFor="weightKg">Product weight (kg) <span className="font-normal text-stone-500">- Required for delivery</span></label>
+          <Input aria-invalid={Boolean(fieldErrors.weightKg?.[0])} defaultValue={defaults.weightKg ?? ""} id="weightKg" inputMode="decimal" min="0.001" name="weightKg" step="0.001" type="number" />
+          <FieldError errors={fieldErrors.weightKg} />
+        </div>
+        <div>
+          <label className={labelClass} htmlFor="packagingWeightGrams">Packaging weight (grams) <span className="font-normal text-stone-500">- Optional</span></label>
+          <Input defaultValue={defaults.packagingWeightGrams ?? 0} id="packagingWeightGrams" inputMode="numeric" min="0" name="packagingWeightGrams" type="number" />
+        </div>
+        <div data-error-field="lengthCm" tabIndex={-1}>
+          <label className={labelClass} htmlFor="lengthCm">Length (cm) <span className="font-normal text-stone-500">- Optional</span></label>
+          <Input defaultValue={defaults.lengthCm ?? ""} id="lengthCm" inputMode="decimal" min="0.1" name="lengthCm" step="0.1" type="number" />
+          <FieldError errors={fieldErrors.lengthCm} />
+        </div>
+        <div>
+          <label className={labelClass} htmlFor="widthCm">Width (cm) <span className="font-normal text-stone-500">- Optional</span></label>
+          <Input defaultValue={defaults.widthCm ?? ""} id="widthCm" inputMode="decimal" min="0.1" name="widthCm" step="0.1" type="number" />
+        </div>
+        <div>
+          <label className={labelClass} htmlFor="heightCm">Height (cm) <span className="font-normal text-stone-500">- Optional</span></label>
+          <Input defaultValue={defaults.heightCm ?? ""} id="heightCm" inputMode="decimal" min="0.1" name="heightCm" step="0.1" type="number" />
+        </div>
+        <div className="grid content-start gap-3 pt-1">
+          <label className="flex items-center gap-3 text-sm text-stone-700"><input className="size-4 accent-primary" defaultChecked={defaults.isFragile ?? false} name="isFragile" type="checkbox" />Fragile item</label>
+          <label className="flex items-center gap-3 text-sm text-stone-700"><input className="size-4 accent-primary" defaultChecked={defaults.isBulky ?? false} name="isBulky" type="checkbox" />Bulky item</label>
+          <p className="text-xs leading-5 text-stone-500">Length, width, and height are required when bulky is selected.</p>
         </div>
       </FormSection>
 

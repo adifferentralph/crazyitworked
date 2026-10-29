@@ -9,6 +9,8 @@ import {
   cartItems,
   commercePayments,
   commerceWebhookEvents,
+  deliveryPricingConfigs,
+  deliveryQuotes,
   inventoryTransactions,
   orderItems,
   orders,
@@ -22,6 +24,13 @@ import {
   verifyKoraWebhookSignature,
 } from "@/lib/commerce/kora";
 import { calculateCheckoutTotals } from "@/lib/commerce/pricing";
+import {
+  calculateDeliveryQuoteFingerprint,
+  DeliveryQuoteError,
+  getQuoteShipmentAllocations,
+  getValidatedDeliveryQuote,
+  readDeliveryAddressSnapshot,
+} from "@/lib/delivery/engine";
 import { notifyOrderPaid } from "@/lib/notifications/push";
 
 const CHECKOUT_LIFETIME_MS = 30 * 60 * 1000;
@@ -30,6 +39,8 @@ const MAX_EXPIRED_ORDERS_PER_SWEEP = 50;
 export type CheckoutErrorCode =
   | "CART_EMPTY"
   | "DELIVERY_UNAVAILABLE"
+  | "DELIVERY_QUOTE_EXPIRED"
+  | "DELIVERY_QUOTE_INVALID"
   | "KORA_NOT_CONFIGURED"
   | "PAYMENT_INITIALIZATION_FAILED"
   | "PAYMENT_MISMATCH"
@@ -58,7 +69,9 @@ export type CheckoutFulfillmentInput =
       deliveryAddressLine1: string;
       deliveryAddressLine2: string | null;
       deliveryCity: string;
+      deliveryLga: string;
       deliveryPhone: string;
+      deliveryQuoteId: string;
       deliveryRecipientName: string;
       deliveryState: string;
       fulfillmentMethod: "DELIVERY";
@@ -196,11 +209,90 @@ export async function releaseExpiredCheckoutReservations() {
   }
 }
 
+type DeliveryCheckoutContext = {
+  address: NonNullable<ReturnType<typeof readDeliveryAddressSnapshot>>;
+  configVersion: number;
+  quote: Awaited<ReturnType<typeof getValidatedDeliveryQuote>>;
+  shipments: Awaited<ReturnType<typeof getQuoteShipmentAllocations>>;
+};
+
+async function getDeliveryCheckoutContext(
+  buyerId: string,
+  fulfillment: CheckoutFulfillmentInput,
+): Promise<DeliveryCheckoutContext | null> {
+  if (fulfillment.fulfillmentMethod !== "DELIVERY") return null;
+
+  try {
+    const quote = await getValidatedDeliveryQuote(buyerId, fulfillment.deliveryQuoteId);
+    const address = readDeliveryAddressSnapshot(quote.addressSnapshot);
+    if (!address) {
+      throw new CheckoutError("DELIVERY_QUOTE_INVALID", "The delivery address snapshot is invalid.");
+    }
+    const database = getDatabase();
+    const [currentConfig] = await database
+      .select({ id: deliveryPricingConfigs.id, version: deliveryPricingConfigs.version })
+      .from(deliveryPricingConfigs)
+      .where(
+        and(
+          eq(deliveryPricingConfigs.serviceActive, true),
+          eq(deliveryPricingConfigs.productionApproved, true),
+        ),
+      )
+      .orderBy(desc(deliveryPricingConfigs.version))
+      .limit(1);
+    if (!currentConfig || currentConfig.id !== quote.pricingConfigId) {
+      throw new CheckoutError(
+        "DELIVERY_QUOTE_INVALID",
+        "Delivery pricing changed. Calculate the delivery fee again.",
+      );
+    }
+    const shipments = await getQuoteShipmentAllocations(quote.id);
+    if (!shipments.length) {
+      throw new CheckoutError(
+        "DELIVERY_QUOTE_INVALID",
+        "The delivery quote does not contain any shipments.",
+      );
+    }
+    return { address, configVersion: currentConfig.version, quote, shipments };
+  } catch (error) {
+    if (error instanceof CheckoutError) throw error;
+    if (error instanceof DeliveryQuoteError) {
+      throw new CheckoutError(
+        error.code === "DELIVERY_QUOTE_EXPIRED"
+          ? "DELIVERY_QUOTE_EXPIRED"
+          : "DELIVERY_QUOTE_INVALID",
+        error.message,
+      );
+    }
+    throw error;
+  }
+}
+
+function shipmentProductIds(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function publicPickupSnapshot(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const snapshot = value as Record<string, unknown>;
+  return {
+    landmark: typeof snapshot.landmark === "string" ? snapshot.landmark : null,
+    lga: typeof snapshot.lga === "string" ? snapshot.lga : null,
+    state: typeof snapshot.state === "string" ? snapshot.state : "Anambra",
+    streetAddress:
+      typeof snapshot.streetAddress === "string" ? snapshot.streetAddress : null,
+    town: typeof snapshot.town === "string" ? snapshot.town : null,
+  };
+}
+
 async function prepareCheckout(
   identity: BuyerIdentity,
   fulfillment: CheckoutFulfillmentInput,
 ): Promise<CheckoutRecord> {
   const database = getDatabase();
+  const deliveryContext = await getDeliveryCheckoutContext(identity.id, fulfillment);
 
   return database.transaction(async (transaction) => {
     const cart = await transaction
@@ -267,10 +359,76 @@ async function prepareCheckout(
       );
     }
 
+    const productSubtotalFromCart = cart.reduce(
+      (sum, item) => sum + item.priceMinor * item.quantity,
+      0,
+    );
+    const deliveryFeeByProduct = new Map<string, number>();
+    const shipmentByProduct = new Map<
+      string,
+      NonNullable<typeof deliveryContext>["shipments"][number]
+    >();
+
+    if (deliveryContext) {
+      const currentFingerprint = calculateDeliveryQuoteFingerprint({
+        address: deliveryContext.address,
+        buyerId: identity.id,
+        configVersion: deliveryContext.configVersion,
+        items: cart.map((item) => ({
+          priceMinor: item.priceMinor,
+          productId: item.productId,
+          quantity: item.quantity,
+          version: item.version,
+        })),
+      });
+      if (
+        currentFingerprint !== deliveryContext.quote.cartFingerprint ||
+        productSubtotalFromCart !== deliveryContext.quote.productSubtotalMinor
+      ) {
+        throw new CheckoutError(
+          "DELIVERY_QUOTE_INVALID",
+          "Your cart changed. Calculate the delivery fee again before paying.",
+        );
+      }
+
+      for (const shipment of deliveryContext.shipments) {
+        const productIds = shipmentProductIds(shipment.productIds);
+        const shipmentItems = cart.filter((item) => productIds.includes(item.productId));
+        const shipmentProductTotal = shipmentItems.reduce(
+          (sum, item) => sum + item.priceMinor * item.quantity,
+          0,
+        );
+        if (!shipmentItems.length || shipmentProductTotal <= 0) {
+          throw new CheckoutError(
+            "DELIVERY_QUOTE_INVALID",
+            "The delivery shipment no longer matches your cart.",
+          );
+        }
+        let remaining = shipment.customerChargeMinor;
+        shipmentItems.forEach((item, index) => {
+          const lineTotal = item.priceMinor * item.quantity;
+          const allocated =
+            index === shipmentItems.length - 1
+              ? remaining
+              : Math.floor((shipment.customerChargeMinor * lineTotal) / shipmentProductTotal);
+          remaining -= allocated;
+          deliveryFeeByProduct.set(item.productId, allocated);
+          shipmentByProduct.set(item.productId, shipment);
+        });
+      }
+
+      if (cart.some((item) => !shipmentByProduct.has(item.productId))) {
+        throw new CheckoutError(
+          "DELIVERY_QUOTE_INVALID",
+          "A cart product is missing from the delivery quote.",
+        );
+      }
+    }
+
     const fingerprint = calculateCheckoutFingerprint(
       identity.id,
       cart.map((item) => ({
-        deliveryFeeMinor: item.deliveryFeeMinor,
+        deliveryFeeMinor: deliveryFeeByProduct.get(item.productId) ?? 0,
         priceMinor: item.priceMinor,
         productId: item.productId,
         quantity: item.quantity,
@@ -307,20 +465,28 @@ async function prepareCheckout(
     const orderId = randomUUID();
     const paymentId = randomUUID();
     const orderNumber = buildReference();
-    const {
-      actualDeliveryCostMinor,
-      deliveryTotalMinor,
-      platformServiceComponentMinor,
-      productSubtotalMinor,
-      totalMinor,
-    } = calculateCheckoutTotals(
+    const pickupTotals = calculateCheckoutTotals(
       cart.map((item) => ({
-        deliveryFeeMinor: item.deliveryFeeMinor,
+        deliveryFeeMinor: 0,
         priceMinor: item.priceMinor,
         quantity: item.quantity,
       })),
-      fulfillment.fulfillmentMethod,
+      "PICKUP",
     );
+    const actualDeliveryCostMinor = deliveryContext
+      ? deliveryContext.shipments.reduce((sum, shipment) => sum + shipment.actualCostMinor, 0)
+      : pickupTotals.actualDeliveryCostMinor;
+    const platformServiceComponentMinor = deliveryContext
+      ? deliveryContext.shipments.reduce(
+          (sum, shipment) => sum + shipment.platformComponentMinor,
+          0,
+        )
+      : pickupTotals.platformServiceComponentMinor;
+    const deliveryTotalMinor = deliveryContext
+      ? deliveryContext.quote.deliveryTotalMinor
+      : pickupTotals.deliveryTotalMinor;
+    const productSubtotalMinor = pickupTotals.productSubtotalMinor;
+    const totalMinor = productSubtotalMinor + deliveryTotalMinor;
     const expiresAt = new Date(Date.now() + CHECKOUT_LIFETIME_MS);
 
     if (!Number.isSafeInteger(totalMinor) || totalMinor <= 0) {
@@ -379,10 +545,18 @@ async function prepareCheckout(
       customerPhone: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryPhone : null,
       deliveryAddressLine1: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryAddressLine1 : null,
       deliveryAddressLine2: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryAddressLine2 : null,
+      deliveryAddressSnapshot: deliveryContext?.quote.addressSnapshot ?? null,
       deliveryCity: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryCity : null,
+      deliveryLandmark: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryAddressLine2 : null,
+      deliveryLatitude: deliveryContext?.address.latitude ?? null,
+      deliveryLga: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryLga : null,
+      deliveryLongitude: deliveryContext?.address.longitude ?? null,
       deliveryPhone: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryPhone : null,
+      deliveryPricingVersion: deliveryContext?.configVersion ?? null,
+      deliveryQuoteId: deliveryContext?.quote.id ?? null,
       deliveryRecipientName: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryRecipientName : null,
       deliveryState: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryState : null,
+      deliveryTown: fulfillment.fulfillmentMethod === "DELIVERY" ? fulfillment.deliveryCity : null,
       deliveryTotalMinor,
       expiresAt,
       fulfillmentMethod: fulfillment.fulfillmentMethod,
@@ -396,15 +570,21 @@ async function prepareCheckout(
     await transaction.insert(orderItems).values(
       cart.map((item) => {
         const productTotalMinor = item.priceMinor * item.quantity;
+        const shipment = shipmentByProduct.get(item.productId);
+        const pickup = shipment ? publicPickupSnapshot(shipment.pickupSnapshot) : null;
 
         return {
           id: randomUUID(),
           deliveryFeeMinor:
-            fulfillment.fulfillmentMethod === "DELIVERY" ? item.deliveryFeeMinor : 0,
+            fulfillment.fulfillmentMethod === "DELIVERY"
+              ? (deliveryFeeByProduct.get(item.productId) ?? 0)
+              : 0,
           orderId,
-          pickupCity: item.productCity,
+          pickupCity: pickup?.town ?? item.productCity,
           pickupCountry: item.productCountry,
-          pickupState: item.productState,
+          pickupLocationId: shipment?.pickupLocationId ?? null,
+          pickupSnapshot: pickup,
+          pickupState: pickup?.state ?? item.productState,
           productId: item.productId,
           productName: item.productName,
           productSlug: item.productSlug,
@@ -425,6 +605,18 @@ async function prepareCheckout(
       orderId,
       providerReference: orderNumber,
     });
+
+    if (deliveryContext) {
+      await transaction
+        .update(deliveryQuotes)
+        .set({ consumedAt: new Date(), status: "CONSUMED", updatedAt: new Date() })
+        .where(
+          and(
+            eq(deliveryQuotes.id, deliveryContext.quote.id),
+            eq(deliveryQuotes.status, "VALID"),
+          ),
+        );
+    }
 
     return {
       checkoutUrl: null,

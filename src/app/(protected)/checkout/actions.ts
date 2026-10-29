@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { requireRole } from "@/lib/auth/principal";
 import { CheckoutError, createKoraCheckout } from "@/lib/commerce/orders";
+import { ANAMBRA_LGAS } from "@/lib/delivery/anambra";
 
 const deliveryCheckoutSchema = z.discriminatedUnion("fulfillmentMethod", [
   z.object({ fulfillmentMethod: z.literal("PICKUP") }),
@@ -12,9 +13,11 @@ const deliveryCheckoutSchema = z.discriminatedUnion("fulfillmentMethod", [
     deliveryAddressLine1: z.string().trim().min(5).max(200),
     deliveryAddressLine2: z.string().trim().max(200).transform((value) => value || null),
     deliveryCity: z.string().trim().min(2).max(100),
+    deliveryLga: z.enum(ANAMBRA_LGAS),
     deliveryPhone: z.string().trim().regex(/^\+?[0-9][0-9\s-]{7,18}$/),
+    deliveryQuoteId: z.string().uuid(),
     deliveryRecipientName: z.string().trim().min(2).max(120),
-    deliveryState: z.string().trim().min(2).max(100),
+    deliveryState: z.literal("Anambra"),
     fulfillmentMethod: z.literal("DELIVERY"),
   }),
 ]);
@@ -25,7 +28,9 @@ export async function startCheckoutAction(formData: FormData) {
     deliveryAddressLine1: formData.get("deliveryAddressLine1") ?? "",
     deliveryAddressLine2: formData.get("deliveryAddressLine2") ?? "",
     deliveryCity: formData.get("deliveryCity") ?? "",
+    deliveryLga: formData.get("deliveryLga") ?? "",
     deliveryPhone: formData.get("deliveryPhone") ?? "",
+    deliveryQuoteId: formData.get("deliveryQuoteId") ?? "",
     deliveryRecipientName: formData.get("deliveryRecipientName") ?? "",
     deliveryState: formData.get("deliveryState") ?? "",
     fulfillmentMethod: formData.get("fulfillmentMethod") ?? "PICKUP",

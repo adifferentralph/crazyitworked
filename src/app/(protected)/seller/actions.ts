@@ -2,10 +2,13 @@
 
 import { randomUUID } from "node:crypto";
 
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { z } from "zod";
 
+import { getDatabase } from "@/db/client";
+import { productShippingProfiles, sellerPickupLocations } from "@/db/schema";
 import { requireRole } from "@/lib/auth/principal";
 import type { SellerActionState } from "@/lib/marketplace/seller-action-state";
 import {
@@ -347,11 +350,43 @@ function submissionImageError(
   return null;
 }
 
-function productValues(parsed: z.infer<typeof productFormSchema>, sku: string) {
+type PickupLocation = {
+  id: string;
+  state: string;
+  town: string;
+  verifiedAt: Date | null;
+};
+
+async function getOwnedPickupLocation(sellerId: string, locationId: string | null) {
+  if (!locationId) return null;
+  const [location] = await getDatabase()
+    .select({
+      id: sellerPickupLocations.id,
+      state: sellerPickupLocations.state,
+      town: sellerPickupLocations.town,
+      verifiedAt: sellerPickupLocations.verifiedAt,
+    })
+    .from(sellerPickupLocations)
+    .where(
+      and(
+        eq(sellerPickupLocations.id, locationId),
+        eq(sellerPickupLocations.sellerId, sellerId),
+        eq(sellerPickupLocations.isActive, true),
+      ),
+    )
+    .limit(1);
+  return location ?? null;
+}
+
+function productValues(
+  parsed: z.infer<typeof productFormSchema>,
+  sku: string,
+  pickupLocation: PickupLocation | null,
+) {
   return {
     brand: parsed.brand,
     category_id: parsed.categoryId,
-    city: parsed.city,
+    city: pickupLocation?.town ?? parsed.city,
     condition: parsed.condition,
     country: parsed.country,
     delivery_available: parsed.deliveryAvailable,
@@ -364,7 +399,32 @@ function productValues(parsed: z.infer<typeof productFormSchema>, sku: string) {
     price_minor: priceInputToMinor(parsed.priceNgn),
     quantity: parsed.quantity,
     sku,
-    state: parsed.state,
+    state: pickupLocation?.state ?? parsed.state,
+  };
+}
+
+function measurementToMillimetres(value: number | null) {
+  return value === null ? null : Math.round(value * 10);
+}
+
+function shippingValues(
+  parsed: z.infer<typeof productFormSchema>,
+  pickupLocation: PickupLocation | null,
+) {
+  return {
+    deliveryEligible:
+      parsed.deliveryAvailable &&
+      Boolean(pickupLocation?.verifiedAt) &&
+      parsed.weightKg !== null,
+    heightMm: measurementToMillimetres(parsed.heightCm),
+    isBulky: parsed.isBulky,
+    isFragile: parsed.isFragile,
+    lengthMm: measurementToMillimetres(parsed.lengthCm),
+    packagingWeightGrams: parsed.packagingWeightGrams,
+    pickupLocationId: pickupLocation?.id ?? null,
+    requiresLocationUpdate: !pickupLocation?.verifiedAt,
+    weightGrams: parsed.weightKg === null ? null : Math.round(parsed.weightKg * 1000),
+    widthMm: measurementToMillimetres(parsed.widthCm),
   };
 }
 
@@ -378,6 +438,13 @@ export async function createProductAction(
   const principal = await requireRole(["SELLER"], "/seller/products/new");
   if (!(await ensureSellerOnboarded(principal.id))) {
     redirect("/seller/onboarding?next=/seller/products/new");
+  }
+  const pickupLocation = await getOwnedPickupLocation(
+    principal.id,
+    parsed.data.pickupLocationId,
+  );
+  if (parsed.data.pickupLocationId && !pickupLocation) {
+    return databaseError("Choose a valid pickup location from your store settings.", "pickupLocationId");
   }
 
   const { errors, uploads } = collectImageUploads(
@@ -397,7 +464,7 @@ export async function createProductAction(
   const sku = parsed.data.sku ?? `TTP-${productId.slice(0, 8).toUpperCase()}`;
   const slug = `${slugifyProduct(parsed.data.name) || "part"}-${productId.slice(0, 8)}`;
   const { error: productError } = await supabase.from("products").insert({
-    ...productValues(parsed.data, sku),
+    ...productValues(parsed.data, sku, pickupLocation),
     created_by_user_id: principal.id,
     creation_source: "SELLER",
     id: productId,
@@ -413,6 +480,19 @@ export async function createProductAction(
         ? "That seller SKU is already used by another product."
         : "The product draft could not be created.",
     );
+  }
+
+  try {
+    await getDatabase().insert(productShippingProfiles).values({
+      productId,
+      ...shippingValues(parsed.data, pickupLocation),
+    });
+  } catch {
+    return {
+      message: "The product draft was created, but its delivery details could not be saved.",
+      productId,
+      status: "error",
+    };
   }
 
   const associationError = await replaceProductAssociations({
@@ -466,6 +546,13 @@ export async function updateProductAction(
   const productId = parsed.data.productId;
   const principal = await requireRole(["SELLER"], `/seller/products/${productId}/edit`);
   const supabase = await createClient();
+  const pickupLocation = await getOwnedPickupLocation(
+    principal.id,
+    parsed.data.pickupLocationId,
+  );
+  if (parsed.data.pickupLocationId && !pickupLocation) {
+    return databaseError("Choose a valid pickup location from your store settings.", "pickupLocationId");
+  }
   const { data: existingProduct, error: existingError } = await supabase
     .from("products")
     .select("id, sku, status")
@@ -501,10 +588,24 @@ export async function updateProductAction(
   const imageError = await uploadProductImages({ productId, sellerId: principal.id, uploads });
   if (imageError) return databaseError(imageError);
 
+  await getDatabase()
+    .insert(productShippingProfiles)
+    .values({
+      productId,
+      ...shippingValues(parsed.data, pickupLocation),
+    })
+    .onConflictDoUpdate({
+      target: productShippingProfiles.productId,
+      set: {
+        ...shippingValues(parsed.data, pickupLocation),
+        updatedAt: new Date(),
+      },
+    });
+
   const { error: updateError } = await supabase
     .from("products")
     .update({
-      ...productValues(parsed.data, parsed.data.sku ?? existingProduct.sku),
+      ...productValues(parsed.data, parsed.data.sku ?? existingProduct.sku, pickupLocation),
       last_modified_by_user_id: principal.id,
       ...(shouldPublish ? { status: "PENDING_REVIEW" as const } : {}),
     })
@@ -517,13 +618,14 @@ export async function updateProductAction(
     }
     if (updateError.code === "23514") {
       return databaseError(
-        "Keep one vehicle fitment and five active product photos before saving a published listing.",
+        parsed.data.deliveryAvailable
+          ? "Add a verified Anambra pickup location, shipping weight, one vehicle fitment, and five active photos before publishing."
+          : "Keep one vehicle fitment and five active product photos before publishing.",
         "images",
       );
     }
     return databaseError("The product changes could not be saved.");
   }
-
   revalidatePath("/seller/products");
   revalidatePath(`/seller/products/${productId}`);
   if (shouldPublish) {

@@ -4,13 +4,18 @@ import { AlertCircle, ChevronLeft, ShoppingBag } from "lucide-react";
 import { AccountSectionPage } from "@/components/account/account-section-page";
 import { CheckoutExperience } from "@/components/commerce/checkout-experience";
 import { Button } from "@/components/ui/button";
+import { getDatabase } from "@/db/client";
+import { addresses } from "@/db/schema";
 import { requireRole } from "@/lib/auth/principal";
 import { hasKoraEnvironment } from "@/lib/commerce/kora";
 import { getBuyerCart } from "@/lib/marketplace/buyer-data";
+import { asc, desc, eq } from "drizzle-orm";
 
 const checkoutErrors: Record<string, string> = {
   CART_EMPTY: "Your cart is empty. Add a part before checking out.",
   DELIVERY_DETAILS_REQUIRED: "Enter a complete delivery address and phone number.",
+  DELIVERY_QUOTE_EXPIRED: "Your delivery fee expired. Enter your address again to recalculate it.",
+  DELIVERY_QUOTE_INVALID: "Your cart or delivery fee changed. Recalculate delivery before paying.",
   DELIVERY_UNAVAILABLE: "Every part must support delivery for this checkout. Choose pickup or review your cart.",
   KORA_NOT_CONFIGURED: "Checkout is temporarily unavailable. Please try again later.",
   PAYMENT_INITIALIZATION_FAILED:
@@ -28,8 +33,9 @@ export default async function CheckoutPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const principal = await requireRole(["BUYER"], "/checkout");
-  const [cart, query] = await Promise.all([
+  const [cart, savedAddresses, query] = await Promise.all([
     getBuyerCart(principal.id),
+    getDatabase().select({ id: addresses.id, label: addresses.label, landmark: addresses.landmark, latitude: addresses.latitude, lga: addresses.lga, line1: addresses.line1, longitude: addresses.longitude, phone: addresses.phone, recipientName: addresses.recipientName, town: addresses.town }).from(addresses).where(eq(addresses.userId, principal.id)).orderBy(desc(addresses.isDefault), asc(addresses.createdAt)),
     searchParams,
   ]);
 
@@ -84,7 +90,7 @@ export default async function CheckoutPage({
         </p>
       ) : null}
 
-      <CheckoutExperience cart={cart} paymentConfigured={paymentConfigured} />
+      <CheckoutExperience cart={cart} paymentConfigured={paymentConfigured} savedAddresses={savedAddresses} />
     </AccountSectionPage>
   );
 }

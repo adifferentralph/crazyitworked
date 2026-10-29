@@ -144,7 +144,11 @@ export async function getAdminCustomers(searchValue?: string): Promise<AdminCust
 export type AdminSeller = {
   city: string | null;
   email: string;
+  foundingAwardedAt: Date | string | null;
+  foundingPosition: number | null;
+  foundingRevokedAt: Date | string | null;
   joinedAt: Date | string | null;
+  manualVerificationStatus: string | null;
   onboardingCompletedAt: Date | string | null;
   productCount: number;
   rejectionReason: string | null;
@@ -172,20 +176,89 @@ export async function getAdminSellers(searchValue?: string): Promise<AdminSeller
       coalesce(seller_verifications.status::text, 'DRAFT') as "verificationStatus",
       seller_verifications.reviewed_at as "reviewedAt",
       seller_verifications.rejection_reason as "rejectionReason",
-      count(products.id)::int as "productCount"
+      coalesce(product_counts.product_count, 0)::int as "productCount",
+      manual_seller_verifications.status::text as "manualVerificationStatus",
+      founding_merchant_awards.position as "foundingPosition",
+      founding_merchant_awards.awarded_at as "foundingAwardedAt",
+      founding_merchant_awards.revoked_at as "foundingRevokedAt"
     from public.seller_profiles
     join public.profiles on profiles.id = seller_profiles.user_id
-    left join public.seller_verifications on seller_verifications.seller_id = seller_profiles.user_id
-    left join public.products on products.seller_id = seller_profiles.user_id
+    left join lateral (
+      select
+        seller_verifications.status,
+        seller_verifications.reviewed_at,
+        seller_verifications.rejection_reason
+      from public.seller_verifications
+      where seller_verifications.seller_id = seller_profiles.user_id
+      order by seller_verifications.updated_at desc, seller_verifications.id desc
+      limit 1
+    ) seller_verifications on true
+    left join lateral (
+      select count(*)::int as product_count
+      from public.products
+      where products.seller_id = seller_profiles.user_id
+    ) product_counts on true
+    left join public.manual_seller_verifications
+      on manual_seller_verifications.seller_id = seller_profiles.user_id
+    left join public.founding_merchant_awards
+      on founding_merchant_awards.seller_id = seller_profiles.user_id
     where (
       ${search} = ''
       or seller_profiles.store_name ilike ${like}
       or profiles.email ilike ${like}
     )
-    group by seller_profiles.user_id, profiles.id, seller_verifications.seller_id
     order by
       case when coalesce(seller_verifications.status::text, 'DRAFT') in ('DRAFT', 'SUBMITTED') then 0 else 1 end,
       profiles.created_at desc
+    limit 100
+  `);
+}
+
+export type AdminMarketplaceReport = {
+  createdAt: Date | string;
+  explanation: string | null;
+  id: string;
+  moderationReason: string | null;
+  productName: string | null;
+  reason: string;
+  repeatIncidentCount: number;
+  reporterEmail: string;
+  sellerId: string;
+  severity: string | null;
+  status: string;
+  storeName: string;
+  targetType: string;
+};
+
+export async function getAdminMarketplaceReports(searchValue?: string): Promise<AdminMarketplaceReport[]> {
+  const search = normalizeSearch(searchValue);
+  const like = `%${search}%`;
+  return getDatabase().execute(sql<AdminMarketplaceReport>`
+    select
+      marketplace_reports.id,
+      marketplace_reports.target_type::text as "targetType",
+      marketplace_reports.reason,
+      marketplace_reports.explanation,
+      marketplace_reports.status::text,
+      marketplace_reports.severity,
+      marketplace_reports.moderation_reason as "moderationReason",
+      marketplace_reports.seller_id as "sellerId",
+      marketplace_reports.created_at as "createdAt",
+      profiles.email as "reporterEmail",
+      products.name as "productName",
+      seller_profiles.store_name as "storeName",
+      count(*) over (partition by marketplace_reports.target_key)::int as "repeatIncidentCount"
+    from public.marketplace_reports
+    join public.profiles on profiles.id = marketplace_reports.reporter_id
+    join public.seller_profiles on seller_profiles.user_id = marketplace_reports.seller_id
+    left join public.products on products.id = marketplace_reports.product_id
+    where ${search} = ''
+      or seller_profiles.store_name ilike ${like}
+      or coalesce(products.name, '') ilike ${like}
+      or profiles.email ilike ${like}
+    order by
+      case marketplace_reports.status when 'PENDING' then 0 when 'UPHELD' then 1 else 2 end,
+      marketplace_reports.created_at desc
     limit 100
   `);
 }
@@ -266,10 +339,15 @@ export async function getAdminProduct(productId: string) {
 }
 
 export type AdminOrder = {
+  actualDeliveryCostMinor: number;
   buyerEmail: string;
   createdAt: Date;
+  deliveryTotalMinor: number;
   orderNumber: string;
   paymentStatus: string;
+  platformServiceComponentMinor: number;
+  productSubtotalMinor: number;
+  shipmentCount: number;
   status: string;
   totalMinor: number;
 };
@@ -282,9 +360,14 @@ export async function getAdminOrders(searchValue?: string): Promise<AdminOrder[]
       orders.order_number as "orderNumber",
       orders.status::text,
       orders.payment_status::text as "paymentStatus",
+      orders.product_subtotal_minor::int as "productSubtotalMinor",
+      orders.delivery_total_minor::int as "deliveryTotalMinor",
+      orders.actual_delivery_cost_minor::int as "actualDeliveryCostMinor",
+      orders.platform_service_component_minor::int as "platformServiceComponentMinor",
       orders.total_minor::int as "totalMinor",
       orders.customer_email as "buyerEmail",
-      orders.created_at as "createdAt"
+      orders.created_at as "createdAt",
+      (select count(distinct coalesce(order_items.pickup_location_id::text, order_items.seller_id::text))::int from public.order_items where order_items.order_id = orders.id) as "shipmentCount"
     from public.orders
     where ${search} = ''
       or orders.order_number ilike ${like}

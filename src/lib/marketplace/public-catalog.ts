@@ -14,6 +14,8 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import type { ProductCondition } from "@/lib/supabase/database.types";
 import type { MarketplaceSearch, MarketplaceVehicleOption } from "@/lib/marketplace/search-options";
+import { getPublicProductReviews } from "@/lib/reviews/data";
+import { getPublicSellerRecognition, getPublicTrustForProducts } from "@/lib/trust/public";
 export type { MarketplaceSearch, MarketplaceVehicleOption } from "@/lib/marketplace/search-options";
 export { publicProductConditions } from "@/lib/marketplace/search-options";
 
@@ -226,7 +228,7 @@ export async function searchMarketplaceProducts(
   const sellerIds = [...new Set(products.map((product) => product.seller_id))];
   const categoryIds = [...new Set(products.map((product) => product.category_id))];
   const now = new Date().toISOString();
-  const [imagesResult, sellersResult, categoriesResult, fitmentsResult, options, sponsorships] = await Promise.all([
+  const [imagesResult, sellersResult, categoriesResult, fitmentsResult, options, sponsorships, publicTrust] = await Promise.all([
     supabase.from("product_images").select("product_id, storage_path").in("product_id", productIds).eq("is_active", true).eq("is_primary", true),
     supabase.from("marketplace_sellers").select("*").in("seller_id", sellerIds),
     supabase.from("product_categories").select("id, name").in("id", categoryIds),
@@ -239,6 +241,7 @@ export async function searchMarketplaceProducts(
       .eq("is_active", true)
       .lte("starts_at", now)
       .or(`ends_at.is.null,ends_at.gt.${now}`),
+    getPublicTrustForProducts(productIds, sellerIds),
   ]);
   const paths = (imagesResult.data ?? []).map((image) => image.storage_path);
   const { data: signed } = paths.length
@@ -266,8 +269,14 @@ export async function searchMarketplaceProducts(
       categoryName: categoryById.get(product.category_id) ?? "Automotive part",
       primaryImageUrl: imageByProduct.get(product.id) ?? null,
       primaryVehicle: primaryVehicleByProduct.get(product.id) ?? null,
+      sellerRecognition: publicTrust.recognitionBySeller.get(product.seller_id) ?? {
+        foundingPosition: null,
+        foundingTwenty: false,
+        verifiedSeller: false,
+      },
       seller: sellerById.get(product.seller_id) ?? null,
       sponsored: sponsoredProductIds.has(product.id),
+      trustScore: publicTrust.scoreByProduct.get(product.id) ?? 3.5,
     })),
   };
 }
@@ -285,7 +294,9 @@ export const getMarketplaceStore = cache(async function getMarketplaceStore(slug
     .eq("slug", normalizedSlug)
     .maybeSingle();
 
-  return error ? null : data;
+  if (error || !data) return null;
+  const recognition = await getPublicSellerRecognition(data.seller_id);
+  return { ...data, recognition };
 });
 
 async function getPublicProductFitments(productId: string) {
@@ -333,12 +344,14 @@ export const getMarketplaceProduct = cache(async function getMarketplaceProduct(
   const { data: product, error } = await supabase.from("products").select("*").eq("slug", slug).eq("status", "APPROVED").single();
   if (error || !product) return null;
 
-  const [imagesResult, sellerResult, categoryResult, crossReferencesResult, fitments] = await Promise.all([
+  const [imagesResult, sellerResult, categoryResult, crossReferencesResult, fitments, reviewSummary, publicTrust] = await Promise.all([
     supabase.from("product_images").select("*").eq("product_id", product.id).eq("is_active", true).order("position"),
     supabase.from("marketplace_sellers").select("*").eq("seller_id", product.seller_id).single(),
     supabase.from("product_categories").select("name, slug").eq("id", product.category_id).single(),
     supabase.from("product_cross_references").select("reference_number").eq("product_id", product.id).order("reference_number"),
     getPublicProductFitments(product.id),
+    getPublicProductReviews(product.id),
+    getPublicTrustForProducts([product.id], [product.seller_id]),
   ]);
   const paths = (imagesResult.data ?? []).map((image) => image.storage_path);
   const { data: signed } = paths.length
@@ -352,7 +365,14 @@ export const getMarketplaceProduct = cache(async function getMarketplaceProduct(
     fitments,
     images: (imagesResult.data ?? []).map((image) => ({ ...image, signedUrl: urls.get(image.storage_path) ?? null })),
     product,
+    reviewSummary,
+    sellerRecognition: publicTrust.recognitionBySeller.get(product.seller_id) ?? {
+      foundingPosition: null,
+      foundingTwenty: false,
+      verifiedSeller: false,
+    },
     seller: sellerResult.data,
+    trustScore: publicTrust.scoreByProduct.get(product.id) ?? 3.5,
   };
 });
 

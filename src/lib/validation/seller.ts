@@ -81,6 +81,27 @@ const optionalMoneyInput = z.preprocess(
   priceInput,
 );
 
+const optionalPositiveDecimal = (label: string, maximum: number) =>
+  z.preprocess(
+    (value) =>
+      value === null || value === undefined || (typeof value === "string" && value.trim() === "")
+        ? null
+        : value,
+    z.coerce
+      .number()
+      .positive(`${label} must be greater than zero.`)
+      .max(maximum, `${label} is too large.`)
+      .nullable(),
+  );
+
+const optionalNonnegativeInteger = z.preprocess(
+  (value) =>
+    value === null || value === undefined || (typeof value === "string" && value.trim() === "")
+      ? 0
+      : value,
+  z.coerce.number().int().min(0).max(1_000_000),
+);
+
 const crossReferences = z.preprocess(
   optionalInput,
   z
@@ -120,16 +141,24 @@ export const productFormSchema = z
     deliveryFeeNgn: optionalMoneyInput,
     description: requiredText("Description", 20, 5000),
     fitmentIds: z.array(z.string().uuid()).max(50),
+    heightCm: optionalPositiveDecimal("Height", 1_000),
+    isBulky: checkbox,
+    isFragile: checkbox,
     intent: z.enum(["save-draft", "submit-review"]),
     manufacturerPartNumber: optionalText(120),
     name: requiredText("Part name", 3, 160),
     oemPartNumber: optionalText(120),
     pickupAvailable: checkbox,
+    pickupLocationId: z.preprocess(optionalInput, z.string().trim().uuid().nullable().or(z.literal("")).transform((value) => value || null)),
+    packagingWeightGrams: optionalNonnegativeInteger,
     priceNgn: priceInput,
     productId: z.string().uuid().optional(),
     quantity: z.coerce.number().int().min(0).max(1_000_000),
     sku: optionalText(100),
     state: requiredText("State", 2, 100),
+    lengthCm: optionalPositiveDecimal("Length", 1_000),
+    weightKg: optionalPositiveDecimal("Weight", 10_000),
+    widthCm: optionalPositiveDecimal("Width", 1_000),
   })
   .superRefine((data, context) => {
     if (!data.pickupAvailable && !data.deliveryAvailable) {
@@ -145,6 +174,35 @@ export const productFormSchema = z
         code: z.ZodIssueCode.custom,
         message: "Choose at least one car this part fits.",
         path: ["fitmentIds"],
+      });
+    }
+    if (data.intent === "submit-review" && !data.pickupLocationId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Choose where this product will be dispatched from.",
+        path: ["pickupLocationId"],
+      });
+    }
+
+    if (data.intent === "submit-review" && data.deliveryAvailable && !data.pickupLocationId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Choose where this product will be dispatched from.",
+        path: ["pickupLocationId"],
+      });
+    }
+    if (data.intent === "submit-review" && data.deliveryAvailable && data.weightKg === null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter the product weight for delivery.",
+        path: ["weightKg"],
+      });
+    }
+    if (data.isBulky && [data.lengthCm, data.widthCm, data.heightCm].some((value) => value === null)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter length, width, and height for a bulky product.",
+        path: ["lengthCm"],
       });
     }
   });
@@ -183,16 +241,24 @@ export function getProductFormValues(formData: FormData) {
     fitmentIds: formData
       .getAll("fitmentIds")
       .filter((value): value is string => typeof value === "string" && value.length > 0),
+    heightCm: formData.get("heightCm"),
+    isBulky: formData.get("isBulky"),
+    isFragile: formData.get("isFragile"),
     intent: formData.get("intent"),
     manufacturerPartNumber: formData.get("manufacturerPartNumber"),
     name: formData.get("name"),
     oemPartNumber: formData.get("oemPartNumber"),
     pickupAvailable: formData.get("pickupAvailable"),
+    pickupLocationId: formData.get("pickupLocationId"),
+    packagingWeightGrams: formData.get("packagingWeightGrams"),
     priceNgn: formData.get("priceNgn"),
     productId: formData.get("productId") || undefined,
     quantity: formData.get("quantity"),
     sku: formData.get("sku"),
     state: formData.get("state"),
+    lengthCm: formData.get("lengthCm"),
+    weightKg: formData.get("weightKg"),
+    widthCm: formData.get("widthCm"),
   };
 }
 

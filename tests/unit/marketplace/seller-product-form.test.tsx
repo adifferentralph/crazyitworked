@@ -25,9 +25,11 @@ const defaults: ProductFormDefaults = {
   oemPartNumber: "",
   pickupAvailable: true,
   priceNgn: "45000",
+  pickupLocationId: "22222222-2222-4222-8222-222222222222",
   quantity: 1,
   sku: "",
   state: "Lagos",
+  weightKg: "12.5",
 };
 
 type ProductFormAction = (
@@ -96,6 +98,13 @@ describe("seller product form", () => {
         }}
         makes={[]}
         mode="edit"
+        pickupLocations={[{
+          id: "22222222-2222-4222-8222-222222222222",
+          isDefault: true,
+          label: "Main shop",
+          lga: "Ikeja",
+          town: "Ikeja",
+        }]}
         published
       />,
     );

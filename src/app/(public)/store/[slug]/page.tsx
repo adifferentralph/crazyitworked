@@ -3,6 +3,7 @@ import { MapPin, Store } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { ProductCard } from "@/components/marketplace/product-card";
+import { SellerRecognitionBadges } from "@/components/marketplace/seller-recognition-badges";
 import { getCurrentPrincipal } from "@/lib/auth/principal";
 import {
   getMarketplaceStore,
@@ -82,6 +83,7 @@ export default async function PublicStorePage({
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Supplier store</p>
               <h1 className="mt-2 text-3xl font-bold text-stone-950 sm:text-4xl">{store.store_name}</h1>
+              <SellerRecognitionBadges recognition={store.recognition} />
               {location ? (
                 <p className="mt-3 flex items-center gap-2 text-sm text-stone-600">
                   <MapPin aria-hidden="true" className="size-4 text-primary" />

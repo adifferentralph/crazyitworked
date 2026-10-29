@@ -1,7 +1,10 @@
 import "server-only";
 
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 
+import { getDatabase } from "@/db/client";
+import { adminProfiles, adminRoles } from "@/db/schema";
 import { requireRole } from "@/lib/auth/principal";
 import { createClient } from "@/lib/supabase/server";
 
@@ -13,10 +16,12 @@ export type AdminPermission =
   | "audit.read"
   | "content.manage"
   | "finance.read"
+  | "finance.payout"
   | "sellers.manage"
   | "products.approve"
   | "products.edit"
-  | "products.read";
+  | "products.read"
+  | "reports.manage";
 
 export async function hasAdminPermission(permission: AdminPermission) {
   const supabase = await createClient();
@@ -31,4 +36,20 @@ export async function requireAdminPermission(permission: AdminPermission, return
   const principal = await requireRole(["ADMIN"], returnTo);
   if (!(await hasAdminPermission(permission))) redirect("/forbidden");
   return principal;
+}
+
+export async function requireSuperAdmin(returnTo: string) {
+  const principal = await requireRole(["ADMIN"], returnTo);
+  if (!(await hasSuperAdminRole(principal.id))) redirect("/forbidden");
+  return principal;
+}
+
+export async function hasSuperAdminRole(userId: string) {
+  const [role] = await getDatabase()
+    .select({ key: adminRoles.key })
+    .from(adminProfiles)
+    .innerJoin(adminRoles, eq(adminRoles.id, adminProfiles.adminRoleId))
+    .where(eq(adminProfiles.userId, userId))
+    .limit(1);
+  return role?.key === "SUPER_ADMIN";
 }

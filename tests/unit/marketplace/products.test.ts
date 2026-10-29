@@ -111,10 +111,12 @@ describe("seller product rules", () => {
       intent: "submit-review",
       name: "Toyota Camry plug coil",
       pickupAvailable: false,
+      pickupLocationId: "22222222-2222-4222-8222-222222222222",
       priceNgn: "45000",
       quantity: 4,
       sku: "TEST-FITMENT-001",
       state: "Lagos",
+      weightKg: "12.5",
     } as const;
 
     const missingFitment = productFormSchema.safeParse(product);

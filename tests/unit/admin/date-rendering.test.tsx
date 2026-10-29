@@ -15,7 +15,8 @@ vi.mock("@/lib/auth/principal", () => ({
 }));
 
 vi.mock("@/lib/auth/permissions", () => ({
-  requireAdminPermission: vi.fn().mockResolvedValue(undefined),
+  hasSuperAdminRole: vi.fn().mockResolvedValue(false),
+  requireAdminPermission: vi.fn().mockResolvedValue({ id: "admin-id", role: "ADMIN", status: "ACTIVE" }),
 }));
 
 vi.mock("@/lib/admin/operations", () => ({
@@ -41,7 +42,11 @@ describe("admin date rendering", () => {
       {
         city: "Ikeja",
         email: "seller@example.com",
+        foundingAwardedAt: null,
+        foundingPosition: null,
+        foundingRevokedAt: null,
         joinedAt: "2026-09-01T08:00:00.000Z",
+        manualVerificationStatus: null,
         onboardingCompletedAt: value,
         productCount: 2,
         rejectionReason: null,

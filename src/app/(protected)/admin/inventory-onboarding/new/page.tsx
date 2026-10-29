@@ -40,7 +40,7 @@ export default async function NewAssistedListingPage({ searchParams }: { searchP
     city: seller.city ?? "",
     condition: "NEW",
     crossReferences: "",
-    deliveryAvailable: true,
+    deliveryAvailable: false,
     deliveryFeeNgn: "0.00",
     description: "",
     fitmentIds: [],

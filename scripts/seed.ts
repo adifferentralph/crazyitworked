@@ -27,6 +27,7 @@ const permissionDefinitions = [
   ["products.read", "View product listings and moderation history"],
   ["products.edit", "Edit product information, images, categories, and fitment"],
   ["products.approve", "Approve, reject, suspend, or request listing changes"],
+  ["reports.manage", "Review marketplace reports and apply auditable trust decisions"],
   ["assist_seller_inventory", "Create and import seller-owned listing drafts without financial access"],
   ["fitment.manage", "Review compatibility evidence and make auditable fitment corrections"],
   ["demand.read", "View privacy-safe aggregated demand-with-no-supply intelligence"],
@@ -65,6 +66,7 @@ const roleDefinitions: ReadonlyArray<{
       "products.read",
       "products.edit",
       "products.approve",
+      "reports.manage",
       "assist_seller_inventory",
       "fitment.manage",
       "demand.read",
@@ -84,6 +86,7 @@ const roleDefinitions: ReadonlyArray<{
       "products.read",
       "products.edit",
       "products.approve",
+      "reports.manage",
       "assist_seller_inventory",
       "fitment.manage",
       "demand.read",
@@ -106,7 +109,7 @@ const roleDefinitions: ReadonlyArray<{
     key: "DISPUTE_OFFICER",
     name: "Dispute officer",
     description: "Reviews evidence and resolves buyer and seller disputes.",
-    permissions: ["disputes.manage", "finance.read", "products.read", "audit.read"],
+    permissions: ["disputes.manage", "finance.read", "products.read", "reports.manage", "audit.read"],
   },
   {
     key: "SELLER_MANAGER",
@@ -130,7 +133,7 @@ const roleDefinitions: ReadonlyArray<{
     key: "CONTENT_MODERATOR",
     name: "Content moderator",
     description: "Moderates reviews and public marketplace content.",
-    permissions: ["content.manage", "products.read", "audit.read"],
+    permissions: ["content.manage", "products.read", "reports.manage", "audit.read"],
   },
 ];
 

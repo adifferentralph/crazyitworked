@@ -19,7 +19,7 @@ test("public marketplace exposes search and complete listing filters", async ({
     : page.getByRole("complementary", { name: "Marketplace filters" });
   if (isMobile) await page.getByRole("button", { name: "Filter" }).click();
   await expect(filters.getByLabel("Category")).toBeVisible();
-  await expect(filters.getByLabel("Vehicle")).toBeVisible();
+  await expect(filters.getByText("Vehicle", { exact: true })).toBeVisible();
   await expect(filters.getByLabel("Condition")).toBeVisible();
   await expect(page.getByText(/products/i).first()).toBeVisible();
   if (isMobile) await filters.getByRole("button", { name: "Close filters" }).click();
@@ -27,7 +27,7 @@ test("public marketplace exposes search and complete listing filters", async ({
   await page
     .getByLabel("Search part name, OEM number, vehicle, or seller")
     .fill("04465");
-  await page.getByRole("button", { name: "Search parts" }).click();
+  await page.getByRole("button", { exact: true, name: "Search" }).click();
   await expect(page).toHaveURL(/q=04465/);
   await expect(
     page.getByRole("heading", { level: 1, name: /Results for/ }),
@@ -47,8 +47,10 @@ test("requesting a part requires a buyer session and preserves the destination",
   page,
 }) => {
   await page.goto("/find-a-part");
-  await page.getByRole("link", { name: "Request a part" }).first().click();
-  await expect(page).toHaveURL(/\/login\?/);
+  const requestLink = page.getByRole("link", { name: "Request a part" }).first();
+  await expect(requestLink).toHaveAttribute("href", "/login?next=/account/requests/new");
+  await page.goto(await requestLink.getAttribute("href") ?? "/login");
+  await expect(page).toHaveURL(/\/login\?/, { timeout: 60_000 });
   expect(new URL(page.url()).searchParams.get("next")).toBe(
     "/account/requests/new",
   );

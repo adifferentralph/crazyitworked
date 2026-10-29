@@ -3,6 +3,9 @@ import Link from "next/link";
 import { ImageOff } from "lucide-react";
 
 import { AddToCartControl } from "@/components/commerce/add-to-cart-control";
+import { ProductReportMenu } from "@/components/marketplace/product-report-menu";
+import { SellerRecognitionBadges } from "@/components/marketplace/seller-recognition-badges";
+import { TrustRating } from "@/components/marketplace/trust-rating";
 import { formatNgn } from "@/lib/marketplace/products";
 import type {
   MarketplaceVehicleOption,
@@ -23,7 +26,8 @@ export function ProductCard({
   const fitment = vehicle ?? product.primaryVehicle;
 
   return (
-    <article data-marketplace-product className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-stone-200 bg-white">
+    <article data-marketplace-product className="group relative flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-stone-200 bg-white">
+      <ProductReportMenu productId={product.id} productSlug={product.slug} sellerId={product.seller_id} />
       <Link className="relative aspect-square bg-stone-100 focus-visible:ring-2 focus-visible:ring-primary" href={`/parts/${product.slug}`}>
         {product.primaryImageUrl ? (
           <Image alt={`${product.name} sold by ${product.seller?.store_name ?? "a marketplace supplier"}`} className="object-cover" fill sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 25vw" src={product.primaryImageUrl} unoptimized />
@@ -44,6 +48,8 @@ export function ProductCard({
         </h2>
         {fitment ? <p className="mt-1 truncate text-xs font-semibold text-stone-500">{fitment.make}</p> : null}
         <p className="mt-2 font-body text-lg font-extrabold text-stone-950 sm:text-xl">{formatNgn(product.price_minor)}</p>
+        <TrustRating score={product.trustScore} />
+        <SellerRecognitionBadges recognition={product.sellerRecognition} />
         <p className={product.quantity > 0 ? "mt-1 text-[11px] font-semibold text-emerald-700" : "mt-1 text-[11px] font-semibold text-stone-500"}>
           {product.quantity > 0 ? "In stock" : "Out of stock"}
         </p>

@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { getDatabase } from "@/db/client";
-import { vehicleFitments, vehicleMakes, vehicleModels, vehicleYears } from "@/db/schema";
+import { productShippingProfiles, sellerPickupLocations, vehicleFitments, vehicleMakes, vehicleModels, vehicleYears } from "@/db/schema";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 import type { MarketplaceVehicleMakeOption } from "@/lib/marketplace/search-options";
@@ -14,6 +14,34 @@ export type ProductCategoryOption = {
   id: string;
   label: string;
 };
+
+export async function getSellerPickupLocationOptions(sellerId: string) {
+  return getDatabase()
+    .select({
+      id: sellerPickupLocations.id,
+      isDefault: sellerPickupLocations.isDefault,
+      label: sellerPickupLocations.label,
+      lga: sellerPickupLocations.lga,
+      town: sellerPickupLocations.town,
+    })
+    .from(sellerPickupLocations)
+    .where(
+      and(
+        eq(sellerPickupLocations.sellerId, sellerId),
+        eq(sellerPickupLocations.isActive, true),
+      ),
+    )
+    .orderBy(sellerPickupLocations.createdAt);
+}
+
+export async function getProductShippingProfile(productId: string) {
+  const [profile] = await getDatabase()
+    .select()
+    .from(productShippingProfiles)
+    .where(eq(productShippingProfiles.productId, productId))
+    .limit(1);
+  return profile ?? null;
+}
 
 export async function getProductFormOptions() {
   const supabase = await createClient();

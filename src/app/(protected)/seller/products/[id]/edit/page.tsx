@@ -8,14 +8,16 @@ import {
   isPublishedSellerProduct,
   priceMinorToInput,
 } from "@/lib/marketplace/products";
-import { getProductFormOptions, getSellerProduct } from "@/lib/marketplace/seller-data";
+import { getProductFormOptions, getProductShippingProfile, getSellerPickupLocationOptions, getSellerProduct } from "@/lib/marketplace/seller-data";
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const principal = await requireRole(["SELLER"], `/seller/products/${id}/edit`);
-  const [detail, options] = await Promise.all([
+  const [detail, options, pickupLocations, shipping] = await Promise.all([
     getSellerProduct(id, principal.id),
     getProductFormOptions(),
+    getSellerPickupLocationOptions(principal.id),
+    getProductShippingProfile(id),
   ]);
   if (!detail) notFound();
   if (!canSellerEditProduct(detail.product.status)) notFound();
@@ -34,16 +36,24 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     deliveryFeeNgn: priceMinorToInput(product.delivery_fee_minor),
     description: product.description,
     fitmentIds: detail.fitmentIds,
+    heightCm: shipping?.heightMm ? String(shipping.heightMm / 10) : "",
     imageTypes: detail.images.filter((image) => image.is_active).map((image) => image.type),
     manufacturerPartNumber: product.manufacturer_part_number ?? "",
     name: product.name,
     oemPartNumber: product.oem_part_number ?? "",
     pickupAvailable: product.pickup_available,
+    pickupLocationId: shipping?.pickupLocationId ?? undefined,
+    packagingWeightGrams: shipping?.packagingWeightGrams ?? 0,
     priceNgn: priceMinorToInput(product.price_minor),
     productId: product.id,
     quantity: product.quantity,
     sku: product.sku,
     state: product.state,
+    isBulky: shipping?.isBulky ?? false,
+    isFragile: shipping?.isFragile ?? false,
+    lengthCm: shipping?.lengthMm ? String(shipping.lengthMm / 10) : "",
+    weightKg: shipping?.weightGrams ? String(shipping.weightGrams / 1000) : "",
+    widthCm: shipping?.widthMm ? String(shipping.widthMm / 10) : "",
   };
 
   return (
@@ -61,6 +71,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         defaults={defaults}
         makes={options.makes}
         mode="edit"
+        pickupLocations={pickupLocations}
         published={published}
       />
     </SellerShell>

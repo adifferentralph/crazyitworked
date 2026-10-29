@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   check,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -90,6 +91,15 @@ export const orders = pgTable(
     deliveryAddressLine2: text("delivery_address_line_2"),
     deliveryCity: text("delivery_city"),
     deliveryState: text("delivery_state"),
+    deliveryLga: text("delivery_lga"),
+    deliveryTown: text("delivery_town"),
+    deliveryLandmark: text("delivery_landmark"),
+    deliveryLatitude: doublePrecision("delivery_latitude"),
+    deliveryLongitude: doublePrecision("delivery_longitude"),
+    deliveryAddressSnapshot: jsonb("delivery_address_snapshot"),
+    deliveryQuoteId: uuid("delivery_quote_id"),
+    deliveryPricingVersion: integer("delivery_pricing_version"),
+    vatMinor: bigint("vat_minor", { mode: "number" }).default(0).notNull(),
     cartFingerprint: text("cart_fingerprint").notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     paidAt: timestamp("paid_at", { withTimezone: true }),
@@ -120,7 +130,14 @@ export const orders = pgTable(
     ),
     check(
       "orders_buyer_total_exact",
-      sql`${table.totalMinor} = ${table.productSubtotalMinor} + ${table.deliveryTotalMinor}`,
+      sql`${table.totalMinor} = ${table.productSubtotalMinor} + ${table.deliveryTotalMinor} + ${table.vatMinor}`,
+    ),
+    check("orders_vat_disabled", sql`${table.vatMinor} = 0`),
+    check(
+      "orders_delivery_coordinates_pair",
+      sql`(${table.deliveryLatitude} is null and ${table.deliveryLongitude} is null) or (
+        ${table.deliveryLatitude} between -90 and 90 and ${table.deliveryLongitude} between -180 and 180
+      )`,
     ),
     check(
       "orders_pickup_has_no_delivery_charge",
@@ -168,6 +185,8 @@ export const orderItems = pgTable(
     pickupCountry: text("pickup_country").notNull(),
     pickupState: text("pickup_state").notNull(),
     pickupCity: text("pickup_city").notNull(),
+    pickupLocationId: uuid("pickup_location_id"),
+    pickupSnapshot: jsonb("pickup_snapshot"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
@@ -276,10 +295,8 @@ export const sellerLedgerEntries = pgTable(
       .notNull()
       .references(() => sellerProfiles.userId, { onDelete: "restrict" }),
     orderId: uuid("order_id")
-      .notNull()
       .references(() => orders.id, { onDelete: "restrict" }),
     orderItemId: uuid("order_item_id")
-      .notNull()
       .references(() => orderItems.id, { onDelete: "restrict" }),
     entryType: sellerLedgerEntryTypeEnum("entry_type").notNull(),
     bucket: sellerLedgerBucketEnum("bucket").notNull(),

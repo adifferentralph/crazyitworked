@@ -1,20 +1,27 @@
 import { BadgeCheck } from "lucide-react";
 
 import { OnboardingForm } from "@/components/seller/onboarding-form";
+import { PickupLocations } from "@/components/seller/pickup-locations";
 import { SellerShell } from "@/components/seller/seller-shell";
 import { Badge } from "@/components/ui/badge";
 import { requireRole } from "@/lib/auth/principal";
 import { getProductFormOptions } from "@/lib/marketplace/seller-data";
 import { createClient } from "@/lib/supabase/server";
+import { getDatabase } from "@/db/client";
+import { sellerPickupLocations } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 
-export default async function SellerOnboardingPage() {
+export default async function SellerOnboardingPage({ searchParams }: { searchParams: Promise<{ deliveryError?: string; deliveryMessage?: string }> }) {
   const principal = await requireRole(["SELLER"], "/seller/onboarding");
   const supabase = await createClient();
-  const [{ data: seller }, { data: verification }, { data: sellerCategories }, options] = await Promise.all([
+  const database = getDatabase();
+  const [{ data: seller }, { data: verification }, { data: sellerCategories }, options, pickupLocations, query] = await Promise.all([
     supabase.from("seller_profiles").select("*").eq("user_id", principal.id).single(),
     supabase.from("seller_verifications").select("status, submitted_at, rejection_reason").eq("seller_id", principal.id).maybeSingle(),
     supabase.from("seller_categories").select("category_id").eq("seller_id", principal.id),
     getProductFormOptions(),
+    database.select().from(sellerPickupLocations).where(and(eq(sellerPickupLocations.sellerId, principal.id), eq(sellerPickupLocations.isActive, true))).orderBy(sellerPickupLocations.createdAt),
+    searchParams,
   ]);
 
   if (!seller) return null;
@@ -45,6 +52,7 @@ export default async function SellerOnboardingPage() {
         storeName: seller.store_name,
         websiteUrl: seller.website_url,
       }} />
+      <PickupLocations error={query.deliveryError} locations={pickupLocations} message={query.deliveryMessage} />
     </SellerShell>
   );
 }

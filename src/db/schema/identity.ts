@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
+  doublePrecision,
   index,
   jsonb,
   pgPolicy,
@@ -222,6 +224,11 @@ export const addresses = pgTable(
     line2: text("line_2"),
     city: text("city").notNull(),
     state: text("state").notNull(),
+    lga: text("lga"),
+    town: text("town"),
+    landmark: text("landmark"),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
     country: text("country").default("Nigeria").notNull(),
     postalCode: text("postal_code"),
     isDefault: boolean("is_default").default(false).notNull(),
@@ -230,6 +237,9 @@ export const addresses = pgTable(
   (table) => [
     index("addresses_user_idx").on(table.userId),
     index("addresses_location_idx").on(table.country, table.state, table.city),
+    check("addresses_coordinates_pair", sql`(${table.latitude} is null and ${table.longitude} is null) or (
+      ${table.latitude} between -90 and 90 and ${table.longitude} between -180 and 180
+    )`),
     pgPolicy("addresses_select_own", {
       for: "select",
       to: authenticatedRole,

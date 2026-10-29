@@ -15,10 +15,12 @@ export function getCanonicalUrl(path: string) {
 
 export function createPublicMetadata({
   description,
+  image,
   path,
   title,
 }: {
   description: string;
+  image?: string;
   path: string;
   title: string;
 }): Metadata {
@@ -30,7 +32,7 @@ export function createPublicMetadata({
     description,
     openGraph: {
       description,
-      images: [defaultOgImage],
+      images: image ? [{ alt: title, url: image }] : [defaultOgImage],
       locale: "en_NG",
       siteName: siteConfig.name,
       title: socialTitle,
@@ -42,7 +44,7 @@ export function createPublicMetadata({
     twitter: {
       card: "summary_large_image",
       description,
-      images: [defaultOgImage.url],
+      images: [image ?? defaultOgImage.url],
       title: socialTitle,
     },
   };

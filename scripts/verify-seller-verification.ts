@@ -52,6 +52,74 @@ async function main() {
     `;
     assert(superAdminPermission?.allowed, "SUPER_ADMIN is missing sellers.manage.");
 
+    const [reportPermission] = await sql<{ allowed: boolean }[]>`
+      select exists (
+        select 1
+        from public.admin_roles
+        join public.admin_role_permissions on admin_role_permissions.role_id = admin_roles.id
+        join public.permissions on permissions.id = admin_role_permissions.permission_id
+        where admin_roles.key = 'SUPER_ADMIN' and permissions.code = 'reports.manage'
+      ) as allowed
+    `;
+    assert(reportPermission?.allowed, "SUPER_ADMIN is missing reports.manage.");
+
+    const adminSellerRows = await sql<{ product_count: number; seller_id: string }[]>`
+      select
+        seller_profiles.user_id as seller_id,
+        coalesce(product_counts.product_count, 0)::int as product_count
+      from public.seller_profiles
+      left join lateral (
+        select count(*)::int as product_count
+        from public.products
+        where products.seller_id = seller_profiles.user_id
+      ) product_counts on true
+      order by seller_profiles.created_at desc
+      limit 100
+    `;
+    assert(adminSellerRows.length > 0, "The admin seller listing returned no sellers.");
+    assert(
+      new Set(adminSellerRows.map((row) => row.seller_id)).size === adminSellerRows.length,
+      "The admin seller listing returned duplicate sellers.",
+    );
+    assert(adminSellerRows.every((row) => row.product_count >= 0), "A seller product count is invalid.");
+
+    const [trustCoverage] = await sql<{ missing: number }[]>`
+      select count(*)::int as missing
+      from public.products
+      left join public.product_trust_scores on product_trust_scores.product_id = products.id
+      where product_trust_scores.product_id is null
+    `;
+    assert(trustCoverage?.missing === 0, "Some products are missing their initial trust score.");
+
+    const [foundingIntegrity] = await sql<{ awards: number; positions: number }[]>`
+      select count(*)::int as awards, count(distinct position)::int as positions
+      from public.founding_merchant_awards
+    `;
+    assert((foundingIntegrity?.awards ?? 0) <= 20, "More than 20 founding merchant awards exist.");
+    assert(foundingIntegrity?.awards === foundingIntegrity?.positions, "Founding merchant positions are duplicated.");
+
+    const reportPolicies = await sql<{ policyname: string }[]>`
+      select policyname
+      from pg_policies
+      where schemaname = 'public' and tablename = 'marketplace_reports'
+      order by policyname
+    `;
+    assert(
+      reportPolicies.some((policy) => policy.policyname === "marketplace_reports_insert_own") &&
+        reportPolicies.some((policy) => policy.policyname === "marketplace_reports_select_own"),
+      "Marketplace report owner RLS policies are missing.",
+    );
+
+    const manualVerificationPolicies = await sql<{ count: number }[]>`
+      select count(*)::int as count
+      from pg_policies
+      where schemaname = 'public' and tablename in (
+        'manual_seller_verifications',
+        'manual_seller_verification_events'
+      )
+    `;
+    assert(manualVerificationPolicies[0]?.count === 0, "Manual seller verification has a public RLS policy.");
+
     const policies = await sql<{ policyname: string; with_check: string | null }[]>`
       select policyname, with_check
       from pg_policies
@@ -133,6 +201,11 @@ async function main() {
 
     console.log("Seller verification database checks passed:");
     console.log("- SUPER_ADMIN owns sellers.manage");
+    console.log("- SUPER_ADMIN owns reports.manage");
+    console.log("- admin seller aggregate returns unique sellers and valid product counts");
+    console.log("- every product has a database-backed initial trust score");
+    console.log("- Founding 20 positions are unique and capped");
+    console.log("- report and manual-verification RLS boundaries are present");
     console.log("- seller verification submission remains available");
     console.log("- seller self-approval is rejected by live RLS");
   } finally {
