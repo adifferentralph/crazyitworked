@@ -1,12 +1,29 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ProductForm, type ProductFormDefaults } from "@/components/seller/product-form";
+import {
+  createProductAction,
+  prepareProductImageUploadsAction,
+} from "@/app/(protected)/seller/actions";
+import {
+  getFileFreeProductFormData,
+  ProductForm,
+  type ProductFormDefaults,
+} from "@/components/seller/product-form";
 import type { SellerActionState } from "@/lib/marketplace/seller-action-state";
+
+const { uploadToSignedUrl } = vi.hoisted(() => ({ uploadToSignedUrl: vi.fn() }));
 
 vi.mock("@/app/(protected)/seller/actions", () => ({
   createProductAction: vi.fn(),
+  prepareProductImageUploadsAction: vi.fn(),
   updateProductAction: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: () => ({
+    storage: { from: () => ({ uploadToSignedUrl }) },
+  }),
 }));
 
 const defaults: ProductFormDefaults = {
@@ -38,6 +55,22 @@ type ProductFormAction = (
 ) => Promise<SellerActionState>;
 
 describe("seller product form", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    uploadToSignedUrl.mockResolvedValue({ data: { path: "stored" }, error: null });
+  });
+
+  it("never includes image files in the Server Action payload", () => {
+    const formData = new FormData();
+    formData.set("name", "Toyota alloy rim");
+    formData.set("primaryImage", new File(["photo"], "rim.jpg", { type: "image/jpeg" }));
+
+    const safePayload = getFileFreeProductFormData(formData);
+
+    expect(safePayload.get("name")).toBe("Toyota alloy rim");
+    expect(safePayload.has("primaryImage")).toBe(false);
+  });
+
   it("highlights publish errors without clearing entered product information", async () => {
     const action = vi.fn<ProductFormAction>(async () => ({ status: "success" }));
     render(
@@ -82,6 +115,56 @@ describe("seller product form", () => {
     expect(submitted).toBeInstanceOf(FormData);
     expect(submitted?.get("brand")).toBe("");
     expect(submitted?.get("sku")).toBe("");
+  });
+
+  it("uploads selected photos directly and sends only references to the product action", async () => {
+    const productId = "6fae1e05-ea63-4cb2-a46b-0e73b879e50b";
+    const imageId = "5fae1e05-ea63-4cb2-a46b-0e73b879e50a";
+    vi.mocked(prepareProductImageUploadsAction).mockResolvedValue({
+      productId,
+      status: "success",
+      uploads: [{
+        field: "primaryImage",
+        imageId,
+        mimeType: "image/jpeg",
+        originalFilename: "rim.jpg",
+        sizeBytes: 5,
+        storagePath: `seller/${productId}/${imageId}.jpg`,
+        token: "short-lived-token",
+        type: "PRIMARY",
+      }],
+    });
+    vi.mocked(createProductAction).mockResolvedValue({ status: "success" });
+    render(
+      <ProductForm
+        categories={[{ id: defaults.categoryId, label: "Wheels and rims" }]}
+        defaults={defaults}
+        makes={[]}
+        mode="create"
+      />,
+    );
+
+    const imageInput = screen.getByLabelText("Main product image");
+    const imageFile = new File(["photo"], "rim.jpg", { type: "image/jpeg" });
+    Object.defineProperty(imageInput, "files", {
+      configurable: true,
+      value: [imageFile],
+    });
+    fireEvent.change(imageInput);
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    await waitFor(() => expect(createProductAction).toHaveBeenCalledTimes(1));
+    expect(prepareProductImageUploadsAction).toHaveBeenCalledTimes(1);
+    expect(uploadToSignedUrl).toHaveBeenCalledWith(
+      `seller/${productId}/${imageId}.jpg`,
+      "short-lived-token",
+      expect.any(File),
+      expect.objectContaining({ contentType: "image/jpeg", upsert: false }),
+    );
+    const submitted = vi.mocked(createProductAction).mock.calls[0]?.[1];
+    expect(submitted?.has("primaryImage")).toBe(false);
+    expect(submitted?.get("productId")).toBe(productId);
+    expect(String(submitted?.get("uploadedImages"))).toContain(imageId);
   });
 
   it("saves a published product through the readiness-checked update action", async () => {

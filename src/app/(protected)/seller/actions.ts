@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { z } from "zod";
+import { z } from "zod";
 
 import { getDatabase } from "@/db/client";
 import { productShippingProfiles, sellerPickupLocations } from "@/db/schema";
@@ -20,7 +20,7 @@ import {
   PRODUCT_MEDIA_BUCKET,
   requiredProductImageSlots,
   slugifyProduct,
-  validateProductImage,
+  validateProductImageMetadata,
 } from "@/lib/marketplace/products";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductCondition, ProductImageType } from "@/lib/supabase/database.types";
@@ -111,40 +111,119 @@ export async function completeSellerOnboardingAction(
   redirect("/seller/dashboard?message=onboarding-complete");
 }
 
-type ImageUpload = {
-  file: File;
-  isActualItem: boolean;
-  type: ProductImageType;
+const productImageTypeSchema = z.enum([
+  "PRIMARY",
+  "ANGLE",
+  "DETAIL",
+  "PART_NUMBER",
+  "PACKAGING",
+  "OTHER",
+]);
+
+const imageUploadManifestSchema = z
+  .array(
+    z.object({
+      field: z.string().min(1).max(80),
+      mimeType: z.string().min(1).max(100),
+      originalFilename: z.string().min(1).max(255),
+      sizeBytes: z.number().int().positive(),
+      type: productImageTypeSchema,
+    }),
+  )
+  .max(requiredProductImageSlots.length);
+
+const uploadedImageReferenceSchema = imageUploadManifestSchema.element.extend({
+  imageId: z.string().uuid(),
+  storagePath: z.string().min(1).max(600),
+});
+
+const uploadedImagesSchema = z.array(uploadedImageReferenceSchema).max(requiredProductImageSlots.length);
+
+type ImageUploadManifestItem = z.infer<typeof imageUploadManifestSchema>[number];
+type UploadedImageReference = z.infer<typeof uploadedImageReferenceSchema>;
+
+export type PreparedProductUpload = ImageUploadManifestItem & {
+  imageId: string;
+  storagePath: string;
+  token: string;
 };
 
-function collectImageUploads(
-  formData: FormData,
-  condition: ProductCondition,
-  actualItemType?: ProductImageType,
-) {
-  const uploads: ImageUpload[] = [];
-  const errors: string[] = [];
+export type ProductUploadPreparationState = SellerActionState & {
+  uploads?: PreparedProductUpload[];
+};
 
-  for (const slot of requiredProductImageSlots) {
-    const value = formData.get(slot.field);
-    if (!(value instanceof File) || value.size === 0) continue;
-
-    const error = validateProductImage(value);
-    if (error) {
-      errors.push(`${slot.label}: ${error}`);
-      continue;
-    }
-
-    uploads.push({
-      file: value,
-      isActualItem:
-        actualItemType === slot.type ||
-        (!actualItemType && conditionRequiresActualItem(condition) && slot.type === "PRIMARY"),
-      type: slot.type,
-    });
+function parseJsonField<T>(value: FormDataEntryValue | null, schema: z.ZodType<T[]>) {
+  if (typeof value !== "string" || value.length === 0) return { data: [], error: null };
+  try {
+    const parsed = schema.safeParse(JSON.parse(value));
+    return parsed.success
+      ? { data: parsed.data, error: null }
+      : { data: null, error: "The selected product photos could not be prepared." };
+  } catch {
+    return { data: null, error: "The selected product photos could not be prepared." };
   }
+}
 
-  return { errors, uploads };
+function validateImageManifestItems(items: ImageUploadManifestItem[]) {
+  const usedFields = new Set<string>();
+  const usedTypes = new Set<ProductImageType>();
+  for (const item of items) {
+    const slot = requiredProductImageSlots.find(
+      (candidate) => candidate.field === item.field && candidate.type === item.type,
+    );
+    if (!slot || usedFields.has(item.field) || usedTypes.has(item.type)) {
+      return "The selected product photos contain a duplicate or invalid image slot.";
+    }
+    const error = validateProductImageMetadata({
+      name: item.originalFilename,
+      size: item.sizeBytes,
+      type: item.mimeType,
+    });
+    if (error) return `${slot.label}: ${error}`;
+    usedFields.add(item.field);
+    usedTypes.add(item.type);
+  }
+  return null;
+}
+
+function collectUploadedImageReferences(formData: FormData) {
+  const parsed = parseJsonField(formData.get("uploadedImages"), uploadedImagesSchema);
+  if (parsed.error || !parsed.data) return { error: parsed.error, uploads: [] };
+  const error = validateImageManifestItems(parsed.data);
+  return { error, uploads: error ? [] : parsed.data };
+}
+
+function collectRemovedImageTypes(formData: FormData) {
+  const values = formData
+    .getAll("removeImageTypes")
+    .filter((value): value is string => typeof value === "string");
+  return [...new Set(values.flatMap((value) => {
+    const parsed = productImageTypeSchema.safeParse(value);
+    return parsed.success ? [parsed.data] : [];
+  }))];
+}
+
+function requestIdFrom(formData: FormData) {
+  const value = formData.get("requestId");
+  return typeof value === "string" && /^[a-zA-Z0-9-]{8,80}$/.test(value) ? value : undefined;
+}
+
+function logProductActionFailure(details: {
+  action: string;
+  category: string;
+  code?: string;
+  productId?: string;
+  requestId?: string;
+}) {
+  console.error("seller_product_action_failed", {
+    action: details.action,
+    category: details.category,
+    code: details.code,
+    method: "POST",
+    productId: details.productId,
+    requestId: details.requestId,
+    route: "/seller/products",
+  });
 }
 
 async function ensureSellerOnboarded(userId: string) {
@@ -158,69 +237,90 @@ async function ensureSellerOnboarded(userId: string) {
   return !error && Boolean(data?.onboarding_completed_at);
 }
 
-async function uploadProductImages({
+async function applyProductImageChanges({
+  actualItemType,
+  condition,
   productId,
+  removeTypes,
   sellerId,
+  shouldPublish,
   uploads,
 }: {
+  actualItemType?: ProductImageType;
+  condition: ProductCondition;
   productId: string;
+  removeTypes: ProductImageType[];
   sellerId: string;
-  uploads: ImageUpload[];
+  shouldPublish: boolean;
+  uploads: UploadedImageReference[];
 }) {
-  if (uploads.length === 0) return null;
+  if (uploads.length === 0 && removeTypes.length === 0) return null;
 
   const supabase = await createClient();
   const { data: currentImages, error: currentImagesError } = await supabase
     .from("product_images")
-    .select("id, is_active, is_primary, position, type")
+    .select("id, is_active, is_actual_item, is_primary, position, type")
     .eq("product_id", productId)
     .order("position", { ascending: false });
 
   if (currentImagesError) return "Existing product images could not be checked.";
 
-  const nextPosition = (currentImages?.[0]?.position ?? -1) + 1;
-  const preparedUploads = uploads.map((upload, index) => {
-    const extension = getSafeImageExtension(upload.file.type);
-    if (!extension) return null;
-
-    const imageId = randomUUID();
-    const storagePath = `${sellerId}/${productId}/${imageId}.${extension}`;
-    return {
-      imageId,
-      position: nextPosition + index,
-      storagePath,
-      upload,
-    };
-  });
-
-  if (preparedUploads.some((upload) => upload === null)) {
-    return "An uploaded image has an unsupported file type.";
+  const replacementTypes = new Set(uploads.map((upload) => upload.type));
+  const actualType = actualItemType ?? "PRIMARY";
+  const effectiveRemoveTypes = new Set(
+    removeTypes.filter((type) => !replacementTypes.has(type)),
+  );
+  const retainedImages = (currentImages ?? []).filter(
+    (image) =>
+      image.is_active &&
+      !replacementTypes.has(image.type) &&
+      !effectiveRemoveTypes.has(image.type),
+  );
+  const resultingImages = [
+    ...retainedImages.map((image) => ({
+      isActualItem: image.is_actual_item,
+      isPrimary: image.is_primary,
+    })),
+    ...uploads.map((upload) => ({
+      isActualItem: upload.type === actualType,
+      isPrimary: upload.type === "PRIMARY",
+    })),
+  ];
+  if (shouldPublish) {
+    if (resultingImages.length < 5 || !resultingImages.some((image) => image.isPrimary)) {
+      return "Keep at least five product photos, including one main photo, before publishing.";
+    }
+    if (
+      conditionRequiresActualItem(condition) &&
+      !resultingImages.some((image) => image.isActualItem)
+    ) {
+      return "The main photo must show the actual physical item being sold.";
+    }
   }
 
-  const readyUploads = preparedUploads.filter((upload) => upload !== null);
-  const storageResults = await Promise.all(
-    readyUploads.map(async ({ storagePath, upload }) => {
-      const { error } = await supabase.storage
+  const folder = `${sellerId}/${productId}`;
+  const storedChecks = await Promise.all(
+    uploads.map(async (upload) => {
+      const expectedPrefix = `${folder}/${upload.imageId}.`;
+      if (!upload.storagePath.startsWith(expectedPrefix)) return false;
+      const filename = upload.storagePath.slice(folder.length + 1);
+      const { data, error } = await supabase.storage
         .from(PRODUCT_MEDIA_BUCKET)
-        .upload(storagePath, upload.file, {
-          cacheControl: "31536000",
-          contentType: upload.file.type,
-          upsert: false,
-        });
-      return { error, storagePath };
+        .list(folder, { limit: 2, search: filename });
+      return !error && Boolean(data?.some((file) => file.name === filename));
     }),
   );
-  const failedUpload = storageResults.find(({ error }) => error);
-
-  if (failedUpload?.error) {
-    const uploadedPaths = storageResults
-      .filter(({ error }) => !error)
-      .map(({ storagePath }) => storagePath);
-    if (uploadedPaths.length > 0) {
-      await supabase.storage.from(PRODUCT_MEDIA_BUCKET).remove(uploadedPaths);
-    }
-    return `Image upload failed: ${failedUpload.error.message}`;
+  if (storedChecks.some((stored) => !stored)) {
+    return "One or more product photos did not finish uploading. Your product details are still here; try the upload again.";
   }
+
+  const nextPosition = (currentImages?.[0]?.position ?? -1) + 1;
+  const readyUploads = uploads.map((upload, index) => ({
+    imageId: upload.imageId,
+    position: nextPosition + index,
+    storagePath: upload.storagePath,
+    upload,
+  }));
 
   const insertedImageIds: string[] = [];
   const deactivatedImageIds: string[] = [];
@@ -239,39 +339,32 @@ async function uploadProductImages({
         .eq("product_id", productId)
         .in("id", deactivatedImageIds);
     }
-    await supabase.storage
-      .from(PRODUCT_MEDIA_BUCKET)
-      .remove(readyUploads.map((prepared) => prepared.storagePath));
   };
 
+  const typesToDeactivate = new Set([...replacementTypes, ...effectiveRemoveTypes]);
+  const imageIdsToDeactivate = (currentImages ?? [])
+    .filter((image) => image.is_active && typesToDeactivate.has(image.type))
+    .map((image) => image.id);
+  if (imageIdsToDeactivate.length > 0) {
+    const { error: deactivateError } = await supabase
+      .from("product_images")
+      .update({ is_active: false })
+      .eq("product_id", productId)
+      .in("id", imageIdsToDeactivate);
+    if (deactivateError) return "The previous image could not be preserved.";
+    deactivatedImageIds.push(...imageIdsToDeactivate);
+  }
+
   for (const { imageId, position, storagePath, upload } of readyUploads) {
-    const previousImageIds = (currentImages ?? [])
-      .filter((image) => image.is_active && image.type === upload.type)
-      .map((image) => image.id);
-
-    if (previousImageIds.length > 0) {
-      const { error: deactivateError } = await supabase
-        .from("product_images")
-        .update({ is_active: false })
-        .eq("product_id", productId)
-        .in("id", previousImageIds);
-
-      if (deactivateError) {
-        await rollbackImageChanges();
-        return "The previous image could not be preserved.";
-      }
-      deactivatedImageIds.push(...previousImageIds);
-    }
-
     const { error: metadataError } = await supabase.from("product_images").insert({
       id: imageId,
-      is_actual_item: upload.isActualItem,
+      is_actual_item: upload.type === actualType,
       is_primary: upload.type === "PRIMARY",
-      mime_type: upload.file.type,
-      original_filename: upload.file.name.slice(0, 255),
+      mime_type: upload.mimeType,
+      original_filename: upload.originalFilename.slice(0, 255),
       position,
       product_id: productId,
-      size_bytes: upload.file.size,
+      size_bytes: upload.sizeBytes,
       source: "SELLER_ORIGINAL",
       storage_bucket: PRODUCT_MEDIA_BUCKET,
       storage_path: storagePath,
@@ -334,8 +427,9 @@ async function replaceProductAssociations({
 
 function submissionImageError(
   condition: ProductCondition,
-  uploads: ImageUpload[],
+  uploads: UploadedImageReference[],
   isNewProduct: boolean,
+  actualItemType?: ProductImageType,
 ) {
   if (!isNewProduct) return null;
 
@@ -343,7 +437,11 @@ function submissionImageError(
     return "Add five genuine photos of this product before publishing. Save a draft if the photos are not ready.";
   }
 
-  if (conditionRequiresActualItem(condition) && !uploads.some((upload) => upload.isActualItem)) {
+  const actualType = actualItemType ?? "PRIMARY";
+  if (
+    conditionRequiresActualItem(condition) &&
+    !uploads.some((upload) => upload.type === actualType)
+  ) {
     return "The main photo must show the actual physical item being sold.";
   }
 
@@ -428,12 +526,167 @@ function shippingValues(
   };
 }
 
+async function createProductDraftRecord({
+  parsed,
+  pickupLocation,
+  sellerId,
+}: {
+  parsed: z.infer<typeof productFormSchema>;
+  pickupLocation: PickupLocation | null;
+  sellerId: string;
+}): Promise<{ error?: SellerActionState; productId: string }> {
+  const supabase = await createClient();
+  const productId = randomUUID();
+  const sku = parsed.sku ?? `TTP-${productId.slice(0, 8).toUpperCase()}`;
+  const slug = `${slugifyProduct(parsed.name) || "part"}-${productId.slice(0, 8)}`;
+  const { error: productError } = await supabase.from("products").insert({
+    ...productValues(parsed, sku, pickupLocation),
+    created_by_user_id: sellerId,
+    creation_source: "SELLER",
+    id: productId,
+    last_modified_by_user_id: sellerId,
+    seller_id: sellerId,
+    slug,
+    status: "DRAFT",
+  });
+
+  if (productError) {
+    return {
+      error: databaseError(
+        productError.code === "23505"
+          ? "That seller SKU is already used by another product."
+          : "The product draft could not be created.",
+      ),
+      productId,
+    };
+  }
+
+  try {
+    await getDatabase().insert(productShippingProfiles).values({
+      productId,
+      ...shippingValues(parsed, pickupLocation),
+    });
+  } catch {
+    return {
+      error: {
+        message: "The product draft was created, but its delivery details could not be saved.",
+        productId,
+        status: "error",
+      },
+      productId,
+    };
+  }
+
+  const associationError = await replaceProductAssociations({
+    crossReferences: parsed.crossReferences,
+    fitmentIds: parsed.fitmentIds,
+    productId,
+  });
+  if (associationError) {
+    return {
+      error: { message: associationError, productId, status: "error" },
+      productId,
+    };
+  }
+
+  return { productId };
+}
+
+export async function prepareProductImageUploadsAction(
+  formData: FormData,
+): Promise<ProductUploadPreparationState> {
+  const requestId = requestIdFrom(formData);
+  const parsed = productFormSchema.safeParse(getProductFormValues(formData));
+  if (!parsed.success) return validationError(parsed.error);
+
+  const manifestResult = parseJsonField(formData.get("imageManifest"), imageUploadManifestSchema);
+  if (manifestResult.error || !manifestResult.data) {
+    return databaseError(manifestResult.error ?? "The selected product photos could not be prepared.", "images");
+  }
+  const manifestError = validateImageManifestItems(manifestResult.data);
+  if (manifestError) return databaseError(manifestError, "images");
+  if (manifestResult.data.length === 0) {
+    return databaseError("Choose at least one product photo to upload.", "images");
+  }
+
+  const principal = await requireRole(
+    ["SELLER"],
+    parsed.data.productId
+      ? `/seller/products/${parsed.data.productId}/edit`
+      : "/seller/products/new",
+  );
+  if (!(await ensureSellerOnboarded(principal.id))) {
+    redirect("/seller/onboarding?next=/seller/products/new");
+  }
+  const pickupLocation = await getOwnedPickupLocation(
+    principal.id,
+    parsed.data.pickupLocationId,
+  );
+  if (parsed.data.pickupLocationId && !pickupLocation) {
+    return databaseError("Choose a valid pickup location from your store settings.", "pickupLocationId");
+  }
+
+  let productId = parsed.data.productId;
+  if (productId) {
+    const supabase = await createClient();
+    const { data: existingProduct, error } = await supabase
+      .from("products")
+      .select("id, status")
+      .eq("id", productId)
+      .eq("seller_id", principal.id)
+      .single();
+    if (error || !existingProduct) return databaseError("Product not found.");
+    if (!canSellerEditProduct(existingProduct.status)) {
+      return databaseError("This product cannot be edited while it is under marketplace action.");
+    }
+  } else {
+    const created = await createProductDraftRecord({
+      parsed: parsed.data,
+      pickupLocation,
+      sellerId: principal.id,
+    });
+    productId = created.productId;
+    if (created.error) return created.error;
+  }
+
+  const supabase = await createClient();
+  const prepared: PreparedProductUpload[] = [];
+  for (const item of manifestResult.data) {
+    const extension = getSafeImageExtension(item.mimeType);
+    if (!extension) return databaseError("An uploaded image has an unsupported file type.", "images");
+    const imageId = randomUUID();
+    const storagePath = `${principal.id}/${productId}/${imageId}.${extension}`;
+    const { data, error } = await supabase.storage
+      .from(PRODUCT_MEDIA_BUCKET)
+      .createSignedUploadUrl(storagePath, { upsert: false });
+    if (error || !data?.token) {
+      logProductActionFailure({
+        action: "prepare_product_image_uploads",
+        category: "storage_signing",
+        code: error?.name,
+        productId,
+        requestId,
+      });
+      return {
+        fieldErrors: { images: ["The photo upload could not start. Try again."] },
+        message: "The photo upload could not start. Your product details are still saved.",
+        productId,
+        status: "error",
+      };
+    }
+    prepared.push({ ...item, imageId, storagePath, token: data.token });
+  }
+
+  return { productId, status: "success", uploads: prepared };
+}
+
 export async function createProductAction(
   _previousState: SellerActionState,
   formData: FormData,
 ): Promise<SellerActionState> {
   const parsed = productFormSchema.safeParse(getProductFormValues(formData));
   if (!parsed.success) return validationError(parsed.error);
+  if (parsed.data.productId) return updateProductAction(_previousState, formData);
 
   const principal = await requireRole(["SELLER"], "/seller/products/new");
   if (!(await ensureSellerOnboarded(principal.id))) {
@@ -447,62 +700,37 @@ export async function createProductAction(
     return databaseError("Choose a valid pickup location from your store settings.", "pickupLocationId");
   }
 
-  const { errors, uploads } = collectImageUploads(
-    formData,
-    parsed.data.condition,
-    parsed.data.actualItemType,
-  );
-  if (errors.length > 0) return databaseError(errors[0] ?? "An image is invalid.", "images");
+  const { error: uploadPayloadError, uploads } = collectUploadedImageReferences(formData);
+  if (uploadPayloadError) return databaseError(uploadPayloadError, "images");
 
   if (parsed.data.intent === "submit-review") {
-    const error = submissionImageError(parsed.data.condition, uploads, true);
+    const error = submissionImageError(
+      parsed.data.condition,
+      uploads,
+      true,
+      parsed.data.actualItemType,
+    );
     if (error) return databaseError(error, "images");
   }
 
   const supabase = await createClient();
-  const productId = randomUUID();
-  const sku = parsed.data.sku ?? `TTP-${productId.slice(0, 8).toUpperCase()}`;
-  const slug = `${slugifyProduct(parsed.data.name) || "part"}-${productId.slice(0, 8)}`;
-  const { error: productError } = await supabase.from("products").insert({
-    ...productValues(parsed.data, sku, pickupLocation),
-    created_by_user_id: principal.id,
-    creation_source: "SELLER",
-    id: productId,
-    last_modified_by_user_id: principal.id,
-    seller_id: principal.id,
-    slug,
-    status: "DRAFT",
+  const created = await createProductDraftRecord({
+    parsed: parsed.data,
+    pickupLocation,
+    sellerId: principal.id,
   });
+  const productId = created.productId;
+  if (created.error) return created.error;
 
-  if (productError) {
-    return databaseError(
-      productError.code === "23505"
-        ? "That seller SKU is already used by another product."
-        : "The product draft could not be created.",
-    );
-  }
-
-  try {
-    await getDatabase().insert(productShippingProfiles).values({
-      productId,
-      ...shippingValues(parsed.data, pickupLocation),
-    });
-  } catch {
-    return {
-      message: "The product draft was created, but its delivery details could not be saved.",
-      productId,
-      status: "error",
-    };
-  }
-
-  const associationError = await replaceProductAssociations({
-    crossReferences: parsed.data.crossReferences,
-    fitmentIds: parsed.data.fitmentIds,
+  const imageError = await applyProductImageChanges({
+    actualItemType: parsed.data.actualItemType,
+    condition: parsed.data.condition,
     productId,
+    removeTypes: [],
+    sellerId: principal.id,
+    shouldPublish: parsed.data.intent === "submit-review",
+    uploads,
   });
-  if (associationError) return { message: associationError, productId, status: "error" };
-
-  const imageError = await uploadProductImages({ productId, sellerId: principal.id, uploads });
   if (imageError) return { message: imageError, productId, status: "error" };
 
   if (parsed.data.intent === "submit-review") {
@@ -571,12 +799,9 @@ export async function updateProductAction(
     return databaseError("Choose at least one car this part fits.", "fitmentIds");
   }
 
-  const { errors, uploads } = collectImageUploads(
-    formData,
-    parsed.data.condition,
-    parsed.data.actualItemType,
-  );
-  if (errors.length > 0) return databaseError(errors[0] ?? "An image is invalid.", "images");
+  const { error: uploadPayloadError, uploads } = collectUploadedImageReferences(formData);
+  if (uploadPayloadError) return databaseError(uploadPayloadError, "images");
+  const removeTypes = collectRemovedImageTypes(formData);
 
   const associationError = await replaceProductAssociations({
     crossReferences: parsed.data.crossReferences,
@@ -585,8 +810,16 @@ export async function updateProductAction(
   });
   if (associationError) return databaseError(associationError);
 
-  const imageError = await uploadProductImages({ productId, sellerId: principal.id, uploads });
-  if (imageError) return databaseError(imageError);
+  const imageError = await applyProductImageChanges({
+    actualItemType: parsed.data.actualItemType,
+    condition: parsed.data.condition,
+    productId,
+    removeTypes,
+    sellerId: principal.id,
+    shouldPublish,
+    uploads,
+  });
+  if (imageError) return databaseError(imageError, "images");
 
   await getDatabase()
     .insert(productShippingProfiles)

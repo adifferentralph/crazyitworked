@@ -7,6 +7,7 @@ import {
   priceMinorToInput,
   slugifyProduct,
   validateProductImage,
+  validateProductImageMetadata,
 } from "@/lib/marketplace/products";
 import { productFormSchema } from "@/lib/validation/seller";
 
@@ -38,6 +39,9 @@ describe("seller product rules", () => {
       type: "image/webp",
     });
     expect(validateProductImage(oversized)).toMatch(/8 MB/i);
+    expect(
+      validateProductImageMetadata({ name: "part.png", size: 4_500_000, type: "image/png" }),
+    ).toBeNull();
   });
 
   it("validates fulfilment and NGN price server-side", () => {

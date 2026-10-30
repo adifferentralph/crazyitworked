@@ -86,7 +86,13 @@ const mimeExtensions: Record<string, readonly string[]> = {
   "image/webp": ["webp"],
 };
 
-export function validateProductImage(file: File) {
+export type ProductImageFileMetadata = {
+  name: string;
+  size: number;
+  type: string;
+};
+
+export function validateProductImageMetadata(file: ProductImageFileMetadata) {
   if (!mimeExtensions[file.type]) {
     return "Use a JPEG, PNG, or WebP image.";
   }
@@ -101,6 +107,10 @@ export function validateProductImage(file: File) {
   }
 
   return null;
+}
+
+export function validateProductImage(file: File) {
+  return validateProductImageMetadata(file);
 }
 
 export function getSafeImageExtension(mimeType: string) {

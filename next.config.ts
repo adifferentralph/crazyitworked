@@ -49,11 +49,6 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: { remotePatterns: supabaseImages },
-  experimental: {
-    serverActions: {
-      bodySizeLimit: "45mb",
-    },
-  },
   poweredByHeader: false,
   async headers() {
     return [

@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  startTransition,
-  useActionState,
   useEffect,
   useRef,
   useState,
@@ -10,7 +8,12 @@ import {
 } from "react";
 import { Camera, CarFront, CircleDollarSign, MapPin, PackageCheck, Ruler, ScanLine } from "lucide-react";
 
-import { createProductAction, updateProductAction } from "@/app/(protected)/seller/actions";
+import {
+  createProductAction,
+  prepareProductImageUploadsAction,
+  updateProductAction,
+  type PreparedProductUpload,
+} from "@/app/(protected)/seller/actions";
 import { SellerFormAlert } from "@/components/seller/seller-form-alert";
 import { VehicleSearch } from "@/components/marketplace/vehicle-search";
 import {
@@ -27,6 +30,7 @@ import {
 import type { ProductCategoryOption } from "@/lib/marketplace/seller-data";
 import type { MarketplaceVehicleMakeOption } from "@/lib/marketplace/search-options";
 import type { ProductCondition, ProductImageType } from "@/lib/supabase/database.types";
+import { createClient } from "@/lib/supabase/client";
 import { getProductFormValues, productFormSchema } from "@/lib/validation/seller";
 import { cn } from "@/lib/utils";
 
@@ -121,6 +125,52 @@ function buildSubmissionData(event: FormEvent<HTMLFormElement>) {
     : new FormData(event.currentTarget);
 }
 
+type SelectedProductImage = {
+  field: string;
+  file: File;
+  type: ProductImageType;
+};
+
+function getSelectedProductImages(formData: FormData) {
+  return requiredProductImageSlots.flatMap<SelectedProductImage>((slot) => {
+    const value = formData.get(slot.field);
+    return value instanceof File && value.size > 0
+      ? [{ field: slot.field, file: value, type: slot.type }]
+      : [];
+  });
+}
+
+export function getFileFreeProductFormData(formData: FormData) {
+  const result = new FormData();
+  for (const [name, value] of formData.entries()) {
+    if (value instanceof File) continue;
+    result.append(name, value);
+  }
+  return result;
+}
+
+function uploadManifest(images: SelectedProductImage[]) {
+  return images.map(({ field, file, type }) => ({
+    field,
+    mimeType: file.type,
+    originalFilename: file.name,
+    sizeBytes: file.size,
+    type,
+  }));
+}
+
+function uploadedImageReference(upload: PreparedProductUpload) {
+  return {
+    field: upload.field,
+    imageId: upload.imageId,
+    mimeType: upload.mimeType,
+    originalFilename: upload.originalFilename,
+    sizeBytes: upload.sizeBytes,
+    storagePath: upload.storagePath,
+    type: upload.type,
+  };
+}
+
 function validateImages(
   formData: FormData,
   currentImageTypes: ProductImageType[],
@@ -137,11 +187,17 @@ function validateImages(
 
   if (!publishing) return null;
 
-  const currentPrimaryCount = currentImageTypes.filter((type) => type === "PRIMARY").length;
-  const addedCount = selectedTypes.filter(
-    (type) => type !== "PRIMARY" || currentPrimaryCount === 0,
-  ).length;
-  if (currentImageTypes.length + addedCount < 5) {
+  const selectedTypeSet = new Set(selectedTypes);
+  const removedTypes = new Set(
+    formData
+      .getAll("removeImageTypes")
+      .filter((value): value is ProductImageType => typeof value === "string")
+      .filter((type) => !selectedTypeSet.has(type)),
+  );
+  const retainedTypes = currentImageTypes.filter(
+    (type) => !selectedTypeSet.has(type) && !removedTypes.has(type),
+  );
+  if (retainedTypes.length + selectedTypes.length < 5) {
     return "Add five genuine photos of this product before publishing.";
   }
 
@@ -190,9 +246,12 @@ export function ProductForm({
   showDraftRecoveryLink?: boolean;
 }) {
   const action = actionOverride ?? (mode === "create" ? createProductAction : updateProductAction);
-  const [state, formAction, pending] = useActionState(action, initialSellerActionState);
+  const [state, setState] = useState<SellerActionState>(initialSellerActionState);
+  const [pending, setPending] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [clientErrors, setClientErrors] = useState<Record<string, string[] | undefined>>({});
   const formRef = useRef<HTMLFormElement>(null);
+  const selectedFilesRef = useRef(new Map<string, File>());
   const submitIntentRef = useRef<"save-draft" | "submit-review">("save-draft");
   const fieldErrors = { ...state.fieldErrors, ...clientErrors };
   const hasClientErrors = Object.values(clientErrors).some((errors) => Boolean(errors?.[0]));
@@ -210,9 +269,11 @@ export function ProductForm({
     }
   }, [state]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     const formData = buildSubmissionData(event);
+    for (const [field, file] of selectedFilesRef.current) formData.set(field, file);
     if (!formData.get("intent")) formData.set("intent", submitIntentRef.current);
     const parsed = productFormSchema.safeParse(getProductFormValues(formData));
     const nextErrors: Record<string, string[] | undefined> = parsed.success
@@ -231,12 +292,85 @@ export function ProductForm({
       return;
     }
 
-    startTransition(() => formAction(formData));
+    const requestId =
+      typeof globalThis.crypto?.randomUUID === "function"
+        ? globalThis.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const selectedImages = getSelectedProductImages(formData);
+    const payloadSizeBytes = selectedImages.reduce((total, image) => total + image.file.size, 0);
+    formData.set("requestId", requestId);
+    setPending(true);
+    setState(initialSellerActionState);
+
+    try {
+      const finalFormData = getFileFreeProductFormData(formData);
+      if (!actionOverride && selectedImages.length > 0) {
+        const preparationData = getFileFreeProductFormData(formData);
+        preparationData.set("imageManifest", JSON.stringify(uploadManifest(selectedImages)));
+        setUploadProgress("Preparing photo upload...");
+        const preparation = await prepareProductImageUploadsAction(preparationData);
+        if (preparation.status === "error" || !preparation.productId || !preparation.uploads) {
+          setState(preparation);
+          return;
+        }
+
+        const selectedByField = new Map(selectedImages.map((image) => [image.field, image.file]));
+        const supabase = createClient();
+        const uploaded: ReturnType<typeof uploadedImageReference>[] = [];
+        for (const [index, upload] of preparation.uploads.entries()) {
+          const file = selectedByField.get(upload.field);
+          if (!file) throw new Error("UPLOAD_PLAN_MISMATCH");
+          setUploadProgress(`Uploading photo ${index + 1} of ${preparation.uploads.length}...`);
+          const { error } = await supabase.storage
+            .from("product-media")
+            .uploadToSignedUrl(upload.storagePath, upload.token, file, {
+              cacheControl: "31536000",
+              contentType: file.type,
+              upsert: false,
+            });
+          if (error) throw new Error("DIRECT_UPLOAD_FAILED");
+          uploaded.push(uploadedImageReference(upload));
+        }
+        finalFormData.set("productId", preparation.productId);
+        finalFormData.set("uploadedImages", JSON.stringify(uploaded));
+        setUploadProgress("Saving product changes...");
+      }
+
+      const result = await action(initialSellerActionState, finalFormData);
+      setState(result);
+    } catch (error) {
+      const category =
+        error instanceof Error && error.message === "DIRECT_UPLOAD_FAILED"
+          ? "storage_upload"
+          : "server_action";
+      console.error("seller_product_request_failed", {
+        action: mode === "create" ? "create_product" : "update_product",
+        category,
+        method: "POST",
+        payloadSizeBytes,
+        requestId,
+        route: window.location.pathname,
+      });
+      setState({
+        fieldErrors: {
+          images: [
+            category === "storage_upload"
+              ? "A photo could not be uploaded. Check your connection and try again."
+              : "The product could not be saved. Your information is still here; try again.",
+          ],
+        },
+        message: "The product could not be saved. Your information has not been cleared.",
+        status: "error",
+      });
+    } finally {
+      setPending(false);
+      setUploadProgress(null);
+    }
   }
 
   return (
     <form
-      action={formAction}
+      aria-busy={pending}
       className="grid gap-7"
       noValidate
       onSubmit={handleSubmit}
@@ -605,15 +739,31 @@ export function ProductForm({
                 </label>
                 <p className="mb-3 text-xs leading-5 text-stone-500">{slot.description}</p>
                 {current ? (
-                  <p className="mb-3 text-xs font-semibold text-emerald-700">
-                    Current image saved. Choose a file only to add a replacement.
-                  </p>
+                  <div className="mb-3 grid gap-2">
+                    <p className="text-xs font-semibold text-emerald-700">
+                      Current image saved. Choose a file only to add a replacement.
+                    </p>
+                    <label className="flex items-center gap-2 text-xs text-stone-600">
+                      <input
+                        className="size-4 accent-primary"
+                        name="removeImageTypes"
+                        type="checkbox"
+                        value={slot.type}
+                      />
+                      Remove this image without replacing it
+                    </label>
+                  </div>
                 ) : null}
                 <input
                   accept="image/jpeg,image/png,image/webp"
                   className="block w-full text-sm text-stone-700 file:mr-3 file:rounded-md file:border-0 file:bg-stone-950 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
                   id={slot.field}
                   name={slot.field}
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    if (file) selectedFilesRef.current.set(slot.field, file);
+                    else selectedFilesRef.current.delete(slot.field);
+                  }}
                   type="file"
                 />
               </div>
@@ -630,6 +780,14 @@ export function ProductForm({
         </FormSection>
       </div>
 
+      {uploadProgress ? (
+        <p
+          className="rounded-md border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-800"
+          role="status"
+        >
+          {uploadProgress}
+        </p>
+      ) : null}
       <SellerFormAlert state={visibleState} />
       {state.productId && showDraftRecoveryLink ? (
         <p className="text-sm text-stone-600">
